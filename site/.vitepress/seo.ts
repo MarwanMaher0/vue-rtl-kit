@@ -90,15 +90,18 @@ function jsonLd(value: Record<string, unknown>): HeadConfig {
   return ['script', { type: 'application/ld+json' }, JSON.stringify(value).replace(/</g, '\\u003c')]
 }
 
-function socialHead(title: string, description: string, canonical: string, language: 'en' | 'ar', landing: boolean): HeadConfig[] {
+function socialHead(title: string, description: string, canonical: string | null, language: 'en' | 'ar', landing: boolean): HeadConfig[] {
   const image = absolute('og-image.png')
-  return [
-    ['link', { rel: 'canonical', href: canonical }],
+  const head: HeadConfig[] = []
+  if (canonical) head.push(['link', { rel: 'canonical', href: canonical }])
+  head.push(
     ['meta', { property: 'og:type', content: landing ? 'website' : 'article' }],
     ['meta', { property: 'og:site_name', content: 'vue-rtl-kit' }],
     ['meta', { property: 'og:title', content: title }],
     ['meta', { property: 'og:description', content: description }],
-    ['meta', { property: 'og:url', content: canonical }],
+  )
+  if (canonical) head.push(['meta', { property: 'og:url', content: canonical }])
+  head.push(
     ['meta', { property: 'og:locale', content: language === 'ar' ? 'ar_AR' : 'en_US' }],
     ['meta', { property: 'og:image', content: image }],
     ['meta', { property: 'og:image:width', content: '1200' }],
@@ -110,7 +113,8 @@ function socialHead(title: string, description: string, canonical: string, langu
     ['meta', { name: 'twitter:description', content: description }],
     ['meta', { name: 'twitter:image', content: image }],
     ['meta', { name: 'twitter:image:alt', content: 'vue-rtl-kit — RTL tools for Vue and Nuxt' }],
-  ]
+  )
+  return head
 }
 
 export const seo: Pick<UserConfig, 'transformPageData' | 'transformHead' | 'sitemap' | 'buildEnd'> = {
@@ -132,12 +136,17 @@ export const seo: Pick<UserConfig, 'transformPageData' | 'transformHead' | 'site
     const canonical = absolute(routeFor(file))
     const landing = key === 'index'
     const head = socialHead(fullTitle, description, canonical, language, landing)
+    if (language === 'ar') {
+      const font = landing ? 'NotoSansArabic-landing.woff2' : 'NotoSansArabic-arabic.woff2'
+      head.unshift(['link', { rel: 'preload', as: 'font', type: 'font/woff2', crossorigin: '', href: `${siteBase}fonts/${font}` }])
+    }
     const englishFile = file.replace(/^ar\//, '')
     const arabicFile = `ar/${englishFile}`
     if (existsSync(resolve(siteConfig.srcDir, englishFile)) && existsSync(resolve(siteConfig.srcDir, arabicFile))) {
       head.push(
         ['link', { rel: 'alternate', hreflang: 'en', href: absolute(routeFor(englishFile)) }],
         ['link', { rel: 'alternate', hreflang: 'ar', href: absolute(routeFor(arabicFile)) }],
+        ['link', { rel: 'alternate', hreflang: 'x-default', href: absolute(routeFor(englishFile)) }],
         ['meta', { property: 'og:locale:alternate', content: language === 'ar' ? 'en_US' : 'ar_AR' }],
       )
     }
@@ -184,7 +193,7 @@ export const seo: Pick<UserConfig, 'transformPageData' | 'transformHead' | 'site
     if (page !== '404.md') return
     return [
       ['meta', { name: 'robots', content: 'noindex, follow' }],
-      ...socialHead(title, description, absolute('404'), 'en', false),
+      ...socialHead(title, description, null, 'en', false),
     ]
   },
   sitemap: {
@@ -192,7 +201,10 @@ export const seo: Pick<UserConfig, 'transformPageData' | 'transformHead' | 'site
     transformItems: items => items.filter(item => !/^404(?:\.html)?$/.test(item.url)).map(item => ({
       ...item,
       url: absolute(item.url),
-      links: item.links?.filter(link => link.lang === 'en' || link.lang === 'ar').map(link => ({ ...link, url: absolute(link.url) })),
+      links: [
+        ...(item.links?.filter(link => link.lang === 'en' || link.lang === 'ar').map(link => ({ ...link, url: absolute(link.url) })) ?? []),
+        { lang: 'x-default', url: absolute(item.url.replace(/^\/?ar\//, '')) },
+      ],
     })),
   },
   async buildEnd({ outDir }) {

@@ -129,11 +129,11 @@ async function main() {
     unique(titles, title, label, 'title')
     const description = meta(document, 'meta[name="description"]', label)
     unique(descriptions, description, label, 'description')
-    const canonicalLink = single(document, 'link[rel="canonical"]', label)?.getAttribute('href')
-    check(canonicalLink === canonical, `${label}: canonical must be ${canonical}, got ${canonicalLink}`)
+    const canonicalLinks = [...document.querySelectorAll('link[rel="canonical"]')]
+    const canonicalLink = canonicalLinks[0]?.getAttribute('href')
+    const ogUrls = [...document.querySelectorAll('meta[property="og:url"]')]
     check(meta(document, 'meta[property="og:title"]', label) === title, `${label}: OG title differs from title`)
     check(meta(document, 'meta[property="og:description"]', label) === description, `${label}: OG description differs`)
-    check(meta(document, 'meta[property="og:url"]', label) === canonical, `${label}: OG URL differs from canonical`)
     check(meta(document, 'meta[property="og:image"]', label) === new URL('og-image.png', site).href, `${label}: incorrect OG image`)
     check(meta(document, 'meta[property="og:image:width"]', label) === '1200', `${label}: OG width must be 1200`)
     check(meta(document, 'meta[property="og:image:height"]', label) === '630', `${label}: OG height must be 630`)
@@ -148,9 +148,13 @@ async function main() {
     check(icon?.getAttribute('href') === '/vue-rtl-kit/favicon.svg', `${label}: incorrect favicon path`)
 
     if (label === '404.html') {
+      check(canonicalLinks.length === 0, `${label}: noindex page must not declare a canonical URL`)
+      check(ogUrls.length === 0, `${label}: noindex page must not declare an og:url`)
       check(/noindex/.test(meta(document, 'meta[name="robots"]', label)), `${label}: error page must be noindex`)
       continue
     }
+    check(canonicalLinks.length === 1 && canonicalLink === canonical, `${label}: canonical must be ${canonical}, got ${canonicalLink}`)
+    check(ogUrls.length === 1 && ogUrls[0].getAttribute('content') === canonical, `${label}: OG URL differs from canonical`)
     check(!/noindex/.test(document.querySelector('meta[name="robots"]')?.getAttribute('content') || ''), `${label}: documentation must be indexable`)
     const h1 = single(document, 'h1', label)
     check(Boolean(normalized(h1?.textContent)), `${label}: missing meaningful h1`)
@@ -158,11 +162,21 @@ async function main() {
     const alternateLabels = [englishLabel, `ar/${englishLabel}`]
     const paired = alternateLabels.every(path => pages.has(resolve(output, path)))
     const alternates = [...document.querySelectorAll('link[rel="alternate"][hreflang]')]
-    check(alternates.length === (paired ? 2 : 0), `${label}: expected ${paired ? 2 : 0} hreflang links`)
-    for (const [position, lang] of ['en', 'ar'].entries()) {
-      if (!paired) break
-      const href = new URL(routeFor(alternateLabels[position]), site).href
-      check(alternates.filter(link => link.getAttribute('hreflang') === lang && link.getAttribute('href') === href).length === 1, `${label}: missing reciprocal ${lang} alternate ${href}`)
+    const expectedAlternateCount = paired ? 3 : 0
+    check(alternates.length === expectedAlternateCount, `${label}: expected ${expectedAlternateCount} hreflang links`)
+    if (paired) {
+      const englishHref = new URL(routeFor(alternateLabels[0]), site).href
+      const alternateHrefs = {
+        en: englishHref,
+        ar: new URL(routeFor(alternateLabels[1]), site).href,
+        'x-default': englishHref,
+      }
+      for (const [lang, href] of Object.entries(alternateHrefs)) {
+        check(alternates.filter(link => link.getAttribute('hreflang') === lang && link.getAttribute('href') === href).length === 1, `${label}: missing reciprocal ${lang} alternate ${href}`)
+      }
+    }
+    for (const link of alternates) {
+      check(['en', 'ar', 'x-default'].includes(link.getAttribute('hreflang')), `${label}: unexpected hreflang ${link.getAttribute('hreflang')}`)
     }
 
     const schemas = []

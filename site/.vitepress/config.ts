@@ -45,6 +45,8 @@ export default defineConfig({
   head: [
     ['link', { rel: 'icon', type: 'image/svg+xml', href: `${siteBase}favicon.svg` }],
     ['link', { rel: 'preload', as: 'font', type: 'font/woff2', crossorigin: '', href: `${siteBase}fonts/Manrope-latin.woff2` }],
+    ['meta', { name: 'theme-color', content: '#f8f8f3', media: '(prefers-color-scheme: light)' }],
+    ['meta', { name: 'theme-color', content: '#171c20', media: '(prefers-color-scheme: dark)' }],
   ],
   locales: {
     root: {
@@ -77,9 +79,6 @@ export default defineConfig({
       label: 'العربية',
       lang: 'ar',
       dir: 'rtl',
-      head: [
-        ['link', { rel: 'preload', as: 'font', type: 'font/woff2', crossorigin: '', href: `${siteBase}fonts/NotoSansArabic-arabic.woff2` }],
-      ],
       title: 'vue-rtl-kit',
       description: 'إدارة الاتجاه والتنسيقات المنطقية والنص ثنائي الاتجاه لـ Vue وNuxt.',
       link: '/ar/',

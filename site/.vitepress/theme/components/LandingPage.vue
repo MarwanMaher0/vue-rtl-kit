@@ -29,9 +29,24 @@ const exampleCode = [
 const copied = ref('')
 const copyError = ref(false)
 const mounted = ref(false)
+const mobileMenu = ref<HTMLDetailsElement | null>(null)
 let timer: ReturnType<typeof setTimeout> | undefined
-onMounted(() => { mounted.value = true })
-onUnmounted(() => { if (timer) clearTimeout(timer) })
+
+function closeMobileMenu(event: KeyboardEvent) {
+  if (event.key !== 'Escape' || !mobileMenu.value?.open) return
+  event.preventDefault()
+  mobileMenu.value.open = false
+  mobileMenu.value.querySelector('summary')?.focus()
+}
+
+onMounted(() => {
+  mounted.value = true
+  document.addEventListener('keydown', closeMobileMenu)
+})
+onUnmounted(() => {
+  if (timer) clearTimeout(timer)
+  document.removeEventListener('keydown', closeMobileMenu)
+})
 
 async function copyCode(value: string, id: string) {
   copyError.value = false
@@ -77,7 +92,7 @@ async function copyCode(value: string, id: string) {
             <svg class="theme-sun" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="1.6" /><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5" stroke="currentColor" stroke-width="1.6" /></svg>
           </button>
           <a class="nav-github" :href="github" aria-label="GitHub"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .75a11.25 11.25 0 0 0-3.56 21.92c.56.1.77-.24.77-.54v-2.1c-3.14.68-3.8-1.34-3.8-1.34-.51-1.3-1.25-1.64-1.25-1.64-1.02-.7.08-.69.08-.69 1.13.08 1.73 1.16 1.73 1.16 1 1.72 2.63 1.22 3.27.93.1-.73.39-1.22.72-1.5-2.51-.28-5.15-1.25-5.15-5.56 0-1.23.44-2.23 1.16-3.02-.12-.29-.5-1.43.11-2.98 0 0 .95-.3 3.1 1.15a10.8 10.8 0 0 1 5.64 0c2.15-1.46 3.1-1.15 3.1-1.15.61 1.55.23 2.69.11 2.98.72.79 1.16 1.8 1.16 3.02 0 4.32-2.64 5.27-5.16 5.55.4.35.76 1.03.76 2.08v3.11c0 .3.2.65.77.54A11.25 11.25 0 0 0 12 .75Z" /></svg></a>
-          <details class="mobile-menu">
+          <details ref="mobileMenu" class="mobile-menu">
             <summary :aria-label="t.menu"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="1.7" /></svg></summary>
             <div class="mobile-links">
               <a href="#features" @click="($event.currentTarget as HTMLElement).closest('details')?.removeAttribute('open')">{{ t.features }}</a>
@@ -94,7 +109,7 @@ async function copyCode(value: string, id: string) {
       <section class="hero landing-container" aria-labelledby="hero-title">
         <div class="hero-copy">
           <p class="eyebrow hero-eyebrow"><span class="eyebrow-dot" aria-hidden="true"></span>{{ t.eyebrow }}</p>
-          <h1 id="hero-title">{{ t.headline[0] }}<br><span>{{ t.headline[1] }}</span><svg class="hero-spark" viewBox="0 0 54 54" fill="none" aria-hidden="true"><path d="M27 0v54M0 27h54M8 8l38 38M8 46 46 8" stroke="currentColor" stroke-width="3" /></svg></h1>
+          <h1 id="hero-title">{{ t.headline[0] }}<br><span>{{ t.headline[1] }}</span><svg class="hero-spark" viewBox="0 0 54 54" fill="none" aria-hidden="true" focusable="false"><path d="M27 0v54M0 27h54M8 8l38 38M8 46 46 8" stroke="currentColor" stroke-width="3" /></svg></h1>
           <p class="hero-summary">{{ t.summary }}</p>
           <div class="hero-actions">
             <a class="button button-primary" :href="doc('getting-started')">{{ t.start }} <span class="forward-arrow" aria-hidden="true">↗</span></a>
@@ -162,7 +177,7 @@ async function copyCode(value: string, id: string) {
         <div class="quick-code">
           <div class="install-block">
             <div class="code-bar"><span><span class="step-number">1</span>{{ t.installTitle }}</span><button type="button" :aria-label="`${t.copy}: ${t.installTitle}`" @click="copyCode(install, 'install-code')">{{ copied === 'install-code' ? t.copied : t.copy }}<svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><rect x="7" y="7" width="10" height="10" rx="1" stroke="currentColor" /><path d="M13 7V3H3v10h4" stroke="currentColor" /></svg></button></div>
-            <pre id="install-code" dir="ltr" tabindex="0"><code><span aria-hidden="true" class="terminal-dollar">$ </span>{{ install }}</code></pre>
+            <pre id="install-code" dir="ltr" tabindex="0" :aria-label="t.installTitle"><code><span aria-hidden="true" class="terminal-dollar">$ </span>{{ install }}</code></pre>
             <p class="install-note">{{ t.installNote }}</p>
           </div>
           <div class="component-block">
