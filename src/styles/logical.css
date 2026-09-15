@@ -1,0 +1,180 @@
+/*!
+ * vue-rtl-kit - logical-property utilities
+ *
+ * Plain CSS. No preprocessor, no PostCSS plugin, no build step, no
+ * direction-specific override blocks: every rule is written in logical
+ * properties, so the browser resolves it from the nearest `dir` attribute.
+ * Flipping direction at runtime needs no stylesheet swap.
+ *
+ * Scale: multiples of `--rtl-space` (default 0.25rem). Override it on `:root`
+ * to match an existing design system.
+ *
+ *   :root { --rtl-space: 0.5rem; }
+ */
+
+:root {
+  --rtl-space: 0.25rem;
+  --rtl-border-width: 1px;
+  --rtl-radius: 0.375rem;
+}
+
+/* ---------------------------------------------------------------- margins */
+
+.ms-0 { margin-inline-start: 0; }
+.ms-1 { margin-inline-start: calc(var(--rtl-space) * 1); }
+.ms-2 { margin-inline-start: calc(var(--rtl-space) * 2); }
+.ms-3 { margin-inline-start: calc(var(--rtl-space) * 3); }
+.ms-4 { margin-inline-start: calc(var(--rtl-space) * 4); }
+.ms-5 { margin-inline-start: calc(var(--rtl-space) * 5); }
+.ms-6 { margin-inline-start: calc(var(--rtl-space) * 6); }
+.ms-8 { margin-inline-start: calc(var(--rtl-space) * 8); }
+.ms-10 { margin-inline-start: calc(var(--rtl-space) * 10); }
+.ms-12 { margin-inline-start: calc(var(--rtl-space) * 12); }
+.ms-auto { margin-inline-start: auto; }
+
+.me-0 { margin-inline-end: 0; }
+.me-1 { margin-inline-end: calc(var(--rtl-space) * 1); }
+.me-2 { margin-inline-end: calc(var(--rtl-space) * 2); }
+.me-3 { margin-inline-end: calc(var(--rtl-space) * 3); }
+.me-4 { margin-inline-end: calc(var(--rtl-space) * 4); }
+.me-5 { margin-inline-end: calc(var(--rtl-space) * 5); }
+.me-6 { margin-inline-end: calc(var(--rtl-space) * 6); }
+.me-8 { margin-inline-end: calc(var(--rtl-space) * 8); }
+.me-10 { margin-inline-end: calc(var(--rtl-space) * 10); }
+.me-12 { margin-inline-end: calc(var(--rtl-space) * 12); }
+.me-auto { margin-inline-end: auto; }
+
+.mi-0 { margin-inline: 0; }
+.mi-1 { margin-inline: calc(var(--rtl-space) * 1); }
+.mi-2 { margin-inline: calc(var(--rtl-space) * 2); }
+.mi-3 { margin-inline: calc(var(--rtl-space) * 3); }
+.mi-4 { margin-inline: calc(var(--rtl-space) * 4); }
+.mi-auto { margin-inline: auto; }
+
+/* --------------------------------------------------------------- padding */
+
+.ps-0 { padding-inline-start: 0; }
+.ps-1 { padding-inline-start: calc(var(--rtl-space) * 1); }
+.ps-2 { padding-inline-start: calc(var(--rtl-space) * 2); }
+.ps-3 { padding-inline-start: calc(var(--rtl-space) * 3); }
+.ps-4 { padding-inline-start: calc(var(--rtl-space) * 4); }
+.ps-5 { padding-inline-start: calc(var(--rtl-space) * 5); }
+.ps-6 { padding-inline-start: calc(var(--rtl-space) * 6); }
+.ps-8 { padding-inline-start: calc(var(--rtl-space) * 8); }
+.ps-10 { padding-inline-start: calc(var(--rtl-space) * 10); }
+.ps-12 { padding-inline-start: calc(var(--rtl-space) * 12); }
+
+.pe-0 { padding-inline-end: 0; }
+.pe-1 { padding-inline-end: calc(var(--rtl-space) * 1); }
+.pe-2 { padding-inline-end: calc(var(--rtl-space) * 2); }
+.pe-3 { padding-inline-end: calc(var(--rtl-space) * 3); }
+.pe-4 { padding-inline-end: calc(var(--rtl-space) * 4); }
+.pe-5 { padding-inline-end: calc(var(--rtl-space) * 5); }
+.pe-6 { padding-inline-end: calc(var(--rtl-space) * 6); }
+.pe-8 { padding-inline-end: calc(var(--rtl-space) * 8); }
+.pe-10 { padding-inline-end: calc(var(--rtl-space) * 10); }
+.pe-12 { padding-inline-end: calc(var(--rtl-space) * 12); }
+
+.pi-0 { padding-inline: 0; }
+.pi-1 { padding-inline: calc(var(--rtl-space) * 1); }
+.pi-2 { padding-inline: calc(var(--rtl-space) * 2); }
+.pi-3 { padding-inline: calc(var(--rtl-space) * 3); }
+.pi-4 { padding-inline: calc(var(--rtl-space) * 4); }
+.pi-6 { padding-inline: calc(var(--rtl-space) * 6); }
+
+/* ------------------------------------------------------------ alignment */
+
+.text-start { text-align: start; }
+.text-end { text-align: end; }
+.text-center { text-align: center; }
+
+.float-start { float: inline-start; }
+.float-end { float: inline-end; }
+.clear-start { clear: inline-start; }
+.clear-end { clear: inline-end; }
+
+.justify-start { justify-content: flex-start; }
+.justify-end { justify-content: flex-end; }
+.items-start { align-items: flex-start; }
+.items-end { align-items: flex-end; }
+
+/* -------------------------------------------------------------- position */
+
+.start-0 { inset-inline-start: 0; }
+.end-0 { inset-inline-end: 0; }
+.start-auto { inset-inline-start: auto; }
+.end-auto { inset-inline-end: auto; }
+.inset-i-0 { inset-inline: 0; }
+
+/* --------------------------------------------------------------- borders */
+
+.border-s { border-inline-start: var(--rtl-border-width) solid currentcolor; }
+.border-e { border-inline-end: var(--rtl-border-width) solid currentcolor; }
+.border-s-0 { border-inline-start-width: 0; }
+.border-e-0 { border-inline-end-width: 0; }
+
+.rounded-s {
+  border-start-start-radius: var(--rtl-radius);
+  border-end-start-radius: var(--rtl-radius);
+}
+
+.rounded-e {
+  border-start-end-radius: var(--rtl-radius);
+  border-end-end-radius: var(--rtl-radius);
+}
+
+.rounded-s-0 {
+  border-start-start-radius: 0;
+  border-end-start-radius: 0;
+}
+
+.rounded-e-0 {
+  border-start-end-radius: 0;
+  border-end-end-radius: 0;
+}
+
+/* ----------------------------------------------------------------- bidi */
+
+/* Isolate a run so it cannot be reordered by, or reorder, its surroundings. */
+.bidi-isolate { unicode-bidi: isolate; }
+
+/* Isolate, and ignore the surrounding direction entirely: the right choice for
+   code blocks, file paths, and anything whose own `dir` is authoritative. */
+.bidi-plaintext { unicode-bidi: plaintext; }
+
+/* Stop a directional run from being split across lines mid-reorder. */
+.bidi-nowrap {
+  unicode-bidi: isolate;
+  white-space: nowrap;
+}
+
+/* ------------------------------------------------------------- direction */
+
+/* Show an element in one direction only - swapped icons, direction-specific
+   copy, a hint that only makes sense in one script. */
+[dir='ltr'] .rtl-only,
+[dir='rtl'] .ltr-only {
+  display: none !important;
+}
+
+/* Mirror a directional glyph (arrows, chevrons, send icons, undo/redo) in RTL.
+   Never apply it to logos, clock faces, checkmarks or media controls. */
+[dir='rtl'] .rtl-flip {
+  transform: scaleX(-1);
+}
+
+/* Opt a subtree out of an ancestor's `rtl-flip`. */
+[dir='rtl'] .rtl-flip .rtl-noflip {
+  transform: scaleX(-1);
+}
+
+/* Logical scroll shadows / gradients need the direction too. */
+[dir='rtl'] .rtl-scroll-x {
+  direction: rtl;
+}
+
+/* Numbers that must stay Western even in an Arabic-Indic locale. */
+.nums-latn {
+  font-feature-settings: 'lnum' 1;
+  unicode-bidi: isolate;
+}
