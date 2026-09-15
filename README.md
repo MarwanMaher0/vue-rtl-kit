@@ -1,7 +1,6 @@
 # vue-rtl-kit
 
 [![CI](https://github.com/MarwanMaher0/vue-rtl-kit/actions/workflows/ci.yml/badge.svg)](https://github.com/MarwanMaher0/vue-rtl-kit/actions/workflows/ci.yml)
-[![npm](https://img.shields.io/npm/v/vue-rtl-kit.svg)](https://www.npmjs.com/package/vue-rtl-kit)
 [![license](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
 [![types](https://img.shields.io/badge/types-included-3178c6.svg)](./src/types.ts)
 
