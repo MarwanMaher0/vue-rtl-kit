@@ -1,0 +1,66 @@
+name: Bug report
+description: Something in vue-rtl-kit does not work the way the README says it should.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting this. Security problems do not belong here: report them privately
+        through [Report a vulnerability](https://github.com/MarwanMaher0/vue-rtl-kit/security/advisories/new).
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you saw, including any error message or output.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: The smallest set of steps that shows the problem. A minimal component or a StackBlitz link is the fastest way to a fix.
+      placeholder: |
+        1.
+        2.
+        3.
+    validations:
+      required: true
+  - type: dropdown
+    id: where
+    attributes:
+      label: Where did it happen?
+      options:
+        - Vue app
+        - Nuxt, server-rendered HTML
+        - Nuxt, after hydration
+        - Plain TypeScript (bidi, logical or format helpers)
+    validations:
+      required: true
+  - type: input
+    id: versions
+    attributes:
+      label: vue-rtl-kit, Vue and Nuxt versions
+      placeholder: "0.1.0, Vue 3.5.13, Nuxt 3.14 (or none)"
+    validations:
+      required: true
+  - type: input
+    id: browser
+    attributes:
+      label: Browser and version
+      placeholder: Chrome 129, Firefox 131, Safari 18
+  - type: textarea
+    id: text
+    attributes:
+      label: The exact text, for a rendering bug
+      description: Paste the string as it is stored, and the locale and direction around it.
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else
+      description: Screenshots, logs, or what you already tried.
