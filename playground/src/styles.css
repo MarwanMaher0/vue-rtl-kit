@@ -1,0 +1,47 @@
+:root {
+  --bg: #0f1115;
+  --panel: #171a21;
+  --panel-2: #1d212a;
+  --line: #272c38;
+  --line-soft: #21252f;
+  --ink: #e7eaf0;
+  --ink-dim: #99a1b3;
+  --ink-faint: #6b7385;
+  --accent: #6ea8fe;
+  --accent-soft: rgba(110, 168, 254, 0.12);
+  --good: #4ade80;
+  --bad: #f87171;
+  --warn: #fbbf24;
+  --radius: 10px;
+  --rtl-space: 0.25rem;
+
+  --font-ui: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --font-ar: 'Noto Sans Arabic', 'Segoe UI', 'Tahoma', sans-serif;
+  --font-mono: 'JetBrains Mono', 'DejaVu Sans Mono', ui-monospace, monospace;
+}
+
+* { box-sizing: border-box; }
+
+html, body { margin: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-ui), var(--font-ar);
+  font-size: 15px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+[dir='rtl'] body,
+[dir='rtl'] {
+  font-family: var(--font-ar), var(--font-ui);
+}
+
+code, pre, .mono { font-family: var(--font-mono); }
+
+h1, h2, h3 { line-height: 1.25; margin: 0; font-weight: 650; letter-spacing: -0.01em; }
+
+a { color: var(--accent); }
+
+button { font: inherit; }
