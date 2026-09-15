@@ -63,7 +63,8 @@ bare `2024` — which reads the same either way — is left alone.
 ## Install
 
 ```sh
-npm install vue-rtl-kit
+# Not on npm yet: install a tagged release from GitHub (it builds on install)
+npm install github:MarwanMaher0/vue-rtl-kit#v0.1.1
 ```
 
 Vue 3.3+. No runtime dependencies. For Nuxt, `@nuxt/kit` is an optional peer you already have.
