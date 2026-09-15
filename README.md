@@ -262,6 +262,10 @@ resolves it from the nearest `dir` attribute and a runtime direction flip needs 
 | `.rtl-only` / `.ltr-only` | show in one direction only |
 | `.nums-latn` | lining figures, isolated |
 
+One component, one set of markup, both directions — no `[dir="rtl"]` override block anywhere in it:
+
+![The same profile card rendered in LTR and RTL](./docs/side-by-side.png)
+
 The spacing scale is multiples of `--rtl-space` (default `0.25rem`). Override it once on `:root` to
 match an existing design system:
 
