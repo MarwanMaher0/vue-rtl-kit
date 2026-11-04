@@ -1,0 +1,244 @@
+:root {
+  --vp-c-brand-1: #08766d;
+  --vp-c-brand-2: #075f59;
+  --vp-c-brand-3: #054b47;
+  --vp-c-brand-soft: rgb(8 118 109 / 14%);
+  --vp-c-bg: #fffefa;
+  --vp-c-bg-alt: #f5f5ef;
+  --vp-c-bg-soft: #f5f7f2;
+  --vp-font-family-base: 'Manrope', 'IBM Plex Sans Arabic', sans-serif;
+  --vp-home-hero-name-color: #073d3a;
+  --vp-home-hero-name-background: none;
+  --vp-home-hero-image-background-image: radial-gradient(circle, rgb(8 118 109 / 18%), transparent 68%);
+  --vp-home-hero-image-filter: blur(56px);
+}
+
+.dark {
+  --vp-c-brand-1: #54c7b8;
+  --vp-c-brand-2: #79d8cb;
+  --vp-c-brand-3: #a0e7de;
+  --vp-c-brand-soft: rgb(84 199 184 / 15%);
+  --vp-c-bg: #101817;
+  --vp-c-bg-alt: #151e1d;
+  --vp-c-bg-soft: #182321;
+  --vp-home-hero-name-color: #8fe1d4;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-feature-settings: 'ss01' 1;
+}
+
+[dir='rtl'] body {
+  font-family: 'IBM Plex Sans Arabic', 'Manrope', sans-serif;
+}
+
+.VPNavBar .title {
+  font-weight: 800;
+  letter-spacing: -0.04em;
+}
+
+.VPNavBar {
+  border-bottom: 1px solid var(--vp-c-divider);
+  backdrop-filter: blur(18px);
+}
+
+.VPHome {
+  position: relative;
+  overflow: hidden;
+}
+
+.VPHome::before {
+  position: absolute;
+  z-index: -1;
+  top: -180px;
+  inset-inline-end: -160px;
+  width: 620px;
+  height: 620px;
+  border: 1px solid var(--vp-c-brand-soft);
+  border-radius: 44% 56% 62% 38%;
+  background: radial-gradient(circle at 40% 50%, var(--vp-c-brand-soft), transparent 65%);
+  content: '';
+  transform: rotate(18deg);
+}
+
+.VPHomeHero {
+  padding-block: 72px 54px;
+}
+
+.VPHomeHero .container {
+  position: relative;
+}
+
+.VPHomeHero .container::after {
+  position: absolute;
+  z-index: -1;
+  top: 50%;
+  inset-inline-end: 4%;
+  color: var(--vp-c-brand-soft);
+  content: 'ض';
+  font-family: 'IBM Plex Sans Arabic', sans-serif;
+  font-size: clamp(220px, 32vw, 430px);
+  font-weight: 700;
+  line-height: 0.6;
+  transform: translateY(-45%) rotate(-8deg);
+  pointer-events: none;
+}
+
+.VPHomeHero .main {
+  max-width: 760px;
+}
+
+.VPHomeHero .name {
+  max-width: 700px;
+  font-size: clamp(52px, 8vw, 104px);
+  font-weight: 800;
+  letter-spacing: -0.075em;
+  line-height: 0.94;
+}
+
+.VPHomeHero .text {
+  max-width: 690px;
+  margin-top: 20px;
+  color: var(--vp-c-text-1);
+  font-size: clamp(28px, 4vw, 52px);
+  font-weight: 600;
+  letter-spacing: -0.05em;
+  line-height: 1.08;
+}
+
+.VPHomeHero .tagline {
+  max-width: 590px;
+  padding-top: 24px;
+  color: var(--vp-c-text-2);
+  font-size: 17px;
+  line-height: 1.8;
+}
+
+.VPHomeHero .action .VPButton {
+  border-radius: 10px;
+  font-weight: 700;
+}
+
+.VPHomeFeatures .item {
+  transform: none !important;
+}
+
+.VPHomeFeatures .VPFeature {
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 16px;
+  background: var(--vp-c-bg-soft);
+  box-shadow: none;
+  transition: border-color 180ms ease, transform 180ms ease;
+}
+
+.VPHomeFeatures .VPFeature:hover {
+  border-color: var(--vp-c-brand-1);
+  transform: translateY(-3px);
+}
+
+.VPHomeFeatures .title {
+  color: var(--vp-c-text-1);
+  font-size: 17px;
+  letter-spacing: -0.02em;
+}
+
+.VPHomeFeatures .details {
+  line-height: 1.75;
+}
+
+.home-editorial {
+  max-width: 920px;
+  margin: 72px auto;
+  padding: 0 24px;
+}
+
+.home-editorial h2 {
+  max-width: 660px;
+  margin-bottom: 20px;
+  border: 0;
+  font-size: clamp(30px, 4vw, 48px);
+  letter-spacing: -0.045em;
+  line-height: 1.12;
+}
+
+.home-editorial > p {
+  max-width: 680px;
+  color: var(--vp-c-text-2);
+  font-size: 17px;
+  line-height: 1.9;
+}
+
+.home-editorial__grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+  margin-top: 32px;
+}
+
+.home-editorial__grid > div {
+  padding-top: 18px;
+  border-top: 2px solid var(--vp-c-brand-1);
+}
+
+.home-editorial__grid h3 {
+  margin: 0 0 8px;
+  font-size: 16px;
+}
+
+.home-editorial__grid p {
+  margin: 0;
+  color: var(--vp-c-text-2);
+  font-size: 14px;
+  line-height: 1.75;
+}
+
+.VPDoc .content-container {
+  max-width: 780px;
+}
+
+.VPDoc h1 {
+  letter-spacing: -0.045em;
+}
+
+.VPDoc h2 {
+  letter-spacing: -0.03em;
+}
+
+.VPDoc table {
+  display: table;
+  width: 100%;
+}
+
+.VPDoc td code,
+.VPDoc th code {
+  white-space: normal;
+}
+
+@media (max-width: 768px) {
+  .VPHomeHero {
+    padding-top: 48px;
+  }
+
+  .VPHomeHero .container::after {
+    opacity: 0.65;
+  }
+
+  .home-editorial__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .VPDoc table {
+    display: block;
+    overflow-x: auto;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .VPHomeFeatures .VPFeature {
+    transition: none;
+  }
+}

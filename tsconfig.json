@@ -23,6 +23,6 @@
       "vue-rtl-kit": ["./src/index.ts"]
     }
   },
-  "include": ["src/**/*.ts", "test/**/*.ts", "playground/**/*.ts", "playground/**/*.vue", "*.ts", "scripts/**/*.mjs"],
+  "include": ["src/**/*.ts", "test/**/*.ts", "playground/**/*.ts", "playground/**/*.vue", "site/**/*.ts", "site/**/*.vue", "*.ts", "scripts/**/*.mjs"],
   "exclude": ["dist", "node_modules", "test/fixtures"]
 }

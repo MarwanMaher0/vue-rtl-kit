@@ -1,0 +1,86 @@
+# وحدة Nuxt
+
+تدعم وحدة Nuxt الإصدارين Nuxt 3 و4. تثبّت إضافة التشغيل، وتدمج رأس المستند أثناء SSR، وتسجّل المكوّنات، وتستورد الدوال التركيبية تلقائيًا، وتحمّل ملف التنسيق اختياريًا.
+
+```ts
+export default defineNuxtConfig({
+  modules: ['vue-rtl-kit/nuxt'],
+  rtl: {
+    locales: { en: 'ltr', ar: 'rtl' },
+    defaultLocale: 'ar',
+    htmlClass: true,
+    numberingSystem: { ar: 'latn' },
+  },
+})
+```
+
+مفتاح الإعداد هو `rtl`. يرث `ModuleOptions` من `RtlOptions` ويضيف عناصر تحكم في التسجيل خاصة بـ Nuxt.
+
+## ModuleOptions
+
+| الخيار | النوع | القيمة الافتراضية | الوصف |
+| --- | --- | --- | --- |
+| `locales` | `string[] \| LocaleMap` | `{ en: 'ltr', ar: 'rtl' }` | اللغات المتاحة لمخزن التشغيل. |
+| `defaultLocale` | `string` | `'en'` | اللغة الأولية. |
+| `dir` | `Direction` | `undefined`؛ ويُستنتج `'ltr'` من اللغة الافتراضية | اتجاه أولي صريح؛ ويؤدي توفيره إلى تثبيت الاتجاه. |
+| `syncDocument` | `boolean` | `true` | مزامنة `<html dir>` و`<html lang>` في العميل بعد التثبيت. |
+| `htmlClass` | `boolean \| { rtl: string, ltr: string }` | `false` | تبديل أصناف الاتجاه الافتراضية أو المخصصة على `<html>`. |
+| `numberingSystem` | `NumberingSystem \| Record<string, NumberingSystem>` | `undefined`؛ القيمة الافتراضية للغة | الأرقام الافتراضية لـ `useFormat()`، عالميًا أو لكل لغة. |
+| `registerGlobals` | `boolean` | مهمَل؛ يتصرف وقت التشغيل كأنه `true` | لا تمرر الوحدة هذا الخيار الموروث إلى إعدادات التشغيل، لذا لا يكون لضبطه أي تأثير في Nuxt. |
+| `autoImports` | `boolean` | `true` | استيراد `useDirection` و`useRtl` و`useLogicalStyles` و`useFormat` تلقائيًا. |
+| `components` | `boolean` | `true` | تسجيل `<RtlProvider>` و`<BidiText>` عبر Nuxt. |
+| `css` | `boolean` | `true` | حقن `vue-rtl-kit/styles.css`. |
+
+تُحذف `dir` و`syncDocument` و`htmlClass` و`numberingSystem` من إعدادات التشغيل عند عدم توفيرها، مما يسمح لـ `createRtl()` بتطبيق قواعد الحسم الخاصة به.
+
+يعطّل `components: false` تسجيل مكوّنات Nuxt فقط. ومع ذلك، تظل إضافة التشغيل تستدعي `createRtl()` مع القيمة الافتراضية `registerGlobals: true`، لذلك تظل `<RtlProvider>` و`<BidiText>` و`v-rtl` مسجلة عالميًا.
+
+## سمات مستند SSR
+
+تستدعي إضافة التشغيل `createRtl()` وتوفّر قيم `dir` و`lang` التفاعلية عبر تكامل رأس المستند في Nuxt. وبذلك يتطابق الاتجاه في HTML المعروض على الخادم والوسوم بعد الترطيب دون الحاجة إلى حل بديل خاص بالعميل.
+
+```vue
+<script setup lang="ts">
+const { dir, locale, setLocale } = useDirection()
+const format = useFormat()
+</script>
+
+<template>
+  <header>
+    <span>{{ locale }} / {{ dir }}</span>
+    <button @click="setLocale('en')">English</button>
+    <button @click="setLocale('ar')">العربية</button>
+    <output>{{ format.formatNumber(1234.5) }}</output>
+  </header>
+</template>
+```
+
+## الإعداد الانتقائي
+
+عطّل التسجيلات التلقائية في Nuxt عندما تفضل الاستيرادات الصريحة:
+
+```ts
+export default defineNuxtConfig({
+  modules: ['vue-rtl-kit/nuxt'],
+  rtl: {
+    autoImports: false,
+    components: false,
+    css: false,
+  },
+})
+```
+
+```vue
+<script setup lang="ts">
+import { BidiText, useDirection } from 'vue-rtl-kit'
+import 'vue-rtl-kit/styles.css'
+
+const { dir } = useDirection()
+</script>
+
+<template>
+  <BidiText :dir="dir" text="الإصدار v1.2.3 متاح الآن" />
+</template>
+```
+
+تُثبَّت إضافة اتجاه التشغيل دائمًا. وتتحكم الخيارات `autoImports` و`components` و`css` فقط في تكاملات Nuxt المقابلة لها أثناء البناء.
