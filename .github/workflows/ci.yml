@@ -37,10 +37,13 @@ jobs:
         run: npm run typecheck
 
       - name: Unit tests
-        run: npx vitest run
+        run: npx vitest run --exclude test/nuxt.spec.ts
 
       - name: Build library
         run: npm run build
+
+      - name: Nuxt SSR test
+        run: npx vitest run test/nuxt.spec.ts
 
       - name: Build playground
         run: npx vite build -c playground/vite.config.ts

@@ -5,7 +5,7 @@ import vueParser from 'vue-eslint-parser'
 
 export default tseslint.config(
   {
-    ignores: ['dist/**', 'node_modules/**', 'coverage/**', 'playground/dist/**', 'docs/**'],
+    ignores: ['dist/**', 'node_modules/**', 'coverage/**', 'playground/dist/**', 'docs/**', 'test/fixtures/**/.nuxt/**', 'test/fixtures/**/.output/**'],
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,
@@ -62,11 +62,11 @@ export default tseslint.config(
     },
   },
   {
-    files: ['src/nuxt/runtime/*.ts'],
-    rules: {
-      // Nuxt auto-imports are declared locally; they are never called at
-      // module scope, so the ambient declarations are intentional.
-      '@typescript-eslint/no-unused-vars': 'off',
+    files: ['test/fixtures/**/*.ts'],
+    languageOptions: {
+      globals: {
+        defineNuxtConfig: 'readonly',
+      },
     },
   },
 )

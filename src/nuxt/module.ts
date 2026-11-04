@@ -43,13 +43,14 @@ export default defineNuxtModule<ModuleOptions>({
     const { resolve } = createResolver(import.meta.url)
 
     // Exposed to the runtime plugin through `useRuntimeConfig().public.rtl`.
+    // Undefined option values are omitted: Nuxt would serialise them as "".
     nuxt.options.runtimeConfig.public.rtl = {
       locales: options.locales,
       defaultLocale: options.defaultLocale,
-      dir: options.dir,
-      syncDocument: options.syncDocument,
-      htmlClass: options.htmlClass,
-      numberingSystem: options.numberingSystem,
+      ...(options.dir !== undefined && { dir: options.dir }),
+      ...(options.syncDocument !== undefined && { syncDocument: options.syncDocument }),
+      ...(options.htmlClass !== undefined && { htmlClass: options.htmlClass }),
+      ...(options.numberingSystem !== undefined && { numberingSystem: options.numberingSystem }),
     } as Record<string, unknown>
 
     if (options.css !== false) {
