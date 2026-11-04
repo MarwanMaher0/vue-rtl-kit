@@ -31,6 +31,7 @@
   ],
   "files": [
     "dist",
+    "CHANGELOG.md",
     "README.md",
     "LICENSE"
   ],
@@ -78,6 +79,7 @@
     "prepare": "npm run build",
     "build": "vite build && vite build -c vite.nuxt.config.ts && tsc -p tsconfig.build.json && rollup -c rollup.dts.config.mjs && node scripts/copy-assets.mjs",
     "check:publish": "node scripts/check-publish.mjs",
+    "release": "changeset publish",
     "dev": "vite build --watch",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -93,6 +95,7 @@
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.18.5",
+    "@changesets/cli": "^2.31.1",
     "@eslint/js": "^9.15.0",
     "@nuxt/kit": "^3.14.0",
     "@nuxt/schema": "^3.14.0",
