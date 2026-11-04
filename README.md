@@ -69,6 +69,21 @@ npm install github:MarwanMaher0/vue-rtl-kit#v0.1.1
 
 Vue 3.3+. No runtime dependencies. For Nuxt, `@nuxt/kit` is an optional peer you already have.
 
+### Module formats
+
+| Entry point | ESM | CommonJS | Types |
+| --- | --- | --- | --- |
+| `vue-rtl-kit` | `import` | `require()` | `index.d.ts` / `index.d.cts` |
+| `vue-rtl-kit/styles.css` | `import` | `require()` | `export {}` stub, so the import type checks without `declare module '*.css'` |
+| `vue-rtl-kit/nuxt` | `import` | — | `nuxt/module.d.ts` |
+
+`vue-rtl-kit/nuxt` is deliberately **ESM-only**. Nuxt loads modules through its own ESM loader
+(jiti), never via `require()`, and `@nuxt/kit` itself ships ESM only, so a CommonJS build could not
+even load on Node 18/20. Tools such as [arethetypeswrong](https://arethetypeswrong.github.io/) will
+report "ESM (dynamic import only)" for that one entry point under `node16 (from CJS)` — that is
+expected; `npm run check:publish` scopes that single allowance to `./nuxt` and keeps every other
+entry point strictly green.
+
 ## Quickstart — Vue
 
 ```ts
@@ -316,10 +331,11 @@ the real document direction.
 ## Development
 
 ```sh
-npm run test        # vitest, 106 tests
-npm run typecheck   # vue-tsc --noEmit
-npm run lint        # eslint
-npm run build       # ESM + CJS + d.ts + styles.css
+npm run test           # vitest, 107 tests
+npm run typecheck      # vue-tsc --noEmit
+npm run lint           # eslint
+npm run build          # ESM + CJS + d.ts/d.cts + styles.css
+npm run check:publish  # publint + arethetypeswrong against the packed tarball
 ```
 
 ## Licence

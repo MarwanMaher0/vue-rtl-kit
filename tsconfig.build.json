@@ -4,9 +4,9 @@
     "noEmit": false,
     "declaration": true,
     "emitDeclarationOnly": true,
-    "declarationMap": true,
+    "declarationMap": false,
     "rootDir": "src",
-    "outDir": "dist",
+    "outDir": "dist/.types",
     "types": ["node"],
     "paths": { "vue-rtl-kit": ["./src/index.ts"] }
   },

@@ -20,8 +20,14 @@ npm run play       # playground at http://localhost:5178
 npm run lint       # ESLint, zero warnings allowed
 npm run typecheck  # vue-tsc --noEmit
 npm test           # Vitest, test/
-npm run build      # ESM + CJS + types + styles.css
+npm run build      # ESM + CJS + types (.d.ts and .d.cts) + styles.css
+npm run check:publish  # publint + arethetypeswrong on the packed tarball
 ```
+
+`check:publish` runs arethetypeswrong twice: strictly for every entry point, then for `./nuxt`
+alone with its "require resolves to ESM" rule ignored. Nuxt modules are ESM-only by design (Nuxt
+never `require()`s them and `@nuxt/kit` has no CommonJS build); the reasoning lives next to the
+command in `scripts/check-publish.mjs`.
 
 CI also builds the playground: `npx vite build -c playground/vite.config.ts`.
 

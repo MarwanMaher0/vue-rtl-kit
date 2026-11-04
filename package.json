@@ -37,23 +37,47 @@
   "main": "./dist/vue-rtl-kit.cjs",
   "module": "./dist/vue-rtl-kit.js",
   "types": "./dist/index.d.ts",
+  "typesVersions": {
+    "*": {
+      "nuxt": [
+        "./dist/nuxt/module.d.ts"
+      ],
+      "styles.css": [
+        "./dist/styles.d.ts"
+      ]
+    }
+  },
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/vue-rtl-kit.js",
-      "require": "./dist/vue-rtl-kit.cjs"
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/vue-rtl-kit.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/vue-rtl-kit.cjs"
+      }
     },
     "./nuxt": {
       "types": "./dist/nuxt/module.d.ts",
       "import": "./dist/nuxt/module.js"
     },
-    "./styles.css": "./dist/styles.css",
-    "./dist/styles.css": "./dist/styles.css",
+    "./styles.css": {
+      "import": {
+        "types": "./dist/styles.d.ts",
+        "default": "./dist/styles.css"
+      },
+      "require": {
+        "types": "./dist/styles.d.cts",
+        "default": "./dist/styles.css"
+      }
+    },
     "./package.json": "./package.json"
   },
   "scripts": {
     "prepare": "npm run build",
-    "build": "vite build && vite build -c vite.nuxt.config.ts && tsc -p tsconfig.build.json && node scripts/copy-assets.mjs",
+    "build": "vite build && vite build -c vite.nuxt.config.ts && tsc -p tsconfig.build.json && rollup -c rollup.dts.config.mjs && node scripts/copy-assets.mjs",
+    "check:publish": "node scripts/check-publish.mjs",
     "dev": "vite build --watch",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -68,6 +92,7 @@
     "vue": "^3.3.0"
   },
   "devDependencies": {
+    "@arethetypeswrong/cli": "^0.18.5",
     "@eslint/js": "^9.15.0",
     "@nuxt/kit": "^3.14.0",
     "@nuxt/schema": "^3.14.0",
@@ -79,6 +104,8 @@
     "eslint-plugin-vue": "^9.31.0",
     "jsdom": "^25.0.1",
     "nuxt": "~3.17.0",
+    "publint": "^0.3.25",
+    "rollup-plugin-dts": "^6.5.1",
     "typescript": "^5.6.3",
     "typescript-eslint": "^8.15.0",
     "vite": "^5.4.11",
