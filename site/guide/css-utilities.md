@@ -1,6 +1,6 @@
 # CSS utilities
 
-Import the optional stylesheet once:
+The optional CSS utilities provide logical spacing, alignment, borders, positioning, text isolation, and directional icon helpers for RTL and LTR layouts. They follow the nearest `dir` attribute without a stylesheet swap. Import the stylesheet once:
 
 ```ts
 import 'vue-rtl-kit/styles.css'

@@ -1,10 +1,10 @@
 # useFormat
 
+تربط `useFormat()` منسّقات الأرقام والعملات والتواريخ بلغة النطاق الحالي واتجاهه. كما تطبّق إعداد `numberingSystem` المضبوط على نسخة `createRtl()` الجذرية.
+
 ```ts
 function useFormat(): ComputedRef<BoundFormatters>
 ```
-
-تربط `useFormat()` منسّقات الأرقام والعملات والتواريخ بلغة النطاق الحالي واتجاهه. كما تطبّق إعداد `numberingSystem` المضبوط على نسخة `createRtl()` الجذرية.
 
 ```vue
 <script setup lang="ts">

@@ -1,0 +1,53 @@
+# vue-rtl-kit
+
+> MIT-licensed Vue 3.3+ and Nuxt 3/4 toolkit for reactive RTL/LTR direction, scoped layouts, logical styles, locale-aware formatting, and simplified plain-text bidirectional isolation.
+
+Current documented release: v0.1.1. Until npm publication, install with `npm install github:MarwanMaher0/vue-rtl-kit#v0.1.1`; its prepare script builds the package. Do not present `npm install vue-rtl-kit` as the currently published installation path.
+
+BidiText is not a rich-text engine or a complete Unicode bidi algorithm implementation. Explicit initial `dir`, `setDirection()`, and `toggleDirection()` pin root direction against later locale changes. The toolkit does not translate messages or automatically convert an entire interface to RTL.
+
+## Start here
+
+- [English documentation](https://marwanmaher0.github.io/vue-rtl-kit/): Project overview and shared FAQ.
+- [Getting started](https://marwanmaher0.github.io/vue-rtl-kit/getting-started): Tagged release installation and Vue/Nuxt setup.
+- [API reference](https://marwanmaher0.github.io/vue-rtl-kit/api): Exported functions, components, directives, and TypeScript types.
+- [Full text reference](https://marwanmaher0.github.io/vue-rtl-kit/llms-full.txt): Substantive setup, behavioral contracts, limitations, examples, and bilingual source links.
+
+## Direction and integration
+
+- [Direction store](https://marwanmaher0.github.io/vue-rtl-kit/guide/direction-store): Reactive state, pinning, document sync, and standalone state.
+- [createRtl](https://marwanmaher0.github.io/vue-rtl-kit/guide/create-rtl): Vue plugin configuration and cleanup.
+- [useDirection](https://marwanmaher0.github.io/vue-rtl-kit/guide/use-direction): Nearest scope, root, or detached fallback.
+- [useRtl](https://marwanmaher0.github.io/vue-rtl-kit/guide/use-rtl): Root store access; requires the installed plugin.
+- [RtlProvider](https://marwanmaher0.github.io/vue-rtl-kit/guide/rtl-provider): Local direction and locale scopes.
+- [v-rtl](https://marwanmaher0.github.io/vue-rtl-kit/guide/v-rtl): Element direction, optional isolation, SSR, and cleanup.
+- [Nuxt module](https://marwanmaher0.github.io/vue-rtl-kit/guide/nuxt-module): Nuxt 3/4 setup and registration caveats.
+
+## Text, layout, and formatting
+
+- [BidiText](https://marwanmaher0.github.io/vue-rtl-kit/guide/bidi-text): Plain-text run isolation and rich-markup limits.
+- [useLogicalStyles](https://marwanmaher0.github.io/vue-rtl-kit/guide/use-logical-styles): JavaScript style conversion and mirrored offsets.
+- [CSS utilities](https://marwanmaher0.github.io/vue-rtl-kit/guide/css-utilities): Optional logical spacing, positioning, borders, text isolation, and icon helpers.
+- [useFormat](https://marwanmaher0.github.io/vue-rtl-kit/guide/use-format): Scope-aware Intl numbers, currencies, dates, and numbering systems.
+
+## Arabic documentation
+
+- [التوثيق بالعربية](https://marwanmaher0.github.io/vue-rtl-kit/ar/): نظرة عامة وأسئلة شائعة.
+- [ابدأ الآن](https://marwanmaher0.github.io/vue-rtl-kit/ar/getting-started): تثبيت الإصدار الموسوم وإعداد Vue وNuxt.
+- [مرجع API](https://marwanmaher0.github.io/vue-rtl-kit/ar/api): الصادرات والأنواع.
+- [مخزن الاتجاه](https://marwanmaher0.github.io/vue-rtl-kit/ar/guide/direction-store): الحالة والتثبيت وSSR.
+- [createRtl](https://marwanmaher0.github.io/vue-rtl-kit/ar/guide/create-rtl): خيارات الإضافة.
+- [useDirection](https://marwanmaher0.github.io/vue-rtl-kit/ar/guide/use-direction): أقرب نطاق اتجاه.
+- [useRtl](https://marwanmaher0.github.io/vue-rtl-kit/ar/guide/use-rtl): الوصول إلى مخزن الجذر.
+- [RtlProvider](https://marwanmaher0.github.io/vue-rtl-kit/ar/guide/rtl-provider): نطاقات مستقلة.
+- [v-rtl](https://marwanmaher0.github.io/vue-rtl-kit/ar/guide/v-rtl): اتجاه العنصر والعزل.
+- [وحدة Nuxt](https://marwanmaher0.github.io/vue-rtl-kit/ar/guide/nuxt-module): الإعداد والعرض على الخادم.
+- [BidiText](https://marwanmaher0.github.io/vue-rtl-kit/ar/guide/bidi-text): عزل النص العادي وحدود الوسوم الغنية.
+- [useLogicalStyles](https://marwanmaher0.github.io/vue-rtl-kit/ar/guide/use-logical-styles): الأنماط المنطقية في JavaScript.
+- [أدوات CSS](https://marwanmaher0.github.io/vue-rtl-kit/ar/guide/css-utilities): أدوات تخطيط اختيارية.
+- [useFormat](https://marwanmaher0.github.io/vue-rtl-kit/ar/guide/use-format): تنسيق حسب اللغة.
+
+## Source
+
+- [Repository](https://github.com/MarwanMaher0/vue-rtl-kit): Source code, license, releases, and issues.
+- [v0.1.1 source](https://github.com/MarwanMaher0/vue-rtl-kit/tree/v0.1.1): Tagged source for the documented installation.

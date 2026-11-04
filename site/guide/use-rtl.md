@@ -1,10 +1,10 @@
 # useRtl
 
+`useRtl()` returns the app-level store, even when called beneath an `<RtlProvider>`. Use it for controls that must change the whole application rather than the nearest direction scope.
+
 ```ts
 function useRtl(): RtlInstance
 ```
-
-`useRtl()` returns the app-level store, even when called beneath an `<RtlProvider>`. Use it for controls that must change the whole application rather than the nearest direction scope.
 
 Unlike `useDirection()`, it throws if the `createRtl()` plugin was not installed.
 

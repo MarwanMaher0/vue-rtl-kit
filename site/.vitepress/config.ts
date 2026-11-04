@@ -1,5 +1,6 @@
 import { fileURLToPath, URL } from 'node:url'
 import { defineConfig } from 'vitepress'
+import { seo, siteBase } from './seo'
 
 const guide = [
   { text: 'Direction store', link: '/guide/direction-store' },
@@ -30,14 +31,20 @@ const arabicGuide = [
 ]
 
 export default defineConfig({
-  base: '/vue-rtl-kit/',
+  ...seo,
+  base: siteBase,
   title: 'vue-rtl-kit',
   description: 'Direction state, logical styles, and bidirectional text for Vue and Nuxt.',
   cleanUrls: true,
+  markdown: {
+    theme: {
+      light: 'github-light-high-contrast',
+      dark: 'github-dark-high-contrast',
+    },
+  },
   head: [
-    ['link', { rel: 'preconnect', href: 'https://fonts.googleapis.com' }],
-    ['link', { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' }],
-    ['link', { href: 'https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap', rel: 'stylesheet' }],
+    ['link', { rel: 'icon', type: 'image/svg+xml', href: `${siteBase}favicon.svg` }],
+    ['link', { rel: 'preload', as: 'font', type: 'font/woff2', crossorigin: '', href: `${siteBase}fonts/Manrope-latin.woff2` }],
   ],
   locales: {
     root: {
@@ -70,6 +77,9 @@ export default defineConfig({
       label: 'العربية',
       lang: 'ar',
       dir: 'rtl',
+      head: [
+        ['link', { rel: 'preload', as: 'font', type: 'font/woff2', crossorigin: '', href: `${siteBase}fonts/NotoSansArabic-arabic.woff2` }],
+      ],
       title: 'vue-rtl-kit',
       description: 'إدارة الاتجاه والتنسيقات المنطقية والنص ثنائي الاتجاه لـ Vue وNuxt.',
       link: '/ar/',
@@ -100,6 +110,16 @@ export default defineConfig({
         sidebarMenuLabel: 'القائمة',
         returnToTopLabel: 'العودة إلى الأعلى',
         langMenuLabel: 'تغيير اللغة',
+        darkModeSwitchTitle: 'التبديل إلى المظهر الداكن',
+        lightModeSwitchTitle: 'التبديل إلى المظهر الفاتح',
+        editLink: {
+          pattern: 'https://github.com/MarwanMaher0/vue-rtl-kit/edit/main/site/:path',
+          text: 'عدّل هذه الصفحة على GitHub',
+        },
+        footer: {
+          message: 'متاح بترخيص MIT.',
+          copyright: 'لواجهات تُقرأ بطبيعتها في كل اتجاه.',
+        },
       },
     },
   },
@@ -112,7 +132,36 @@ export default defineConfig({
       pattern: 'https://github.com/MarwanMaher0/vue-rtl-kit/edit/main/site/:path',
       text: 'Edit this page on GitHub',
     },
-    search: { provider: 'local' },
+    search: {
+      provider: 'local',
+      options: {
+        locales: {
+          ar: {
+            translations: {
+              button: {
+                buttonText: 'بحث',
+                buttonAriaLabel: 'البحث في التوثيق',
+              },
+              modal: {
+                displayDetails: 'عرض التفاصيل',
+                resetButtonTitle: 'مسح البحث',
+                backButtonTitle: 'إغلاق البحث',
+                noResultsText: 'لا توجد نتائج لـ',
+                footer: {
+                  selectText: 'للاختيار',
+                  selectKeyAriaLabel: 'مفتاح الإدخال',
+                  navigateText: 'للتنقل',
+                  navigateUpKeyAriaLabel: 'السهم إلى الأعلى',
+                  navigateDownKeyAriaLabel: 'السهم إلى الأسفل',
+                  closeText: 'للإغلاق',
+                  closeKeyAriaLabel: 'مفتاح الهروب',
+                },
+              },
+            },
+          },
+        },
+      },
+    },
     outline: { level: [2, 3], label: 'On this page' },
     footer: {
       message: 'Released under the MIT License.',

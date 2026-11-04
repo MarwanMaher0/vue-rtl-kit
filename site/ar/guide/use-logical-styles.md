@@ -1,10 +1,10 @@
 # useLogicalStyles
 
+استخدم `useLogicalStyles()` للقيم المعتمدة على الاتجاه والمحسوبة في JavaScript. أما التخطيط المتجاوب العادي، فينبغي أن يستخدم خصائص CSS المنطقية مباشرةً.
+
 ```ts
 function useLogicalStyles(): UseLogicalStylesReturn
 ```
-
-استخدم هذا الـcomposable للقيم المعتمدة على الاتجاه والمحسوبة في JavaScript. أما التخطيط المتجاوب العادي، فينبغي أن يستخدم خصائص CSS المنطقية مباشرةً.
 
 ## القيمة المعادة
 

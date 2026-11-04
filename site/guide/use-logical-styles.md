@@ -1,10 +1,10 @@
 # useLogicalStyles
 
+Use `useLogicalStyles()` for direction-dependent values computed in JavaScript. Ordinary responsive layout should use CSS logical properties directly.
+
 ```ts
 function useLogicalStyles(): UseLogicalStylesReturn
 ```
-
-Use this composable for direction-dependent values computed in JavaScript. Ordinary responsive layout should use CSS logical properties directly.
 
 ## Return value
 

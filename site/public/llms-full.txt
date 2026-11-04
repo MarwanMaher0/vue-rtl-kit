@@ -1,0 +1,352 @@
+# vue-rtl-kit — full documentation reference
+
+> vue-rtl-kit is an MIT-licensed Vue 3.3+ and Nuxt 3/4 toolkit for reactive direction state, local RTL/LTR scopes, logical styles, locale-aware formatting, and simplified plain-text bidirectional isolation. This reference summarizes the documented v0.1.1 API and links to each English and Arabic guide.
+
+Documentation: https://marwanmaher0.github.io/vue-rtl-kit/
+Arabic documentation: https://marwanmaher0.github.io/vue-rtl-kit/ar/
+Source: https://github.com/MarwanMaher0/vue-rtl-kit
+Tagged source: https://github.com/MarwanMaher0/vue-rtl-kit/tree/v0.1.1
+
+## Installation and support
+
+Vue 3.3 or later is required. The Nuxt module supports Nuxt 3 and 4; Nuxt provides the optional @nuxt/kit peer. The package has no runtime dependencies beyond Vue. The optional stylesheet is exported separately.
+
+Until npm publication, use the tagged GitHub release:
+
+```sh
+npm install github:MarwanMaher0/vue-rtl-kit#v0.1.1
+```
+
+The prepare script builds the package during this installation. The command `npm install vue-rtl-kit` is the intended post-publication command, not a claim that this package version is currently available from npm.
+
+This toolkit is not a message-translation library, a rich-text engine, an automatic interface converter, or a complete implementation of the Unicode bidirectional algorithm. Keep your translation library and use native CSS logical properties for ordinary layouts. Use BidiText only for plain-text run isolation and test the actual scripts and strings your application displays.
+
+Sources:
+- [Getting started](https://marwanmaher0.github.io/vue-rtl-kit/getting-started)
+- [ابدأ الآن](https://marwanmaher0.github.io/vue-rtl-kit/ar/getting-started)
+
+## Vue setup
+
+Create an app-level store once and install that same object as the Vue plugin:
+
+```ts
+import { createApp } from 'vue'
+import { createRtl } from 'vue-rtl-kit'
+import 'vue-rtl-kit/styles.css'
+import App from './App.vue'
+
+const rtl = createRtl({
+  locales: { en: 'ltr', ar: 'rtl' },
+  defaultLocale: 'ar',
+})
+
+createApp(App).use(rtl).mount('#app')
+```
+
+By default, installation registers BidiText, RtlProvider, and v-rtl globally, exposes $rtl for Options API components, and synchronizes the browser document's dir and lang attributes. The CSS import is optional in plain Vue. Retain the store reference for application setup, router guards, or other code outside components.
+
+```vue
+<script setup lang="ts">
+import { useDirection } from 'vue-rtl-kit'
+
+const { isRtl, setLocale } = useDirection()
+</script>
+
+<template>
+  <button @click="setLocale(isRtl ? 'en' : 'ar')">
+    {{ isRtl ? 'English' : 'العربية' }}
+  </button>
+  <BidiText as="p" text="الإصدار v1.2.3 متاح الآن" />
+</template>
+```
+
+Use setLocale() for language-driven direction. Use setDirection() or toggleDirection() only when direction is an independent choice that should remain pinned.
+
+## createRtl options
+
+Signature: `createRtl(options?: RtlOptions): RtlInstance`.
+
+- locales: string[] or Record<string, 'rtl' | 'ltr'>; default {}. An array infers directions; a map specifies them explicitly.
+- defaultLocale: initial language, defaulting to the first locale key or 'en'.
+- dir: optional explicit initial direction. Supplying it pins direction rather than allowing later locale changes to drive it.
+- syncDocument: true by default. Keeps browser html dir and lang synchronized.
+- htmlClass: false by default. true toggles rtl/ltr classes; an object such as { rtl: 'is-rtl', ltr: 'is-ltr' } supplies custom class names.
+- numberingSystem: optional string or per-locale map for useFormat, such as { ar: 'latn' }.
+- registerGlobals: true by default. false avoids global component/directive registration in plain Vue; import components and vRtl explicitly instead.
+
+The returned root instance exposes resolved options, install(app), and dispose(). dispose() stops document synchronization; it does not undo Vue provides or unregister components.
+
+Sources:
+- [createRtl](https://marwanmaher0.github.io/vue-rtl-kit/guide/create-rtl)
+- [إعداد createRtl](https://marwanmaher0.github.io/vue-rtl-kit/ar/guide/create-rtl)
+
+## Direction state, locale resolution, and pinning
+
+DirectionContext contains reactive dir and locale refs; computed isRtl/isLtr, startSide/endSide, and sign; setDirection, toggleDirection, setLocale, htmlAttrs; and an isRoot flag. sign is 1 in LTR and -1 in RTL. startSide is left in LTR and right in RTL.
+
+Direction follows locale until pinned. An explicit initial dir, setDirection(), or toggleDirection() pins the root direction. Later setLocale() calls change the locale but do not recalculate that pinned direction. There is no documented public unpin action on RtlInstance. Omit dir and use setLocale() alone for language-driven switching.
+
+```ts
+import { createRtl } from 'vue-rtl-kit'
+
+const rtl = createRtl({ locales: ['en', 'ar', 'he'], defaultLocale: 'en' })
+rtl.setLocale('ar')
+rtl.setDirection('ltr')
+rtl.setLocale('he')
+```
+
+After the first setLocale, direction is RTL. After the explicit setDirection, it is pinned LTR and remains LTR when the locale changes to Hebrew.
+
+Locale helpers include directionOfLocale(locale, fallback?), normaliseLocales(locales), resolveDirection(locale, locales, fallback?), oppositeDirection(dir), and RTL_LANGUAGES. Resolution supports exact locale maps, language subtags, and script-based inference: az-Arab is RTL, ku-Latn is LTR, and ar-EG can use the ar map entry.
+
+For standalone state, createDirectionState({ dir, locale, locales?, pinned? }) returns the same reactive state/actions without isRoot, options, install, dispose, or document synchronization.
+
+SSR never touches the DOM. In a manual Vue SSR shell, rtl.htmlAttrs() returns the actual { dir, lang } for the document. Create request-appropriate state rather than sharing a mutable app instance across users. Nuxt handles its document integration through the module.
+
+Sources:
+- [Direction store](https://marwanmaher0.github.io/vue-rtl-kit/guide/direction-store)
+- [مخزن الاتجاه](https://marwanmaher0.github.io/vue-rtl-kit/ar/guide/direction-store)
+
+## useDirection and useRtl
+
+useDirection(): DirectionContext reads the nearest RtlProvider scope, then the installed app-level root, then a shared detached LTR/en fallback. It does not throw when the plugin is absent. The detached fallback does not synchronize the document. Inside a provider, its setters affect that local scope rather than the application root.
+
+useRtl(): RtlInstance always accesses the installed app-level root, even inside a provider. It throws if createRtl was not installed. Use it for a global language control embedded in a locally directed panel. Its return value includes options, install, and dispose in addition to DirectionContext.
+
+Vue templates unwrap destructured refs. In script, access dir.value, locale.value, and other refs explicitly.
+
+```ts
+import { useDirection, useRtl } from 'vue-rtl-kit'
+
+const { dir, locale, setLocale } = useDirection()
+const root = useRtl()
+```
+
+Sources:
+- [useDirection](https://marwanmaher0.github.io/vue-rtl-kit/guide/use-direction)
+- [useDirection بالعربية](https://marwanmaher0.github.io/vue-rtl-kit/ar/guide/use-direction)
+- [useRtl](https://marwanmaher0.github.io/vue-rtl-kit/guide/use-rtl)
+- [useRtl بالعربية](https://marwanmaher0.github.io/vue-rtl-kit/ar/guide/use-rtl)
+
+## RtlProvider: local layout islands
+
+RtlProvider gives a subtree its own direction, locale, DOM attributes, and reactive context without changing the root store.
+
+Props:
+- dir: optional rtl/ltr. Without it, direction comes from the locale prop or the parent.
+- locale: optional language, otherwise inherited from the parent; sets lang.
+- tag: wrapper tag, default 'div'. null renders only slot content.
+- isolate: true by default; applies unicode-bidi: isolate on the wrapper.
+
+The wrapper receives dir, lang, and data-rtl-scope. The slot exposes dir, isRtl, setDirection, and toggleDirection. useDirection(), useLogicalStyles(), useFormat(), and BidiText inside the provider use that scope. External dir and locale prop changes remain authoritative; without either prop, the provider follows its parent direction.
+
+```vue
+<RtlProvider dir="ltr" tag="pre">
+  <code>git checkout -b feature/rtl</code>
+</RtlProvider>
+```
+
+A renderless provider (`:tag="null"`) provides reactive context but creates no DOM element to carry direction. Put direction attributes on its children when DOM direction or isolation matters.
+
+Sources:
+- [RtlProvider](https://marwanmaher0.github.io/vue-rtl-kit/guide/rtl-provider)
+- [RtlProvider بالعربية](https://marwanmaher0.github.io/vue-rtl-kit/ar/guide/rtl-provider)
+
+## BidiText: simplified plain-text isolation
+
+BidiText uses simplified run detection to isolate mixed-direction plain text, such as Latin identifiers, version strings, and dates within Arabic sentences. It leaves the source string unchanged. The browser still performs the actual Unicode bidirectional layout. Do not describe BidiText as a complete Unicode bidi algorithm implementation or as a processor for arbitrary rich HTML.
+
+Props:
+- text: string to render. When omitted, a plain-text default slot is used.
+- as: wrapper element, default 'span'.
+- dir: rtl, ltr, auto, or omitted to use the current scope. auto uses first-strong detection.
+- strategy: 'element' by default, or 'chars'.
+- enabled: true by default; false renders untouched text.
+
+The default element strategy wraps runs needing isolation in bdi elements. The chars strategy inserts LRI/RLI and PDI Unicode controls. Prefer elements for normal HTML when copied text should not contain injected control characters.
+
+```vue
+<BidiText as="p" dir="rtl" text="الإصدار v1.2.3 متاح الآن" />
+<BidiText text="رقم الطلب #4821-B" strategy="chars" />
+<BidiText text="آخر تحديث 12-05-2024" :enabled="false" />
+```
+
+The default slot can contain text, comments, and fragments. If element markup is present, BidiText preserves that markup unchanged rather than flattening and processing it. Use the text prop when plain-text isolation is required.
+
+Standalone bidi exports:
+- classifyChar(char): returns simplified L, R, EN, AN, or N classes.
+- detectDirection(text, fallback?): first-strong direction, default fallback ltr.
+- hasRtlCharacters(text), isMixedDirection(text): detection helpers.
+- stripBidiControls(text): removes Unicode bidi control characters.
+- splitBidiRuns(text, baseDir?): returns BidiRun objects with text, dir, isolated, and hasStrong.
+- isolate(text, dir?): wraps the whole string in one isolate; default dir is auto.
+- isolateRuns(text, baseDir?): isolates runs that need it.
+- LRI, RLI, FSI, PDI, LRM, RLM: Unicode control constants.
+
+Sources:
+- [BidiText](https://marwanmaher0.github.io/vue-rtl-kit/guide/bidi-text)
+- [BidiText بالعربية](https://marwanmaher0.github.io/vue-rtl-kit/ar/guide/bidi-text)
+- [Bidirectional API](https://marwanmaher0.github.io/vue-rtl-kit/api#bidirectional-text)
+
+## v-rtl: element-level direction
+
+v-rtl sets an element's direction; it does not pin the root store. It supports reactive updates, SSR attributes, optional Unicode isolation, and restoration of previous DOM values on unmount.
+
+- Bare v-rtl sets dir="rtl".
+- v-rtl:ltr, v-rtl:rtl, and v-rtl:auto take direction from the argument.
+- v-rtl.ltr and v-rtl.auto use modifiers when no value or argument is supplied.
+- v-rtl.isolate applies RTL plus unicode-bidi: isolate.
+- v-rtl="direction" supports reactive rtl/ltr/auto.
+- v-rtl="false" means LTR; true, null, and undefined fall back to RTL.
+- v-rtl="{ dir: 'ltr', isolate: true }" accepts object configuration.
+
+Arguments and modifiers can be combined, as in v-rtl:ltr.isolate. Import vRtl for local script-setup registration; rtlDirective is its alias. getSSRProps emits dir and the optional isolation style. Unmount restores the previous dir attribute and inline unicode-bidi value.
+
+Sources:
+- [v-rtl directive](https://marwanmaher0.github.io/vue-rtl-kit/guide/v-rtl)
+- [التوجيه v-rtl](https://marwanmaher0.github.io/vue-rtl-kit/ar/guide/v-rtl)
+
+## Logical styles in JavaScript
+
+Use native CSS logical properties for normal responsive layout. useLogicalStyles() is for direction-dependent values calculated in JavaScript. It resolves the current scope and returns dir, isRtl, startSide, endSide, sign, toLogical, toPhysical, property, and mirror.
+
+- toLogical(style, options?): converts physical property names and directional values.
+- toPhysical(style): resolves logical properties using the current scope direction.
+- property(name, options?): converts a single property name while preserving casing.
+- mirror(value): multiplies an offset by sign, giving 1 in LTR and -1 in RTL.
+- size option defaults false and enables width/height mappings when true.
+- values option defaults true, converting values such as textAlign: 'left' to 'start'.
+
+```ts
+import { computed } from 'vue'
+import { useLogicalStyles } from 'vue-rtl-kit'
+
+const { mirror, toLogical, toPhysical } = useLogicalStyles()
+const panelStyle = computed(() => toLogical({ marginLeft: '16px', textAlign: 'left' }))
+const transform = computed(() => `translateX(${mirror(24)}px)`)
+const placement = computed(() => toPhysical({ insetInlineStart: '12px' }))
+```
+
+Standalone exports are logicalProperty(property, options?), toLogicalStyle(style, options?), and toPhysicalStyle(style, dir). Physical conversion is useful for rendering paths such as canvas, SVG, email, or legacy consumers that cannot use logical CSS. StyleObject is Record<string, string | number | undefined>.
+
+Sources:
+- [useLogicalStyles](https://marwanmaher0.github.io/vue-rtl-kit/guide/use-logical-styles)
+- [useLogicalStyles بالعربية](https://marwanmaher0.github.io/vue-rtl-kit/ar/guide/use-logical-styles)
+
+## Optional CSS utilities
+
+Import `vue-rtl-kit/styles.css` once. Nuxt loads it by default. Logical layout utilities follow the nearest dir attribute and do not require a stylesheet swap when direction changes.
+
+Design tokens: --rtl-space defaults to 0.25rem, --rtl-border-width to 1px, and --rtl-radius to 0.375rem. Spacing classes multiply --rtl-space.
+
+- ms/me: margin-inline-start/end. Numeric values 0 through 6, then 8, 10, 12; auto is available.
+- mi: margin-inline. Values 0 through 4 and auto.
+- ps/pe: padding-inline-start/end. Values 0 through 6, then 8, 10, 12.
+- pi: padding-inline. Values 0 through 4 and 6.
+- text-start, text-end, text-center; float-start/end and clear-start/end.
+- justify-start/end and items-start/end for flex alignment.
+- start-0/auto, end-0/auto, inset-i-0 for inline positioning. Supply positioning mode and dimensions yourself.
+- border-s/e and border-s-0/e-0 for inline borders.
+- rounded-s/e and rounded-s-0/e-0 for logical corner radii.
+- bidi-isolate sets unicode-bidi: isolate; bidi-plaintext sets plaintext; bidi-nowrap adds nowrap to isolation.
+- nums-latn applies lining numerals and Unicode isolation; it does not transliterate digits.
+- ltr-only and rtl-only control directional display.
+- rtl-flip mirrors directional glyphs; rtl-noflip cancels a flipped ancestor for a nested element.
+- rtl-scroll-x sets direction: rtl.
+
+Mirror arrows and chevrons where appropriate, not logos, clocks, checkmarks, or media controls. For run-level isolation inside mixed sentences, use BidiText rather than relying only on a CSS class.
+
+Sources:
+- [CSS utilities](https://marwanmaher0.github.io/vue-rtl-kit/guide/css-utilities)
+- [أدوات CSS](https://marwanmaher0.github.io/vue-rtl-kit/ar/guide/css-utilities)
+
+## Locale-aware formatting
+
+useFormat(): ComputedRef<BoundFormatters> binds number, currency, and date formatters to the current scope's locale and direction, applying the root instance's configured numberingSystem. In templates, use format.formatNumber(...); in script, use format.value.formatNumber(...).
+
+```ts
+import { useFormat } from 'vue-rtl-kit'
+
+const format = useFormat()
+const amount = format.value.formatCurrency(2500, 'EGP')
+const date = format.value.formatDate('2024-05-12', {
+  locale: 'ar-EG',
+  numberingSystem: 'latn',
+  dateStyle: 'long',
+  isolate: 'ltr',
+})
+```
+
+Per-call options override bound locale and numbering system. NumberFormatOptions and DateFormatOptions extend Intl options with locale, numberingSystem, and isolate. isolate can be boolean, rtl, ltr, or auto; true uses first-strong detection. This is formatting, not message translation.
+
+Standalone functions:
+- formatNumber(value, options?): Intl.NumberFormat.
+- formatCurrency(value, currency, options?): ISO 4217 currency formatting.
+- formatDate(value, options?): Intl.DateTimeFormat; accepts Date, number, or string.
+- transliterateDigits(text, 'latn' | 'arab' | 'arabext'): converts only digits in an existing string.
+- withNumberingSystem(locale, numberingSystem?): adds a Unicode -u-nu- locale extension.
+
+NumberingSystem accepts latn, arab, arabext, hanidec, deva, beng, or another supported string. Actual Intl behavior depends on the runtime's locale support.
+
+Sources:
+- [useFormat](https://marwanmaher0.github.io/vue-rtl-kit/guide/use-format)
+- [useFormat بالعربية](https://marwanmaher0.github.io/vue-rtl-kit/ar/guide/use-format)
+
+## Nuxt 3 and 4 module
+
+Add the module to nuxt.config.ts. Options use the rtl key:
+
+```ts
+export default defineNuxtConfig({
+  modules: ['vue-rtl-kit/nuxt'],
+  rtl: {
+    locales: { en: 'ltr', ar: 'rtl' },
+    defaultLocale: 'ar',
+    numberingSystem: { ar: 'latn' },
+  },
+})
+```
+
+The runtime plugin creates the root store and writes reactive dir and lang attributes through Nuxt head integration into SSR and hydrated markup. No client-only workaround is required. Provide consistent initial locale/direction on server and client.
+
+Nuxt defaults differ from the standalone plugin: locales defaults to { en: 'ltr', ar: 'rtl' } and defaultLocale to en. dir remains optional and, if supplied, pins direction. syncDocument defaults true and htmlClass false. numberingSystem is optional.
+
+Build-time controls:
+- autoImports: true by default, importing useDirection, useRtl, useLogicalStyles, and useFormat.
+- components: true by default, registering RtlProvider and BidiText through Nuxt.
+- css: true by default, injecting vue-rtl-kit/styles.css.
+
+Important limitations: the runtime plugin is always installed. registerGlobals is inherited in the options type but is not passed to runtime config, so changing it does not disable runtime global registration. components: false disables only Nuxt's build-time component registration; the runtime plugin still globally registers BidiText, RtlProvider, and v-rtl. autoImports: false requires explicit composable imports. css: false requires an explicit stylesheet import if you still want the utilities.
+
+Sources:
+- [Nuxt module](https://marwanmaher0.github.io/vue-rtl-kit/guide/nuxt-module)
+- [وحدة Nuxt](https://marwanmaher0.github.io/vue-rtl-kit/ar/guide/nuxt-module)
+
+## API entry points and types
+
+Import normal runtime exports and types from vue-rtl-kit. The Nuxt entry point is vue-rtl-kit/nuxt. The CSS entry point is vue-rtl-kit/styles.css. Injection keys rtlInstanceKey and directionScopeKey identify the root instance and nearest scope respectively. isClient tests for both window and document; isServer is its inverse.
+
+Core types:
+- Direction = 'rtl' | 'ltr'; DirectionOrAuto additionally allows 'auto'.
+- LocaleMap = Record<string, Direction>.
+- RtlOptions configures createRtl; ResolvedRtlOptions represents resolved root options.
+- DirectionContext describes reactive state and actions; RtlInstance adds root/plugin behavior.
+- DirectionState omits isRoot; DirectionStateOptions requires dir and locale and optionally locales and pinned.
+- BoundFormatters exposes locale, dir, formatNumber, formatCurrency, and formatDate.
+- BidiRun contains text, dir, isolated, and hasStrong.
+- LogicalStyleOptions contains optional size and values flags.
+- RtlDirectiveValue accepts DirectionOrAuto, boolean, undefined, null, or { dir?, isolate? }.
+
+The reference includes signatures for every export and complete type shapes:
+- [API reference](https://marwanmaher0.github.io/vue-rtl-kit/api)
+- [مرجع API بالعربية](https://marwanmaher0.github.io/vue-rtl-kit/ar/api)
+
+## ملخص عربي وحدود الاستخدام
+
+vue-rtl-kit تدير اتجاه الواجهة وتنسيق القيم، ولا تترجم الرسائل ولا تحوّل الواجهة بأكملها تلقائيًا. يدعم الإصدار الموثق Vue 3.3 وما بعده وNuxt 3 و4. إلى أن تُنشر الحزمة على npm، استخدم الإصدار الموسوم v0.1.1 من GitHub بالأمر المذكور في قسم التثبيت.
+
+يتبع اتجاه الجذر اللغة حتى يُثبّت عبر dir الأولي أو setDirection() أو toggleDirection(). بعد التثبيت، تغيّر setLocale() اللغة فقط. تقرأ useDirection() أقرب نطاق، أما useRtl() فتصل إلى الجذر المثبّت وترمي خطأ إن لم تكن الإضافة مثبتة. ينشئ RtlProvider نطاقًا محليًا؛ وعند غياب العنصر الحاوي يجب وضع سمات الاتجاه على الأبناء.
+
+BidiText أداة مبسطة لعزل مقاطع النص العادي، وليس محرّكًا للنص الغني ولا تنفيذًا كاملًا لخوارزمية Unicode ثنائية الاتجاه. لا يعالج الوسوم الغنية داخل الخانة؛ استخدم text لعزل النص العادي. يظل المتصفح مسؤولًا عن التخطيط النهائي. تتكيف أدوات CSS المنطقية مع أقرب dir، وتنسّق useFormat الأرقام والعملات والتواريخ عبر Intl.
+
+تدعم وحدة Nuxt سمات dir وlang في العرض على الخادم. تعطيل components يوقف تسجيل Nuxt وقت البناء فقط؛ لا يوقف التسجيل العام من إضافة التشغيل. راجع الدليل العربي لكل واجهة قبل افتراض سلوك غير موثق.

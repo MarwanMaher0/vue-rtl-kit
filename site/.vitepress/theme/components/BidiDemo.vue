@@ -2,242 +2,76 @@
 import { computed, ref } from 'vue'
 import { BidiText, RtlProvider } from 'vue-rtl-kit'
 
-const props = withDefaults(defineProps<{
-  locale?: 'en' | 'ar'
-}>(), {
-  locale: 'en',
-})
-
+const props = withDefaults(defineProps<{ locale?: 'en' | 'ar' }>(), { locale: 'en' })
 const direction = ref<'rtl' | 'ltr'>('rtl')
 const enabled = ref(true)
-const examples = [
-  'آخر تحديث 12-05-2024 بواسطة الفريق',
-  'الإصدار v1.2.3 متاح الآن',
-  'رقم الطلب #4821-B جاهز للمراجعة',
-]
-
+const text = ref('آخر تحديث 12-05-2024 بواسطة الفريق')
 const copy = {
   en: {
-    eyebrow: 'Live, with the real component',
-    title: 'Same string. Different pixels.',
-    description: 'Switch direction or disable isolation. The source text never changes.',
-    raw: 'Raw HTML',
-    fixed: '<BidiText>',
-    isolation: 'Unicode isolation',
-    note: 'The fixed column renders the library’s BidiText component with its default element strategy.',
+    live: 'Not a mockup. Your next interface.',
+    direction: 'Direction',
+    output: 'With BidiText',
+    raw: 'Without isolation',
+    input: 'Try your own mixed text',
+    isolation: 'Isolate mixed text',
+    note: 'Real Vue component. Same string. Better boundaries.',
+    off: 'Isolation is off',
   },
   ar: {
-    eyebrow: 'تجربة مباشرة بالمكوّن الحقيقي',
-    title: 'النص نفسه. والعرض مختلف.',
-    description: 'بدّل الاتجاه أو عطّل العزل. لن يتغير النص المصدر.',
-    raw: 'HTML عادي',
-    fixed: '<BidiText>',
-    isolation: 'العزل ثنائي الاتجاه',
-    note: 'يعرض العمود المحسّن مكوّن BidiText من المكتبة باستراتيجية element الافتراضية.',
+    live: 'ليست صورة. إنها واجهتك القادمة.',
+    direction: 'الاتجاه',
+    output: 'مع BidiText',
+    raw: 'بدون عزل',
+    input: 'جرّب نصًا مختلطًا بنفسك',
+    isolation: 'عزل النص المختلط',
+    note: 'مكوّن Vue حقيقي. النص نفسه، بحدود أوضح.',
+    off: 'العزل معطّل',
   },
 }
-
 const labels = computed(() => copy[props.locale])
 </script>
 
 <template>
-  <section class="bidi-playground" :aria-label="labels.title">
-    <div class="bidi-playground__intro">
-      <span class="bidi-playground__eyebrow">{{ labels.eyebrow }}</span>
-      <h2>{{ labels.title }}</h2>
-      <p>{{ labels.description }}</p>
+  <section id="live-demo" class="direction-lab" :aria-label="labels.live">
+    <div class="lab-heading">
+      <span class="lab-live"><span aria-hidden="true"></span>{{ labels.live }}</span>
+      <span class="lab-index" aria-hidden="true">01 / LIVE</span>
     </div>
-
-    <RtlProvider :dir="direction" class="bidi-playground__stage">
-      <div class="bidi-playground__toolbar">
-        <div class="bidi-playground__segmented" aria-label="Text direction">
-          <button type="button" :aria-pressed="direction === 'rtl'" @click="direction = 'rtl'">
-            RTL · العربية
-          </button>
-          <button type="button" :aria-pressed="direction === 'ltr'" @click="direction = 'ltr'">
-            LTR · English
-          </button>
-        </div>
-        <label class="bidi-playground__toggle">
-          <input v-model="enabled" type="checkbox">
-          <span>{{ labels.isolation }}</span>
-        </label>
-      </div>
-
-      <div class="bidi-playground__grid">
-        <div class="bidi-playground__column bidi-playground__column--raw">
-          <span class="bidi-playground__label">{{ labels.raw }}</span>
-          <p v-for="example in examples" :key="example">{{ example }}</p>
-        </div>
-        <div class="bidi-playground__column bidi-playground__column--fixed">
-          <span class="bidi-playground__label">{{ labels.fixed }}</span>
-          <BidiText
-            v-for="example in examples"
-            :key="example"
-            as="p"
-            :text="example"
-            :enabled="enabled"
-          />
+    <div class="type-specimen" aria-hidden="true">
+      <span class="specimen-latin">Aa<span class="specimen-caption">LEFT TO RIGHT</span></span>
+      <svg class="specimen-arrows" viewBox="0 0 64 48" fill="none"><path d="M5 13h51m-12-11 12 11-12 11M59 35H8m12-11L8 35l12 11" stroke="currentColor" stroke-width="3" /></svg>
+      <span class="specimen-arabic" lang="ar">أب<span class="specimen-caption" lang="en">RIGHT TO LEFT</span></span>
+    </div>
+    <div class="lab-panel">
+      <div class="lab-toolbar">
+        <span>{{ labels.direction }}</span>
+        <div class="direction-control" role="group" :aria-label="labels.direction" dir="ltr">
+          <button type="button" :aria-pressed="direction === 'ltr'" @click="direction = 'ltr'">LTR <span aria-hidden="true">→</span></button>
+          <button type="button" :aria-pressed="direction === 'rtl'" @click="direction = 'rtl'"><span aria-hidden="true">←</span> RTL</button>
         </div>
       </div>
-    </RtlProvider>
-
-    <p class="bidi-playground__note">{{ labels.note }}</p>
+      <RtlProvider :dir="direction" locale="ar" class="lab-output">
+        <div class="output-line output-line--raw">
+          <span class="output-label" :dir="locale === 'ar' ? 'rtl' : 'ltr'" :lang="locale">{{ labels.raw }} <span aria-hidden="true">−</span></span>
+          <p>{{ text || '…' }}</p>
+        </div>
+        <div class="output-line output-line--fixed" :class="{ 'is-disabled': !enabled }">
+          <span class="output-label" :dir="locale === 'ar' ? 'rtl' : 'ltr'" :lang="locale">{{ enabled ? labels.output : labels.off }} <span aria-hidden="true">{{ enabled ? '✓' : '−' }}</span></span>
+          <BidiText as="p" :text="text || '…'" :enabled="enabled" />
+        </div>
+      </RtlProvider>
+      <div class="lab-input-wrap">
+        <label for="demo-text">{{ labels.input }}</label>
+        <input id="demo-text" v-model="text" type="text" dir="auto" maxlength="160" spellcheck="false" autocomplete="off">
+      </div>
+      <div class="lab-bottom">
+        <button class="isolation-switch" type="button" role="switch" :aria-checked="enabled" @click="enabled = !enabled">
+          <span class="switch-track" aria-hidden="true"><span></span></span>
+          {{ labels.isolation }}
+        </button>
+        <code dir="ltr">&lt;bdi&gt;</code>
+      </div>
+    </div>
+    <p class="lab-note">{{ labels.note }}</p>
   </section>
 </template>
-
-<style scoped>
-.bidi-playground {
-  max-width: 1152px;
-  margin: 56px auto 24px;
-  padding: 0 24px;
-}
-
-.bidi-playground__intro {
-  max-width: 680px;
-  margin-bottom: 24px;
-}
-
-.bidi-playground__eyebrow {
-  display: block;
-  margin-bottom: 10px;
-  color: var(--vp-c-brand-1);
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-}
-
-.bidi-playground__intro h2 {
-  margin: 0;
-  border: 0;
-  font-size: clamp(28px, 4vw, 42px);
-  letter-spacing: -0.035em;
-  line-height: 1.12;
-}
-
-.bidi-playground__intro p {
-  margin: 12px 0 0;
-  color: var(--vp-c-text-2);
-}
-
-.bidi-playground__stage {
-  overflow: hidden;
-  border: 1px solid var(--vp-c-divider);
-  border-radius: 20px;
-  background: var(--vp-c-bg-soft);
-  box-shadow: 0 24px 70px rgb(14 50 46 / 8%);
-}
-
-.bidi-playground__toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 16px;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16px;
-  border-bottom: 1px solid var(--vp-c-divider);
-}
-
-.bidi-playground__segmented {
-  display: flex;
-  gap: 4px;
-  padding: 4px;
-  border: 1px solid var(--vp-c-divider);
-  border-radius: 12px;
-  background: var(--vp-c-bg);
-}
-
-.bidi-playground__segmented button {
-  padding: 7px 12px;
-  border: 0;
-  border-radius: 8px;
-  background: transparent;
-  color: var(--vp-c-text-2);
-  font: inherit;
-  font-size: 13px;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.bidi-playground__segmented button[aria-pressed='true'] {
-  background: var(--vp-c-brand-1);
-  color: white;
-}
-
-.bidi-playground__toggle {
-  display: flex;
-  gap: 9px;
-  align-items: center;
-  font-size: 13px;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.bidi-playground__toggle input {
-  width: 17px;
-  height: 17px;
-  accent-color: var(--vp-c-brand-1);
-}
-
-.bidi-playground__grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-.bidi-playground__column {
-  min-width: 0;
-  padding: 22px;
-}
-
-.bidi-playground__column + .bidi-playground__column {
-  border-inline-start: 1px solid var(--vp-c-divider);
-}
-
-.bidi-playground__column--fixed {
-  background: var(--vp-c-bg);
-}
-
-.bidi-playground__label {
-  display: block;
-  margin-bottom: 16px;
-  color: var(--vp-c-text-2);
-  font-family: var(--vp-font-family-mono);
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.bidi-playground__column p {
-  min-height: 58px;
-  margin: 0;
-  padding: 14px 0;
-  border-top: 1px dashed var(--vp-c-divider);
-  font-size: 17px;
-  line-height: 1.9;
-}
-
-.bidi-playground__column--fixed p {
-  border-top-color: var(--vp-c-brand-soft);
-}
-
-.bidi-playground__note {
-  margin: 12px 4px 0;
-  color: var(--vp-c-text-3);
-  font-size: 12px;
-}
-
-@media (max-width: 640px) {
-  .bidi-playground {
-    padding: 0 12px;
-  }
-
-  .bidi-playground__grid {
-    grid-template-columns: 1fr;
-  }
-
-  .bidi-playground__column + .bidi-playground__column {
-    border-inline-start: 0;
-    border-top: 1px solid var(--vp-c-divider);
-  }
-}
-</style>

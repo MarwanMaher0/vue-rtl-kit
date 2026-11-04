@@ -1,6 +1,6 @@
 # BidiText
 
-`<BidiText>` splits mixed-direction plain text into runs and isolates runs that the Unicode bidirectional algorithm would otherwise reorder. It solves display order without changing the source string.
+`<BidiText>` uses simplified run detection to isolate mixed-direction plain text, such as Latin identifiers inside Arabic sentences, without changing the source string. It is not a rich-text engine or a complete implementation of the Unicode bidirectional algorithm; the browser still performs bidirectional layout.
 
 ```vue
 <script setup lang="ts">

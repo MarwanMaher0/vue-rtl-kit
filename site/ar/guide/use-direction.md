@@ -1,10 +1,10 @@
 # useDirection
 
+تقرأ `useDirection()` اتجاه الشجرة الفرعية الحالية وتتحكم فيه.
+
 ```ts
 function useDirection(): DirectionContext
 ```
-
-تقرأ `useDirection()` اتجاه الشجرة الفرعية الحالية وتتحكم فيه.
 
 ## ترتيب الحل
 

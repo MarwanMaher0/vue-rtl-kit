@@ -1,10 +1,10 @@
 # useDirection
 
+`useDirection()` reads and controls direction for the current subtree.
+
 ```ts
 function useDirection(): DirectionContext
 ```
-
-`useDirection()` reads and controls direction for the current subtree.
 
 ## Resolution order
 

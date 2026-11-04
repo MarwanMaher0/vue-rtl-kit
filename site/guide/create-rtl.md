@@ -1,10 +1,10 @@
 # createRtl
 
+`createRtl()` creates the app-level direction store and its Vue plugin. Create one instance, pass it to `app.use()`, and retain the same reference when code outside components needs it.
+
 ```ts
 function createRtl(options?: RtlOptions): RtlInstance
 ```
-
-`createRtl()` creates the app-level direction store and its Vue plugin. Create one instance, pass it to `app.use()`, and retain the same reference when code outside components needs it.
 
 ```ts
 import { createApp } from 'vue'

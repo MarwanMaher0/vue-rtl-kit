@@ -1,10 +1,10 @@
 # useFormat
 
+`useFormat()` binds number, currency, and date formatters to the current scope's locale and direction. It also applies the `numberingSystem` configured on the root `createRtl()` instance.
+
 ```ts
 function useFormat(): ComputedRef<BoundFormatters>
 ```
-
-`useFormat()` binds number, currency, and date formatters to the current scope's locale and direction. It also applies the `numberingSystem` configured on the root `createRtl()` instance.
 
 ```vue
 <script setup lang="ts">
