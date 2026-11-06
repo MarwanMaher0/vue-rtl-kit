@@ -16,5 +16,9 @@ declare module '#app' {
 
 declare module '#imports' {
   export { defineNuxtPlugin, useRuntimeConfig } from '#app'
-  export function useHead(input: { htmlAttrs: { dir?: string, lang?: string } }): void
+  export function useHead(
+    input:
+      | { htmlAttrs: { dir?: string, lang?: string, class?: string } }
+      | (() => { htmlAttrs: { dir?: string, lang?: string, class?: string } }),
+  ): void
 }

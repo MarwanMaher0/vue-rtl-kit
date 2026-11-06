@@ -19,7 +19,7 @@ export interface UseLogicalStylesReturn {
   /** Rewrite a style object to logical properties. */
   toLogical: (style: StyleObject, options?: LogicalStyleOptions) => StyleObject
   /** Resolve a style object to physical properties for the current direction. */
-  toPhysical: (style: StyleObject) => StyleObject
+  toPhysical: (style: StyleObject, dir?: Direction) => StyleObject
   /** Map a single property name to its logical equivalent. */
   property: (name: string, options?: LogicalStyleOptions) => string
   /** Flip a horizontal offset for the current direction. */
@@ -49,8 +49,8 @@ export function useLogicalStyles(): UseLogicalStylesReturn {
     endSide,
     sign,
     toLogical: (style, options) => toLogicalStyle(style, options),
-    toPhysical: style => toPhysicalStyle(style, dir.value),
+    toPhysical: (style, overrideDir = dir.value) => toPhysicalStyle(style, overrideDir),
     property: (name, options) => logicalProperty(name, options),
-    mirror: value => value * sign.value,
+    mirror: value => (value === 0 ? 0 : value * sign.value),
   }
 }

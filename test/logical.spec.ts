@@ -80,8 +80,33 @@ describe('toPhysicalStyle', () => {
   })
 
   it('round-trips through toLogicalStyle', () => {
-    const physical = { marginLeft: '8px', paddingRight: '2px', textAlign: 'left' }
-    expect(toPhysicalStyle(toLogicalStyle(physical), 'ltr')).toEqual(physical)
+    const physical = {
+      marginLeft: '8px',
+      paddingRight: '2px',
+      scrollMarginTop: '4px',
+      scrollPaddingBottom: '6px',
+      overflowX: 'auto',
+      overflowY: 'hidden',
+      width: '120px',
+      maxHeight: '240px',
+      textAlign: 'left',
+      captionSide: 'right',
+      resize: 'horizontal',
+    }
+    expect(toPhysicalStyle(toLogicalStyle(physical, { size: true }), 'ltr')).toEqual(physical)
+    expect(toPhysicalStyle(toLogicalStyle(physical, { size: true }), 'rtl')).toEqual({
+      marginRight: '8px',
+      paddingLeft: '2px',
+      scrollMarginTop: '4px',
+      scrollPaddingBottom: '6px',
+      overflowX: 'auto',
+      overflowY: 'hidden',
+      width: '120px',
+      maxHeight: '240px',
+      textAlign: 'right',
+      captionSide: 'left',
+      resize: 'horizontal',
+    })
   })
 })
 

@@ -51,6 +51,7 @@ export default defineNuxtModule<ModuleOptions>({
       ...(options.syncDocument !== undefined && { syncDocument: options.syncDocument }),
       ...(options.htmlClass !== undefined && { htmlClass: options.htmlClass }),
       ...(options.numberingSystem !== undefined && { numberingSystem: options.numberingSystem }),
+      ...(options.registerGlobals !== undefined && { registerGlobals: options.registerGlobals }),
     } as Record<string, unknown>
 
     if (options.css !== false) {

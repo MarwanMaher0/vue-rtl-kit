@@ -78,6 +78,7 @@
   "scripts": {
     "prepare": "npm run build",
     "build": "vite build && vite build -c vite.nuxt.config.ts && tsc -p tsconfig.build.json && rollup -c rollup.dts.config.mjs && node scripts/copy-assets.mjs",
+    "check:size": "node scripts/check-size.mjs",
     "check:publish": "node scripts/check-publish.mjs",
     "release": "changeset publish",
     "dev": "vite build --watch",

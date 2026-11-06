@@ -42,6 +42,9 @@ jobs:
       - name: Build library
         run: npm run build
 
+      - name: Bundle size budgets
+        run: npm run check:size
+
       - name: Nuxt SSR test
         run: npx vitest run test/nuxt.spec.ts
 

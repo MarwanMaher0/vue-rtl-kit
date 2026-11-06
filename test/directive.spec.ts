@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { defineComponent, ref } from 'vue'
+import { defineComponent, h, nextTick, reactive, ref, withDirectives } from 'vue'
 import { mount } from '@vue/test-utils'
 import { vRtl } from '../src/directives/vRtl'
 import { createRtl } from '../src/core'
@@ -104,5 +104,61 @@ describe('v-rtl', () => {
       .toEqual({ dir: 'ltr' })
     expect(vRtl.getSSRProps!({ value: undefined, modifiers: { isolate: true }, oldValue: null, arg: 'ltr', instance: null, dir: {} } as never, null as never))
       .toEqual({ dir: 'ltr', style: { 'unicode-bidi': 'isolate' } })
+  })
+
+  it('switches ltr -> rtl -> ltr across boolean, object, and Ref bindings and cleans up isolate', async () => {
+    const mode = ref<{ dir: 'ltr' | 'rtl', isolate: boolean }>({ dir: 'ltr', isolate: true })
+    const boolVal = ref(false)
+    const refDir = ref<'ltr' | 'rtl'>('ltr')
+    const reactiveCfg = reactive<{ dir: 'ltr' | 'rtl', isolate: boolean }>({ dir: 'ltr', isolate: false })
+
+    const wrapper = mount(
+      defineComponent({
+        setup() {
+          return () => h('div', [
+            withDirectives(h('p', { class: 'obj' }, 'a'), [[vRtl, mode.value]]),
+            withDirectives(h('p', { class: 'bool', dir: 'rtl' }, 'b'), [[vRtl, boolVal.value, 'ltr']]),
+            withDirectives(h('p', { class: 'ref-direct' }, 'c'), [[vRtl, refDir]]),
+            withDirectives(h('p', { class: 'reactive-direct' }, 'd'), [[vRtl, reactiveCfg]]),
+          ])
+        },
+      }),
+    )
+
+    expect(wrapper.find('.obj').attributes('dir')).toBe('ltr')
+    expect(wrapper.find('.obj').attributes('style')).toContain('unicode-bidi: isolate')
+    expect(wrapper.find('.bool').attributes('dir')).toBe('ltr')
+    expect(wrapper.find('.ref-direct').attributes('dir')).toBe('ltr')
+    expect(wrapper.find('.reactive-direct').attributes('dir')).toBe('ltr')
+
+    mode.value = { dir: 'rtl', isolate: false }
+    boolVal.value = true
+    refDir.value = 'rtl'
+    reactiveCfg.dir = 'rtl'
+    reactiveCfg.isolate = true
+    await nextTick()
+
+    expect(wrapper.find('.obj').attributes('dir')).toBe('rtl')
+    expect(wrapper.find('.obj').attributes('style')).toBeUndefined()
+    expect(wrapper.find('.bool').attributes('dir')).toBe('rtl')
+    expect(wrapper.find('.ref-direct').attributes('dir')).toBe('rtl')
+    expect(wrapper.find('.reactive-direct').attributes('dir')).toBe('rtl')
+    expect(wrapper.find('.reactive-direct').attributes('style')).toContain('unicode-bidi: isolate')
+
+    mode.value = { dir: 'ltr', isolate: true }
+    boolVal.value = false
+    refDir.value = 'ltr'
+    reactiveCfg.dir = 'ltr'
+    reactiveCfg.isolate = false
+    await nextTick()
+
+    expect(wrapper.find('.obj').attributes('dir')).toBe('ltr')
+    expect(wrapper.find('.obj').attributes('style')).toContain('unicode-bidi: isolate')
+    expect(wrapper.find('.bool').attributes('dir')).toBe('ltr')
+    expect(wrapper.find('.ref-direct').attributes('dir')).toBe('ltr')
+    expect(wrapper.find('.reactive-direct').attributes('dir')).toBe('ltr')
+    expect(wrapper.find('.reactive-direct').attributes('style')).toBeUndefined()
+
+    wrapper.unmount()
   })
 })

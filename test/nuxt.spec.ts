@@ -83,5 +83,8 @@ describe('built nuxt module SSR', async () => {
     expect(htmlTag).toBeDefined()
     expect(htmlTag).toMatch(/\sdir="rtl"(?=\s|>)/)
     expect(htmlTag).toMatch(/\slang="ar"(?=\s|>)/)
+    expect(html).toContain('rtl|ar|right|-1|-12|1,234')
+    expect(html).toContain('<bdi dir="ltr">12-05-2024</bdi>')
+    expect(html).toContain('id="scoped-ltr"')
   })
 })

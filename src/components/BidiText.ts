@@ -1,5 +1,5 @@
 import type { PropType, VNode, VNodeChild } from 'vue'
-import { Comment, Fragment, Text, computed, defineComponent, h } from 'vue'
+import { Comment, Fragment, Text, defineComponent, h } from 'vue'
 import { detectDirection, isolateRuns, splitBidiRuns } from '../bidi'
 import { useDirection } from '../composables/useDirection'
 import type { Direction } from '../types'
@@ -104,35 +104,32 @@ export const BidiText = defineComponent({
   setup(props, { slots }) {
     const scope = useDirection()
 
-    const children = computed(() => slots.default?.())
-    const fromSlot = computed(() => slotText(children.value))
-    const source = computed(() => props.text ?? fromSlot.value ?? '')
-
-    const baseDir = computed<Direction>(() => {
-      if (props.dir === 'auto') return detectDirection(source.value, scope.dir.value)
-      return props.dir ?? scope.dir.value
-    })
-
-    const runs = computed(() => splitBidiRuns(source.value, baseDir.value))
-
     return () => {
+      const children = props.text === undefined ? slots.default?.() : undefined
+      const fromSlot = children ? slotText(children) : null
+      const source = props.text ?? fromSlot ?? ''
+      const baseDir: Direction = props.dir === 'auto'
+        ? detectDirection(source, scope.dir.value)
+        : (props.dir ?? scope.dir.value)
+
       const attrs: Record<string, unknown> = {}
       if (props.dir) attrs.dir = props.dir === 'auto' ? 'auto' : props.dir
 
-      const usingSlotMarkup = props.text === undefined && fromSlot.value === null
+      const usingSlotMarkup = props.text === undefined && fromSlot === null
 
       if (!props.enabled || usingSlotMarkup) {
-        return h(props.as, attrs, props.text === undefined ? children.value : source.value)
+        return h(props.as, attrs, props.text === undefined ? children : source)
       }
 
       if (props.strategy === 'chars') {
-        return h(props.as, attrs, isolateRuns(source.value, baseDir.value))
+        return h(props.as, attrs, isolateRuns(source, baseDir))
       }
 
+      const runs = splitBidiRuns(source, baseDir)
       return h(
         props.as,
         attrs,
-        runs.value.map(run => (run.isolated ? h('bdi', { dir: run.dir }, run.text) : run.text)),
+        runs.map(run => (run.isolated ? h('bdi', { dir: run.dir }, run.text) : run.text)),
       )
     }
   },

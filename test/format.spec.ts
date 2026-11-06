@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest'
-import { defineComponent, h } from 'vue'
+import { describe, expect, it, vi } from 'vitest'
+import { defineComponent, h, nextTick } from 'vue'
 import { mount } from '@vue/test-utils'
 import {
   formatCurrency,
@@ -10,6 +10,7 @@ import {
 } from '../src/format'
 import { useFormat } from '../src/composables/useFormat'
 import { createRtl } from '../src/core'
+import { RtlProvider } from '../src/components/RtlProvider'
 import { PDI } from '../src/bidi'
 
 const ARABIC_INDIC = /[٠-٩]/
@@ -149,5 +150,83 @@ describe('useFormat', () => {
     expect(ARABIC_INDIC.test(formatters.value.formatNumber(1234))).toBe(false)
     expect(formatters.value.dir).toBe('rtl')
     rtl.dispose()
+  })
+
+  it('switches runtime direction and locale (ltr -> rtl -> ltr) and respects nested RtlProvider', async () => {
+    const rtl = createRtl({
+      locales: ['en-US', 'ar-EG'],
+      defaultLocale: 'en-US',
+      numberingSystem: { ar: 'arab' },
+      syncDocument: false,
+    })
+
+    let rootFormat: ReturnType<typeof useFormat> | undefined
+    let nestedFormat: ReturnType<typeof useFormat> | undefined
+
+    const NestedChild = defineComponent({
+      setup() {
+        const f = useFormat()
+        nestedFormat = f
+        return () => h('span', f.value.formatCurrency(50, 'USD'))
+      },
+    })
+
+    const App = defineComponent({
+      setup() {
+        const f = useFormat()
+        rootFormat = f
+        return () => h('div', [
+          h('p', f.value.formatNumber(1234)),
+          h(RtlProvider, { locale: 'ar-EG' }, () => h(NestedChild)),
+        ])
+      },
+    })
+
+    const wrapper = mount(App, { global: { plugins: [rtl] } })
+    expect(rootFormat!.value.dir).toBe('ltr')
+    expect(rootFormat!.value.locale).toBe('en-US')
+    expect(rootFormat!.value.formatNumber(1234)).toBe('1,234')
+    expect(nestedFormat!.value.dir).toBe('rtl')
+    expect(nestedFormat!.value.locale).toBe('ar-EG')
+    expect(ARABIC_INDIC.test(nestedFormat!.value.formatNumber(1234))).toBe(true)
+
+    rtl.setLocale('ar-EG')
+    await nextTick()
+    expect(rootFormat!.value.dir).toBe('rtl')
+    expect(rootFormat!.value.locale).toBe('ar-EG')
+    expect(ARABIC_INDIC.test(rootFormat!.value.formatNumber(1234))).toBe(true)
+
+    rtl.setLocale('en-US')
+    await nextTick()
+    expect(rootFormat!.value.dir).toBe('ltr')
+    expect(rootFormat!.value.locale).toBe('en-US')
+    expect(rootFormat!.value.formatNumber(1234)).toBe('1,234')
+    expect(nestedFormat!.value.dir).toBe('rtl')
+    expect(nestedFormat!.value.locale).toBe('ar-EG')
+
+    wrapper.unmount()
+    rtl.dispose()
+  })
+
+  it('falls back cleanly outside component setup in a server-only environment without warnings', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const originalDoc = globalThis.document
+    const originalWin = globalThis.window
+    // @ts-expect-error simulating server-only runtime
+    delete globalThis.document
+    // @ts-expect-error simulating server-only runtime
+    delete globalThis.window
+    try {
+      const f = useFormat()
+      expect(f.value.dir).toBe('ltr')
+      expect(f.value.locale).toBe('en')
+      expect(f.value.formatNumber(1000)).toBe('1,000')
+      expect(warnSpy).not.toHaveBeenCalled()
+    }
+    finally {
+      globalThis.document = originalDoc
+      globalThis.window = originalWin
+      warnSpy.mockRestore()
+    }
   })
 })

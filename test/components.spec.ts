@@ -1,10 +1,10 @@
-import { describe, expect, it } from 'vitest'
-import { defineComponent, h, nextTick } from 'vue'
+import { describe, expect, it, vi } from 'vitest'
+import { defineComponent, h, nextTick, ref } from 'vue'
 import { mount } from '@vue/test-utils'
 import { BidiText, RtlProvider } from '../src/components'
 import { useDirection } from '../src/composables/useDirection'
 import { createRtl } from '../src/core'
-import { LRI, PDI } from '../src/bidi'
+import { LRI, PDI, RLI } from '../src/bidi'
 
 const ARABIC_WITH_DATE = 'آخر تحديث 12-05-2024'
 
@@ -79,6 +79,54 @@ describe('BidiText', () => {
     // With an RTL base the Arabic no longer needs isolating; the Latin does.
     expect(wrapper.findAll('bdi')[0]!.attributes('dir')).toBe('ltr')
     rtl.dispose()
+  })
+
+  it('switches BidiText runs accurately on ltr -> rtl -> ltr transitions without warnings', async () => {
+    const warnings: string[] = []
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation((msg: unknown) => {
+      warnings.push(String(msg))
+    })
+
+    const rtl = createRtl({ dir: 'ltr', syncDocument: false })
+    const dynamicText = ref('Version مرحبا 12-05-2024')
+    const wrapper = mount(
+      defineComponent({
+        setup() {
+          return () => h('div', [
+            h(BidiText, { class: 'el-mode' }, () => dynamicText.value),
+            h(BidiText, { class: 'char-mode', strategy: 'chars' }, () => dynamicText.value),
+          ])
+        },
+      }),
+      { global: { plugins: [rtl] } },
+    )
+
+    expect(wrapper.findAll('.el-mode bdi')).toHaveLength(1)
+    expect(wrapper.find('.el-mode bdi').attributes('dir')).toBe('rtl')
+    expect(wrapper.find('.el-mode bdi').text()).toBe('مرحبا')
+    expect(wrapper.find('.char-mode').text()).toBe(`Version ${RLI}مرحبا${PDI} 12-05-2024`)
+
+    rtl.setDirection('rtl')
+    await nextTick()
+
+    expect(wrapper.findAll('.el-mode bdi')).toHaveLength(2)
+    expect(wrapper.findAll('.el-mode bdi')[0]!.attributes('dir')).toBe('ltr')
+    expect(wrapper.findAll('.el-mode bdi')[0]!.text()).toBe('Version')
+    expect(wrapper.findAll('.el-mode bdi')[1]!.attributes('dir')).toBe('ltr')
+    expect(wrapper.findAll('.el-mode bdi')[1]!.text()).toBe('12-05-2024')
+    expect(wrapper.find('.char-mode').text()).toBe(`${LRI}Version${PDI} مرحبا ${LRI}12-05-2024${PDI}`)
+
+    rtl.setDirection('ltr')
+    await nextTick()
+
+    expect(wrapper.findAll('.el-mode bdi')).toHaveLength(1)
+    expect(wrapper.find('.el-mode bdi').attributes('dir')).toBe('rtl')
+    expect(wrapper.find('.el-mode bdi').text()).toBe('مرحبا')
+
+    wrapper.unmount()
+    rtl.dispose()
+    warnSpy.mockRestore()
+    expect(warnings).toEqual([])
   })
 })
 
@@ -179,6 +227,77 @@ describe('RtlProvider', () => {
       { global: { plugins: [rtl] } },
     )
     expect(wrapper.find('.deep').text()).toBe('rtl|true|right')
+    rtl.dispose()
+  })
+
+  it('allows setLocale inside an unpinned RtlProvider to update direction and respects root custom locales', async () => {
+    const rtl = createRtl({
+      locales: { 'en': 'ltr', 'custom-rtl': 'rtl' },
+      defaultLocale: 'en',
+      syncDocument: false,
+    })
+
+    const ScopeControl = defineComponent({
+      setup() {
+        const { dir, locale, setLocale } = useDirection()
+        return () => h('button', { onClick: () => setLocale(locale.value === 'en' ? 'custom-rtl' : 'en') }, `${dir.value}:${locale.value}`)
+      },
+    })
+
+    const wrapper = mount(
+      defineComponent({
+        setup() {
+          return () => h(RtlProvider, { locale: 'en' }, () => [h(ScopeControl)])
+        },
+      }),
+      { global: { plugins: [rtl] } },
+    )
+
+    expect(wrapper.find('button').text()).toBe('ltr:en')
+    expect(wrapper.attributes('dir')).toBe('ltr')
+
+    await wrapper.find('button').trigger('click')
+    expect(wrapper.find('button').text()).toBe('rtl:custom-rtl')
+    expect(wrapper.attributes('dir')).toBe('rtl')
+    expect(wrapper.attributes('lang')).toBe('custom-rtl')
+    expect(rtl.dir.value).toBe('ltr')
+
+    await wrapper.find('button').trigger('click')
+    expect(wrapper.find('button').text()).toBe('ltr:en')
+    expect(wrapper.attributes('dir')).toBe('ltr')
+
+    wrapper.unmount()
+    rtl.dispose()
+  })
+
+  it('reacts when dynamic dir and locale props are set and cleared', async () => {
+    const rtl = createRtl({ locales: { en: 'ltr', ar: 'rtl' }, defaultLocale: 'en', syncDocument: false })
+    const propDir = ref<'ltr' | 'rtl' | undefined>('rtl')
+    const propLocale = ref<string | undefined>(undefined)
+
+    const wrapper = mount(
+      defineComponent({
+        setup() {
+          return () => h(RtlProvider, { dir: propDir.value, locale: propLocale.value }, () => [h(Probe, { class: 'inner' })])
+        },
+      }),
+      { global: { plugins: [rtl] } },
+    )
+
+    expect(wrapper.find('.inner').text()).toBe('rtl|true|right')
+    propDir.value = undefined
+    await nextTick()
+    expect(wrapper.find('.inner').text()).toBe('ltr|false|left')
+
+    propLocale.value = 'ar'
+    await nextTick()
+    expect(wrapper.find('.inner').text()).toBe('rtl|true|right')
+
+    propLocale.value = undefined
+    await nextTick()
+    expect(wrapper.find('.inner').text()).toBe('ltr|false|left')
+
+    wrapper.unmount()
     rtl.dispose()
   })
 })

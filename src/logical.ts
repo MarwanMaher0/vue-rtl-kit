@@ -44,8 +44,12 @@ const FLOW_RELATIVE: Readonly<Record<string, string>> = {
   bottom: 'insetBlockEnd',
   scrollMarginLeft: 'scrollMarginInlineStart',
   scrollMarginRight: 'scrollMarginInlineEnd',
+  scrollMarginTop: 'scrollMarginBlockStart',
+  scrollMarginBottom: 'scrollMarginBlockEnd',
   scrollPaddingLeft: 'scrollPaddingInlineStart',
   scrollPaddingRight: 'scrollPaddingInlineEnd',
+  scrollPaddingTop: 'scrollPaddingBlockStart',
+  scrollPaddingBottom: 'scrollPaddingBlockEnd',
   overflowX: 'overflowInline',
   overflowY: 'overflowBlock',
 }
@@ -61,6 +65,17 @@ const SIZE_RELATIVE: Readonly<Record<string, string>> = {
   minHeight: 'minBlockSize',
   maxWidth: 'maxInlineSize',
   maxHeight: 'maxBlockSize',
+}
+
+const LOGICAL_TO_PHYSICAL_STATIC: Readonly<Record<string, string>> = {
+  overflowInline: 'overflowX',
+  overflowBlock: 'overflowY',
+  inlineSize: 'width',
+  blockSize: 'height',
+  minInlineSize: 'minWidth',
+  minBlockSize: 'minHeight',
+  maxInlineSize: 'maxWidth',
+  maxBlockSize: 'maxHeight',
 }
 
 /** Property values that are themselves directional. */
@@ -160,11 +175,14 @@ export function toPhysicalStyle<T extends StyleObject>(style: T, dir: Direction)
     let property = camel
     let next = value
 
-    if (camel.includes('Inline') && !camel.startsWith('inline')) {
+    if (LOGICAL_TO_PHYSICAL_STATIC[camel]) {
+      property = LOGICAL_TO_PHYSICAL_STATIC[camel]!
+    }
+    else if (/Inline(Start|End)/.test(camel)) {
       const side = camel.includes('Start') === !rtl ? 'Left' : 'Right'
       property = camel.replace(/Inline(Start|End)/, side).replace(/^inset(Left|Right)$/, m => m.slice(5).toLowerCase())
     }
-    else if (camel.includes('Block')) {
+    else if (/Block(Start|End)/.test(camel)) {
       const side = camel.includes('Start') ? 'Top' : 'Bottom'
       property = camel.replace(/Block(Start|End)/, side).replace(/^inset(Top|Bottom)$/, m => m.slice(5).toLowerCase())
     }
@@ -173,13 +191,16 @@ export function toPhysicalStyle<T extends StyleObject>(style: T, dir: Direction)
     else if (camel === 'borderEndStartRadius') property = rtl ? 'borderBottomRightRadius' : 'borderBottomLeftRadius'
     else if (camel === 'borderEndEndRadius') property = rtl ? 'borderBottomLeftRadius' : 'borderBottomRightRadius'
 
-    if (typeof value === 'string' && (camel === 'textAlign' || camel === 'float' || camel === 'clear')) {
+    if (typeof value === 'string' && (camel === 'textAlign' || camel === 'float' || camel === 'clear' || camel === 'captionSide')) {
       const physical = value === 'start' || value === 'inline-start'
         ? (rtl ? 'right' : 'left')
         : value === 'end' || value === 'inline-end'
           ? (rtl ? 'left' : 'right')
           : value
       next = physical
+    }
+    else if (typeof value === 'string' && camel === 'resize') {
+      next = value === 'inline' ? 'horizontal' : value === 'block' ? 'vertical' : value
     }
 
     out[kebab ? toKebab(property) : property] = next

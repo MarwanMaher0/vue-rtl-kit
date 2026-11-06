@@ -1,5 +1,5 @@
 import type { ComputedRef } from 'vue'
-import { computed, inject } from 'vue'
+import { computed, hasInjectionContext, inject } from 'vue'
 import type { BoundFormatters, DateFormatOptions, NumberFormatOptions } from '../format'
 import { formatCurrency, formatDate, formatNumber } from '../format'
 import { rtlInstanceKey } from '../keys'
@@ -20,7 +20,7 @@ import { useDirection } from './useDirection'
  */
 export function useFormat(): ComputedRef<BoundFormatters> {
   const { locale, dir } = useDirection()
-  const instance = inject(rtlInstanceKey, null)
+  const instance = hasInjectionContext() ? inject(rtlInstanceKey, null) : null
 
   const numberingSystem = computed<NumberingSystem | undefined>(() => {
     const configured = instance?.options.numberingSystem

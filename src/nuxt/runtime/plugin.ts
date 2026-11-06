@@ -24,20 +24,24 @@ export default defineNuxtPlugin((nuxtApp: { vueApp: App }) => {
     syncDocument: raw.syncDocument === '' ? undefined : raw.syncDocument,
     htmlClass: raw.htmlClass === '' ? undefined : raw.htmlClass,
     numberingSystem: raw.numberingSystem || undefined,
+    registerGlobals: (raw as Record<string, unknown>).registerGlobals === '' ? undefined : raw.registerGlobals,
   }
   const rtl = createRtl(options)
 
   nuxtApp.vueApp.use(rtl)
 
-  useHead({
-    htmlAttrs: {
-      get dir() {
-        return rtl.dir.value
+  useHead(() => {
+    const htmlClass = rtl.options.htmlClass
+    const names = htmlClass
+      ? (htmlClass === true ? { rtl: 'rtl', ltr: 'ltr' } : htmlClass)
+      : undefined
+    return {
+      htmlAttrs: {
+        dir: rtl.dir.value,
+        lang: rtl.locale.value,
+        ...(names && { class: rtl.dir.value === 'rtl' ? names.rtl : names.ltr }),
       },
-      get lang() {
-        return rtl.locale.value
-      },
-    },
+    }
   })
 
   return { provide: { rtl } }

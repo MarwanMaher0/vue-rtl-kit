@@ -1,7 +1,7 @@
 /**
  * The app-level direction store and Vue plugin.
  */
-import type { App } from 'vue'
+import type { App, EffectScope } from 'vue'
 import { effectScope, watch } from 'vue'
 import { BidiText, RtlProvider } from './components'
 import { createDirectionState } from './context'
@@ -10,6 +10,13 @@ import { isClient } from './env'
 import { directionScopeKey, rtlInstanceKey } from './keys'
 import { directionOfLocale, normaliseLocales, resolveDirection } from './locale'
 import type { DirectionContext, ResolvedRtlOptions, RtlInstance, RtlOptions } from './types'
+
+function hasDom(): boolean {
+  return isClient
+    && typeof window !== 'undefined'
+    && typeof document !== 'undefined'
+    && Boolean(document.documentElement)
+}
 
 function resolveOptions(options: RtlOptions): ResolvedRtlOptions {
   const locales = normaliseLocales(options.locales)
@@ -62,40 +69,79 @@ export function createRtl(options: RtlOptions = {}): RtlInstance {
     pinned: options.dir !== undefined,
   })
 
-  const scope = effectScope(true)
+  let scope: EffectScope | undefined
+  let disposed = false
+  let installedApps = 0
 
-  scope.run(() => {
-    if (!resolved.syncDocument || !isClient) return
-    watch(
-      [state.dir, state.locale],
-      ([nextDir, nextLocale]) => {
-        const root = document.documentElement
-        root.setAttribute('dir', nextDir)
-        root.setAttribute('lang', nextLocale)
-        if (resolved.htmlClass) {
-          const names = resolved.htmlClass === true ? { rtl: 'rtl', ltr: 'ltr' } : resolved.htmlClass
-          root.classList.toggle(names.rtl, nextDir === 'rtl')
-          root.classList.toggle(names.ltr, nextDir === 'ltr')
-        }
-      },
-      { immediate: true, flush: 'post' },
-    )
-  })
+  const stopSync = (): void => {
+    scope?.stop()
+    scope = undefined
+  }
+
+  const startSync = (): void => {
+    if (scope || !resolved.syncDocument || !hasDom()) return
+    scope = effectScope(true)
+    scope.run(() => {
+      watch(
+        [state.dir, state.locale],
+        ([nextDir, nextLocale]) => {
+          if (!hasDom()) return
+          const root = document.documentElement
+          root.setAttribute('dir', nextDir)
+          root.setAttribute('lang', nextLocale)
+          if (resolved.htmlClass) {
+            const names = resolved.htmlClass === true ? { rtl: 'rtl', ltr: 'ltr' } : resolved.htmlClass
+            root.classList.toggle(names.rtl, nextDir === 'rtl')
+            root.classList.toggle(names.ltr, nextDir === 'ltr')
+          }
+        },
+        { immediate: true, flush: 'post' },
+      )
+    })
+  }
+
+  startSync()
 
   const instance: RtlInstance = {
     ...state,
     isRoot: true,
     options: resolved,
-    dispose: () => scope.stop(),
+    dispose: () => {
+      disposed = true
+      installedApps = 0
+      stopSync()
+    },
     install(app: App) {
+      installedApps++
+      if (!disposed) startSync()
       app.provide(rtlInstanceKey, instance)
       app.provide(directionScopeKey, instance as DirectionContext)
       app.config.globalProperties.$rtl = instance
 
+      let active = true
+      const onAppUnmount = (): void => {
+        if (!active) return
+        active = false
+        installedApps = Math.max(0, installedApps - 1)
+        if (installedApps === 0) stopSync()
+      }
+
+      const appWithUnmount = app as App & { onUnmount?: (cb: () => void) => void }
+      if (typeof appWithUnmount.onUnmount === 'function') {
+        appWithUnmount.onUnmount(onAppUnmount)
+      }
+      else {
+        const originalUnmount = app.unmount.bind(app)
+        app.unmount = () => {
+          onAppUnmount()
+          originalUnmount()
+        }
+      }
+
       if (!resolved.registerGlobals) return
-      app.component('RtlProvider', RtlProvider)
-      app.component('BidiText', BidiText)
-      app.directive('rtl', vRtl)
+      if (!app.component('RtlProvider')) app.component('RtlProvider', RtlProvider)
+      if (!app.component('BidiText')) app.component('BidiText', BidiText)
+      if (!app.directive('rtl')) app.directive('rtl', vRtl)
     },
   }
 

@@ -1,8 +1,13 @@
-import { beforeEach, describe, expect, it } from 'vitest'
-import { defineComponent, h, nextTick } from 'vue'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { createSSRApp, defineComponent, h, nextTick, ref, withDirectives } from 'vue'
+import { renderToString } from 'vue/server-renderer'
 import { mount } from '@vue/test-utils'
+import { BidiText, RtlProvider } from '../src/components'
 import { createRtl } from '../src/core'
-import { useDirection, useRtl } from '../src/composables/useDirection'
+import { resetDetachedDirection, useDirection, useRtl } from '../src/composables/useDirection'
+import { useFormat } from '../src/composables/useFormat'
+import { useLogicalStyles } from '../src/composables/useLogicalStyles'
+import { vRtl } from '../src/directives/vRtl'
 import { directionOfLocale, oppositeDirection, resolveDirection } from '../src/locale'
 
 describe('createRtl', () => {
@@ -162,5 +167,363 @@ describe('locale helpers', () => {
   it('flips a direction', () => {
     expect(oppositeDirection('rtl')).toBe('ltr')
     expect(oppositeDirection('ltr')).toBe('rtl')
+  })
+})
+
+describe('hard cases: runtime switching, nesting, hydration, and unmount cleanup', () => {
+  beforeEach(() => {
+    resetDetachedDirection()
+    document.documentElement.removeAttribute('dir')
+    document.documentElement.removeAttribute('lang')
+    document.documentElement.className = ''
+  })
+
+  it('switches direction ltr -> rtl -> ltr across every composable and directive', async () => {
+    const rtl = createRtl({
+      locales: { en: 'ltr', ar: 'rtl' },
+      defaultLocale: 'en',
+      htmlClass: true,
+    })
+
+    const App = defineComponent({
+      setup() {
+        const direction = useDirection()
+        const root = useRtl()
+        const logical = useLogicalStyles()
+        const fmt = useFormat()
+
+        return () => h('div', [
+          h('span', { class: 'dir' }, `${direction.dir.value}:${direction.isRtl.value}:${direction.isLtr.value}:${direction.startSide.value}:${direction.endSide.value}:${direction.sign.value}`),
+          h('span', { class: 'root' }, `${root.dir.value}:${root.locale.value}`),
+          h('span', { class: 'logical' }, `${logical.dir.value}:${logical.startSide.value}:${logical.endSide.value}:${logical.sign.value}:${logical.mirror(16)}:${logical.mirror(0)}:${JSON.stringify(logical.toPhysical({ marginInlineStart: '8px', textAlign: 'start' }))}`),
+          h('span', { class: 'fmt' }, `${fmt.value.dir}:${fmt.value.locale}:${fmt.value.formatNumber(1234)}`),
+          withDirectives(h('div', { class: 'directive' }, 'box'), [[vRtl, direction.dir]]),
+        ])
+      },
+    })
+
+    const wrapper = mount(App, { global: { plugins: [rtl] } })
+    await nextTick()
+
+    expect(wrapper.find('.dir').text()).toBe('ltr:false:true:left:right:1')
+    expect(wrapper.find('.root').text()).toBe('ltr:en')
+    expect(wrapper.find('.logical').text()).toBe('ltr:left:right:1:16:0:{"marginLeft":"8px","textAlign":"left"}')
+    expect(wrapper.find('.fmt').text()).toBe('ltr:en:1,234')
+    expect(wrapper.find('.directive').attributes('dir')).toBe('ltr')
+    expect(document.documentElement.getAttribute('dir')).toBe('ltr')
+    expect(document.documentElement.classList.contains('ltr')).toBe(true)
+
+    rtl.setLocale('ar')
+    await nextTick()
+
+    expect(wrapper.find('.dir').text()).toBe('rtl:true:false:right:left:-1')
+    expect(wrapper.find('.root').text()).toBe('rtl:ar')
+    expect(wrapper.find('.logical').text()).toBe('rtl:right:left:-1:-16:0:{"marginRight":"8px","textAlign":"right"}')
+    expect(wrapper.find('.fmt').text()).toContain('rtl:ar:')
+    expect(wrapper.find('.directive').attributes('dir')).toBe('rtl')
+    expect(document.documentElement.getAttribute('dir')).toBe('rtl')
+    expect(document.documentElement.classList.contains('rtl')).toBe(true)
+    expect(document.documentElement.classList.contains('ltr')).toBe(false)
+
+    rtl.setLocale('en')
+    await nextTick()
+
+    expect(wrapper.find('.dir').text()).toBe('ltr:false:true:left:right:1')
+    expect(wrapper.find('.root').text()).toBe('ltr:en')
+    expect(wrapper.find('.logical').text()).toBe('ltr:left:right:1:16:0:{"marginLeft":"8px","textAlign":"left"}')
+    expect(wrapper.find('.fmt').text()).toBe('ltr:en:1,234')
+    expect(wrapper.find('.directive').attributes('dir')).toBe('ltr')
+    expect(document.documentElement.getAttribute('dir')).toBe('ltr')
+    expect(document.documentElement.classList.contains('ltr')).toBe(true)
+    expect(document.documentElement.classList.contains('rtl')).toBe(false)
+
+    wrapper.unmount()
+  })
+
+  it('maintains independent direction on nested elements while root flips ltr -> rtl -> ltr', async () => {
+    const rtl = createRtl({
+      locales: { en: 'ltr', ar: 'rtl' },
+      defaultLocale: 'en',
+      syncDocument: false,
+    })
+
+    const ScopeReader = defineComponent({
+      props: { id: { type: String, required: true } },
+      setup(props) {
+        const { dir, startSide, sign } = useDirection()
+        const root = useRtl()
+        const { toPhysical } = useLogicalStyles()
+        const fmt = useFormat()
+        return () => h(
+          'div',
+          { class: props.id },
+          `${dir.value}|${startSide.value}|${sign.value}|${Object.keys(toPhysical({ paddingInlineStart: '4px' }))[0]}|${fmt.value.dir}|root:${root.dir.value}`,
+        )
+      },
+    })
+
+    const App = defineComponent({
+      setup() {
+        return () => h('div', [
+          h(ScopeReader, { id: 'root-scope' }),
+          h(RtlProvider, { dir: 'rtl' }, () => [
+            h(ScopeReader, { id: 'rtl-island' }),
+            h(RtlProvider, { dir: 'ltr' }, () => [
+              h(ScopeReader, { id: 'nested-ltr-island' }),
+            ]),
+          ]),
+          h(RtlProvider, { dir: 'ltr' }, () => [
+            h(ScopeReader, { id: 'ltr-island' }),
+          ]),
+          h(RtlProvider, {}, () => [
+            h(ScopeReader, { id: 'inheriting-island' }),
+          ]),
+          withDirectives(h('pre', { class: 'pinned-code' }, 'npm test'), [[vRtl, 'ltr']]),
+        ])
+      },
+    })
+
+    const wrapper = mount(App, { global: { plugins: [rtl] } })
+
+    expect(wrapper.find('.root-scope').text()).toBe('ltr|left|1|paddingLeft|ltr|root:ltr')
+    expect(wrapper.find('.rtl-island').text()).toBe('rtl|right|-1|paddingRight|rtl|root:ltr')
+    expect(wrapper.find('.nested-ltr-island').text()).toBe('ltr|left|1|paddingLeft|ltr|root:ltr')
+    expect(wrapper.find('.ltr-island').text()).toBe('ltr|left|1|paddingLeft|ltr|root:ltr')
+    expect(wrapper.find('.inheriting-island').text()).toBe('ltr|left|1|paddingLeft|ltr|root:ltr')
+    expect(wrapper.find('.pinned-code').attributes('dir')).toBe('ltr')
+
+    rtl.setDirection('rtl')
+    await nextTick()
+
+    expect(wrapper.find('.root-scope').text()).toBe('rtl|right|-1|paddingRight|rtl|root:rtl')
+    expect(wrapper.find('.rtl-island').text()).toBe('rtl|right|-1|paddingRight|rtl|root:rtl')
+    expect(wrapper.find('.nested-ltr-island').text()).toBe('ltr|left|1|paddingLeft|ltr|root:rtl')
+    expect(wrapper.find('.ltr-island').text()).toBe('ltr|left|1|paddingLeft|ltr|root:rtl')
+    expect(wrapper.find('.inheriting-island').text()).toBe('rtl|right|-1|paddingRight|rtl|root:rtl')
+    expect(wrapper.find('.pinned-code').attributes('dir')).toBe('ltr')
+
+    rtl.setDirection('ltr')
+    await nextTick()
+
+    expect(wrapper.find('.root-scope').text()).toBe('ltr|left|1|paddingLeft|ltr|root:ltr')
+    expect(wrapper.find('.rtl-island').text()).toBe('rtl|right|-1|paddingRight|rtl|root:ltr')
+    expect(wrapper.find('.nested-ltr-island').text()).toBe('ltr|left|1|paddingLeft|ltr|root:ltr')
+    expect(wrapper.find('.ltr-island').text()).toBe('ltr|left|1|paddingLeft|ltr|root:ltr')
+    expect(wrapper.find('.inheriting-island').text()).toBe('ltr|left|1|paddingLeft|ltr|root:ltr')
+    expect(wrapper.find('.pinned-code').attributes('dir')).toBe('ltr')
+
+    wrapper.unmount()
+  })
+
+  it('hydrates plain Vue SSR output with zero mismatch warnings and supports post-hydration switching', async () => {
+    const warnings: string[] = []
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation((msg: unknown) => {
+      warnings.push(String(msg))
+    })
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation((msg: unknown) => {
+      warnings.push(String(msg))
+    })
+
+    const createSharedApp = (rtl: ReturnType<typeof createRtl>) => {
+      const app = createSSRApp(
+        defineComponent({
+          setup() {
+            const { dir, startSide, sign } = useDirection()
+            const { toLogical } = useLogicalStyles()
+            const fmt = useFormat()
+            return () => h('div', { id: 'ssr-root', dir: dir.value }, [
+              h('p', { class: 'meta', style: toLogical({ marginLeft: '12px', textAlign: 'left' }) }, `${dir.value}:${startSide.value}:${sign.value}:${fmt.value.formatNumber(2024)}`),
+              h(BidiText, { as: 'p', class: 'bidi-el', text: 'آخر تحديث 12-05-2024 عبر api.example.com/v1' }),
+              h(BidiText, { as: 'p', class: 'bidi-chars', text: 'الإصدار v1.2.3 متاح', strategy: 'chars' }),
+              h(RtlProvider, { dir: 'ltr', tag: 'section' }, () => [
+                h('span', { class: 'scoped-ltr' }, 'git checkout -b rtl-hardening'),
+                h(BidiText, { as: 'span', class: 'scoped-bidi', text: 'Hello مرحبا world' }),
+              ]),
+              withDirectives(h('pre', { class: 'dir-directive' }, 'npm run build'), [[vRtl, { dir: 'ltr', isolate: true }]]),
+            ])
+          },
+        }),
+      )
+      app.config.warnHandler = (msg) => {
+        warnings.push(msg)
+      }
+      app.use(rtl)
+      return app
+    }
+
+    const ssrRtl = createRtl({
+      locales: { en: 'ltr', ar: 'rtl' },
+      defaultLocale: 'ar',
+      numberingSystem: 'latn',
+      syncDocument: false,
+    })
+    const ssrApp = createSharedApp(ssrRtl)
+    const html = await renderToString(ssrApp)
+    ssrRtl.dispose()
+
+    const container = document.createElement('div')
+    container.innerHTML = html
+    document.body.appendChild(container)
+
+    const clientRtl = createRtl({
+      locales: { en: 'ltr', ar: 'rtl' },
+      defaultLocale: 'ar',
+      numberingSystem: 'latn',
+      syncDocument: true,
+    })
+    const clientApp = createSharedApp(clientRtl)
+    clientApp.mount(container)
+    await nextTick()
+
+    expect(warnings).toEqual([])
+    expect(container.querySelector('.meta')?.textContent).toBe('rtl:right:-1:2,024')
+    expect(container.querySelector('.bidi-el bdi')?.getAttribute('dir')).toBe('ltr')
+    expect(container.querySelector('.scoped-bidi bdi')?.getAttribute('dir')).toBe('rtl')
+    expect(container.querySelector('.dir-directive')?.getAttribute('dir')).toBe('ltr')
+
+    clientRtl.setLocale('en')
+    await nextTick()
+    expect(container.querySelector('.meta')?.textContent).toBe('ltr:left:1:2,024')
+
+    clientRtl.setLocale('ar')
+    await nextTick()
+    expect(container.querySelector('.meta')?.textContent).toBe('rtl:right:-1:2,024')
+
+    clientApp.unmount()
+    container.remove()
+    warnSpy.mockRestore()
+    errorSpy.mockRestore()
+    expect(warnings).toEqual([])
+  })
+
+  it('cleans up watchers and DOM state on unmount without leaking', async () => {
+    const rtl = createRtl({ locales: { en: 'ltr', ar: 'rtl' }, defaultLocale: 'en', htmlClass: true })
+    const dirRef = ref<'ltr' | 'rtl'>('ltr')
+    const showChild = ref(true)
+
+    const Child = defineComponent({
+      setup() {
+        const { dir, startSide } = useDirection()
+        const { mirror } = useLogicalStyles()
+        const fmt = useFormat()
+        return () => h(RtlProvider, { locale: 'ar' }, () => [
+          h('span', { class: 'child-state' }, `${dir.value}:${startSide.value}:${mirror(10)}:${fmt.value.locale}`),
+          h(BidiText, { text: 'تحديث 12-05-2024' }),
+          withDirectives(h('p', { id: 'unmount-target' }, 'code'), [[vRtl, dirRef]]),
+        ])
+      },
+    })
+
+    const Root = defineComponent({
+      setup() {
+        return () => h('div', [showChild.value ? h(Child) : null])
+      },
+    })
+
+    const wrapper = mount(Root, { global: { plugins: [rtl] }, attachTo: document.body })
+    await nextTick()
+
+    const targetEl = document.getElementById('unmount-target')!
+    expect(targetEl.getAttribute('dir')).toBe('ltr')
+    expect(document.documentElement.getAttribute('dir')).toBe('ltr')
+
+    showChild.value = false
+    await nextTick()
+
+    expect(targetEl.getAttribute('dir')).toBeNull()
+    dirRef.value = 'rtl'
+    await nextTick()
+    expect(targetEl.getAttribute('dir')).toBeNull()
+
+    wrapper.unmount()
+
+    rtl.setDirection('rtl')
+    await nextTick()
+    expect(document.documentElement.getAttribute('dir')).toBe('ltr')
+    expect(document.documentElement.classList.contains('rtl')).toBe(false)
+  })
+
+  it('keeps syncing documentElement when one of two apps sharing a store unmounts, and stops after the last app unmounts', async () => {
+    const rtl = createRtl({
+      locales: { en: 'ltr', ar: 'rtl' },
+      defaultLocale: 'en',
+      syncDocument: true,
+    })
+
+    const AppOne = defineComponent({
+      setup() {
+        const { dir } = useDirection()
+        return () => h('div', { class: 'app-one' }, dir.value)
+      },
+    })
+
+    const AppTwo = defineComponent({
+      setup() {
+        const { dir } = useDirection()
+        return () => h('div', { class: 'app-two' }, dir.value)
+      },
+    })
+
+    const wrapperOne = mount(AppOne, { global: { plugins: [rtl] } })
+    const wrapperTwo = mount(AppTwo, { global: { plugins: [rtl] } })
+    await nextTick()
+    expect(document.documentElement.getAttribute('dir')).toBe('ltr')
+
+    wrapperOne.unmount()
+
+    rtl.setLocale('ar')
+    await nextTick()
+    expect(document.documentElement.getAttribute('dir')).toBe('rtl')
+    expect(document.documentElement.getAttribute('lang')).toBe('ar')
+    expect(wrapperTwo.text()).toBe('rtl')
+
+    wrapperTwo.unmount()
+
+    rtl.setLocale('en')
+    await nextTick()
+    expect(document.documentElement.getAttribute('dir')).toBe('rtl')
+  })
+
+  it('isolates detached useDirection() fallback per app across createSSRApp renders without the plugin', async () => {
+    const FirstApp = createSSRApp(
+      defineComponent({
+        setup() {
+          const { dir, setDirection } = useDirection()
+          setDirection('rtl')
+          return () => h('div', dir.value)
+        },
+      }),
+    )
+
+    const SecondApp = createSSRApp(
+      defineComponent({
+        setup() {
+          const { dir } = useDirection()
+          return () => h('div', dir.value)
+        },
+      }),
+    )
+
+    expect(await renderToString(FirstApp)).toBe('<div>rtl</div>')
+    expect(await renderToString(SecondApp)).toBe('<div>ltr</div>')
+  })
+
+  it('does not throw when composables are called outside component setup', () => {
+    const warnings: string[] = []
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation((msg: unknown) => {
+      warnings.push(String(msg))
+    })
+
+    const dir = useDirection()
+    const logical = useLogicalStyles()
+    const fmt = useFormat()
+
+    expect(dir.dir.value).toBe('ltr')
+    expect(logical.startSide.value).toBe('left')
+    expect(fmt.value.formatNumber(42)).toBe('42')
+    expect(() => useRtl()).toThrow(/useRtl\(\) needs the plugin/)
+    expect(warnings).toEqual([])
+
+    warnSpy.mockRestore()
   })
 })

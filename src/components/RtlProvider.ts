@@ -1,9 +1,9 @@
 import type { PropType, SlotsType, VNode } from 'vue'
-import { computed, defineComponent, h, provide, watch } from 'vue'
+import { computed, defineComponent, h, hasInjectionContext, inject, provide, watch } from 'vue'
 import { useDirection } from '../composables/useDirection'
 import { createDirectionState } from '../context'
-import { directionScopeKey } from '../keys'
-import { directionOfLocale } from '../locale'
+import { directionScopeKey, rtlInstanceKey } from '../keys'
+import { resolveDirection } from '../locale'
 import type { Direction, DirectionContext } from '../types'
 
 /**
@@ -61,27 +61,42 @@ export const RtlProvider = defineComponent({
   }>,
   setup(props, { slots }) {
     const parent = useDirection()
+    const root = hasInjectionContext() ? inject(rtlInstanceKey, null) : null
+    const locales = root?.options.locales ?? {}
 
     const initialDir: Direction = props.dir
-      ?? (props.locale ? directionOfLocale(props.locale, parent.dir.value) : parent.dir.value)
+      ?? (props.locale ? resolveDirection(props.locale, locales, parent.dir.value) : parent.dir.value)
 
     const state = createDirectionState({
       dir: initialDir,
       locale: props.locale ?? parent.locale.value,
-      pinned: true,
+      locales,
+      pinned: props.dir !== undefined,
     })
 
     // Props stay authoritative: changing `dir`/`locale` from outside overrides
     // whatever the scope did to itself, and an omitted `dir` keeps following
     // the parent scope.
-    watch(() => props.dir, (next) => { if (next) state.dir.value = next })
+    watch(() => props.dir, (next) => {
+      if (next) state.dir.value = next
+      else if (props.locale) state.dir.value = resolveDirection(props.locale, locales, parent.dir.value)
+      else state.dir.value = parent.dir.value
+    })
     watch(() => props.locale, (next) => {
-      if (!next) return
-      state.locale.value = next
-      if (!props.dir) state.dir.value = directionOfLocale(next, state.dir.value)
+      if (next) {
+        state.locale.value = next
+        if (!props.dir) state.dir.value = resolveDirection(next, locales, parent.dir.value)
+      }
+      else {
+        state.locale.value = parent.locale.value
+        if (!props.dir) state.dir.value = parent.dir.value
+      }
     })
     watch(() => parent.dir.value, (next) => {
       if (!props.dir && !props.locale) state.dir.value = next
+    })
+    watch(() => parent.locale.value, (next) => {
+      if (!props.locale) state.locale.value = next
     })
 
     const scope: DirectionContext = { ...state, isRoot: false }
