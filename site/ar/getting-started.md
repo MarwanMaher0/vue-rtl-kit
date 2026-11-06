@@ -18,6 +18,9 @@ npm install github:MarwanMaher0/vue-rtl-kit#v0.1.1
 
 ## Vue
 
+جرّب مثال Vite + Vue 3 مع تبديل العربية والإنجليزية، و`BidiText`، والأنماط المنطقية، والأرقام العربية الهندية:
+[Open in StackBlitz](https://stackblitz.com/github/MarwanMaher0/vue-rtl-kit/tree/main/examples/vite).
+
 أنشئ مخزن الاتجاه مرة واحدة وثبّته كإضافة Vue. ملف CSS اختياري.
 
 ```ts
@@ -57,6 +60,12 @@ const { isRtl, setLocale } = useDirection()
 استخدم `setLocale()` عندما يجب أن يغيّر اختيار اللغة الاتجاه أيضًا. أما `setDirection()` و`toggleDirection()` فتثبّتان الاتجاه كتفضيل مستقل، ولا يعيد اختيار اللغة حسابه بعد ذلك.
 
 ## Nuxt
+
+جرّب مثال Nuxt 3 مع اتجاه HTML المعروض على الخادم:
+[Open in StackBlitz](https://stackblitz.com/github/MarwanMaher0/vue-rtl-kit/tree/main/examples/nuxt).
+يثبّت المثالان المكتبة من المستودع باستخدام `file:../..` دون الحاجة إلى نشرها.
+احتفظ بنسخة كاملة من المستودع، وشغّل `npm ci` في الجذر لبناء المكتبة، ثم اتبع
+ملف README داخل `examples/vite` أو `examples/nuxt`.
 
 أضف `vue-rtl-kit/nuxt` إلى ملف `nuxt.config.ts`:
 

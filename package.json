@@ -90,7 +90,11 @@
     "play": "vite --config playground/vite.config.ts",
     "docs:dev": "vitepress dev site",
     "docs:build": "vitepress build site",
-    "docs:preview": "vitepress preview site"
+    "docs:preview": "vitepress preview site",
+    "docs:check": "node scripts/check-docs.mjs",
+    "subset:fonts": "node scripts/subset-fonts.mjs --arabic",
+    "check:fonts": "node scripts/subset-fonts.mjs --arabic --check",
+    "fonts:subset": "node scripts/subset-fonts.mjs"
   },
   "peerDependencies": {
     "@nuxt/kit": "^3.0.0 || ^4.0.0",

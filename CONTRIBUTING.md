@@ -19,8 +19,8 @@ npm run play       # playground at http://localhost:5178
 ```bash
 npm run lint       # ESLint, zero warnings allowed
 npm run typecheck  # vue-tsc --noEmit
-npm test           # Vitest, test/
 npm run build      # ESM + CJS + types (.d.ts and .d.cts) + styles.css
+npm test           # Vitest, test/
 npm run check:publish  # publint + arethetypeswrong on the packed tarball
 ```
 
@@ -28,6 +28,10 @@ npm run check:publish  # publint + arethetypeswrong on the packed tarball
 alone with its "require resolves to ESM" rule ignored. Nuxt modules are ESM-only by design (Nuxt
 never `require()`s them and `@nuxt/kit` has no CommonJS build); the reasoning lives next to the
 command in `scripts/check-publish.mjs`.
+
+The Nuxt SSR test packs and installs the existing `dist/` offline, without rebuilding it.
+After changing source, build configuration, scripts, or package metadata, run `npm run build`
+before `npm test` or `npx vitest run test/nuxt.spec.ts`; missing or stale builds are rejected.
 
 CI also builds the playground: `npx vite build -c playground/vite.config.ts`.
 

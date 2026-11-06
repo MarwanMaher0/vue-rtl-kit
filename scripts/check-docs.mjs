@@ -146,6 +146,12 @@ async function main() {
     check(document.documentElement.dir === (language === 'ar' ? 'rtl' : 'ltr'), `${label}: incorrect html direction`)
     const icon = single(document, 'link[rel="icon"]', label)
     check(icon?.getAttribute('href') === '/vue-rtl-kit/favicon.svg', `${label}: incorrect favicon path`)
+    const arabicPreloads = [...document.querySelectorAll('link[rel="preload"][as="font"]')]
+      .filter(link => (link.getAttribute('href') || '').includes('NotoSansArabic-arabic.woff2'))
+    check(
+      arabicPreloads.length === (language === 'ar' ? 1 : 0),
+      `${label}: expected ${language === 'ar' ? 1 : 0} NotoSansArabic font preloads, found ${arabicPreloads.length}`,
+    )
 
     if (label === '404.html') {
       check(/noindex/.test(meta(document, 'meta[name="robots"]', label)), `${label}: error page must be noindex`)
@@ -153,13 +159,40 @@ async function main() {
     }
     check(!/noindex/.test(document.querySelector('meta[name="robots"]')?.getAttribute('content') || ''), `${label}: documentation must be indexable`)
     const h1 = single(document, 'h1', label)
-    check(Boolean(normalized(h1?.textContent)), `${label}: missing meaningful h1`)
+    const h1Text = normalized(h1?.textContent)
+    check(Boolean(h1Text), `${label}: missing meaningful h1`)
+
+    const tables = [...document.querySelectorAll('table')]
+    const tableLabels = new Set()
+    for (const table of tables) {
+      check(table.getAttribute('tabindex') === '0', `${label}: table missing tabindex="0"`)
+      const ariaLabel = normalized(table.getAttribute('aria-label'))
+      check(Boolean(ariaLabel), `${label}: table missing aria-label`)
+      check(!tableLabels.has(ariaLabel), `${label}: duplicate table aria-label "${ariaLabel}"`)
+      tableLabels.add(ariaLabel)
+      const headers = [...table.querySelectorAll('thead th')].map(th => normalized(th.textContent)).filter(Boolean)
+      const expectedHeaders = headers.join(language === 'ar' ? '، ' : ', ')
+      if (expectedHeaders) {
+        check(
+          ariaLabel.endsWith(`: ${expectedHeaders}`) || ariaLabel === expectedHeaders,
+          `${label}: table aria-label "${ariaLabel}" must end with column headers "${expectedHeaders}"`,
+        )
+      }
+      check(
+        !ariaLabel.startsWith(`${h1Text}:`),
+        `${label}: table aria-label "${ariaLabel}" must use section heading, not h1 "${h1Text}"`,
+      )
+      check(
+        !/\((Table|جدول)\s+\d+\)$/.test(ariaLabel),
+        `${label}: table aria-label "${ariaLabel}" has unnecessary counter`,
+      )
+    }
     const englishLabel = label.replace(/^ar\//, '')
-    const alternateLabels = [englishLabel, `ar/${englishLabel}`]
-    const paired = alternateLabels.every(path => pages.has(resolve(output, path)))
+    const alternateLabels = [englishLabel, `ar/${englishLabel}`, englishLabel]
+    const paired = [englishLabel, `ar/${englishLabel}`].every(path => pages.has(resolve(output, path)))
     const alternates = [...document.querySelectorAll('link[rel="alternate"][hreflang]')]
-    check(alternates.length === (paired ? 2 : 0), `${label}: expected ${paired ? 2 : 0} hreflang links`)
-    for (const [position, lang] of ['en', 'ar'].entries()) {
+    check(alternates.length === (paired ? 3 : 0), `${label}: expected ${paired ? 3 : 0} hreflang links`)
+    for (const [position, lang] of ['en', 'ar', 'x-default'].entries()) {
       if (!paired) break
       const href = new URL(routeFor(alternateLabels[position]), site).href
       check(alternates.filter(link => link.getAttribute('hreflang') === lang && link.getAttribute('href') === href).length === 1, `${label}: missing reciprocal ${lang} alternate ${href}`)
@@ -254,6 +287,34 @@ async function main() {
   }
   const image = await readFile(resolve(output, 'og-image.png'))
   check(image.length >= 24 && image.subarray(1, 4).toString() === 'PNG' && image.readUInt32BE(16) === 1200 && image.readUInt32BE(20) === 630, 'og-image.png: expected a 1200x630 PNG')
+
+  const landingCopySource = await readFile(resolve(root, 'site/.vitepress/theme/landing-copy.ts'), 'utf8')
+  const landingVueSource = await readFile(resolve(root, 'site/.vitepress/theme/components/LandingPage.vue'), 'utf8')
+  const bidiDemoSource = await readFile(resolve(root, 'site/.vitepress/theme/components/BidiDemo.vue'), 'utf8')
+  const customCssSource = await readFile(resolve(root, 'site/.vitepress/theme/custom.css'), 'utf8')
+
+  check(landingVueSource.includes("from '../landing-copy'"), 'LandingPage.vue: must import landingCopy from ../landing-copy')
+  check(bidiDemoSource.includes("from '../landing-copy'"), 'BidiDemo.vue: must import landingCopy from ../landing-copy')
+  check(!landingVueSource.includes('12-05-2024') && !landingVueSource.includes('2024 - 05 - 12'), 'LandingPage.vue: must derive date strings from landingCopy sourceText')
+  check(!bidiDemoSource.includes('12-05-2024'), 'BidiDemo.vue: must read sample strings from landingCopy')
+  for (const [name, content] of [
+    ['landing-copy.ts', landingCopySource],
+    ['LandingPage.vue', landingVueSource],
+    ['BidiDemo.vue', bidiDemoSource],
+  ]) {
+    check(!/140\+|6\s*KB|35\+/.test(content), `${name}: must not contain stale hardcoded counters`)
+  }
+  for (const landingFile of ['index.html', 'ar/index.html']) {
+    const landingPage = pages.get(resolve(output, landingFile))
+    const bodyText = normalized(landingPage?.document.body.textContent)
+    check(bodyText.includes('12-05-2024') && bodyText.includes('2024 - 05 - 12'), `${landingFile}: missing derived comparison dates in rendered HTML`)
+  }
+
+  check(!/--vp-font-family-mono:[^;]*Noto Sans Arabic/.test(customCssSource), 'custom.css: --vp-font-family-mono must not include Noto Sans Arabic')
+  check(!/:root\s*\{[^}]*--vp-font-family-base:[^;]*Noto Sans Arabic/.test(customCssSource), 'custom.css: :root --vp-font-family-base must not include Noto Sans Arabic')
+  check(!/^\.lab-index\s*\{[^}]*Noto Sans Arabic/m.test(customCssSource), 'custom.css: unscoped .lab-index must not include Noto Sans Arabic')
+  check(!/^\.comparison-badge\s*\{[^}]*Noto Sans Arabic/m.test(customCssSource), 'custom.css: unscoped .comparison-badge must not include Noto Sans Arabic')
+
   for (const { dom } of pages.values()) dom.window.close()
 
   if (errors.length) {

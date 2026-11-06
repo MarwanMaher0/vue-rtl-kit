@@ -18,6 +18,10 @@ npm install github:MarwanMaher0/vue-rtl-kit#v0.1.1
 
 ## Vue
 
+Try the runnable Vite + Vue 3 starter:
+[Open in StackBlitz](https://stackblitz.com/github/MarwanMaher0/vue-rtl-kit/tree/main/examples/vite).
+It includes Arabic/English switching, mixed `BidiText`, logical styles, and Arabic-Indic digits.
+
 Create the store once and install it as a Vue plugin. The stylesheet is optional.
 
 ```ts
@@ -57,6 +61,12 @@ const { isRtl, setLocale } = useDirection()
 Use `setLocale()` when a language choice should update direction. Use `setDirection()` or `toggleDirection()` when direction is an independent preference; either one pins direction against later locale-driven changes.
 
 ## Nuxt
+
+Try the Nuxt 3 starter with SSR direction:
+[Open in StackBlitz](https://stackblitz.com/github/MarwanMaher0/vue-rtl-kit/tree/main/examples/nuxt).
+Both starters install `vue-rtl-kit` from the repository using `file:../..`, so they
+work before publishing. Keep the full checkout available, run `npm ci` at its root
+to build the library, then follow the README in `examples/vite` or `examples/nuxt`.
 
 Add `vue-rtl-kit/nuxt` to `nuxt.config.ts`:
 

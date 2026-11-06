@@ -60,6 +60,14 @@ bare `2024` — which reads the same either way — is left alone.
 
 ---
 
+## Guide
+
+- [Common RTL bugs in Vue apps and how to fix them](./docs/common-rtl-bugs.md) — physical CSS
+  properties that do not flip, icons that must (and must not) mirror, Latin runs and punctuation
+  breaking inside RTL text, mixed-direction form input, numbering systems, the SSR direction flash,
+  transforms going the wrong way, and third-party components that hardcode LTR. Each bug has a
+  minimal broken snippet, a plain CSS/Vue fix, and the vue-rtl-kit version.
+
 ## Install
 
 ```sh
@@ -85,6 +93,10 @@ expected; `npm run check:publish` scopes that single allowance to `./nuxt` and k
 entry point strictly green.
 
 ## Quickstart — Vue
+
+Try the [Vite + Vue 3 starter](./examples/vite/README.md):
+[Open in StackBlitz](https://stackblitz.com/github/MarwanMaher0/vue-rtl-kit/tree/main/examples/vite).
+It installs the library from this repository with `file:../..`, without publishing.
 
 ```ts
 // main.ts
@@ -119,6 +131,12 @@ const { dir, isRtl, setLocale, toggleDirection } = useDirection()
 ```
 
 ## Quickstart — Nuxt
+
+Try the [Nuxt 3 starter](./examples/nuxt/README.md) with server-rendered direction:
+[Open in StackBlitz](https://stackblitz.com/github/MarwanMaher0/vue-rtl-kit/tree/main/examples/nuxt).
+It also uses `file:../..`; both starters include Arabic/English switching, `BidiText`,
+logical styles, and Arabic-Indic number formatting. Build the library first with
+`npm ci` at the repository root, then follow the starter's README.
 
 ```ts
 // nuxt.config.ts

@@ -5,7 +5,7 @@ import vueParser from 'vue-eslint-parser'
 
 export default tseslint.config(
   {
-    ignores: ['dist/**', 'node_modules/**', 'coverage/**', 'playground/dist/**', 'site/.vitepress/cache/**', 'site/.vitepress/dist/**', 'docs/**', 'test/fixtures/**/.nuxt/**', 'test/fixtures/**/.output/**'],
+    ignores: ['dist/**', 'node_modules/**', 'coverage/**', 'playground/dist/**', 'site/.vitepress/cache/**', 'site/.vitepress/dist/**', 'docs/**', 'test/fixtures/**/.nuxt/**', 'test/fixtures/**/.output/**', 'examples/**/dist/**', 'examples/**/.nuxt/**', 'examples/**/.output/**'],
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,

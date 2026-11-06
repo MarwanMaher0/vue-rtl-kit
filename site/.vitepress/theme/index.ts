@@ -1,7 +1,6 @@
 import type { Theme } from 'vitepress'
 import DefaultTheme from 'vitepress/theme-without-fonts'
 import { createRtl } from 'vue-rtl-kit'
-import BidiDemo from './components/BidiDemo.vue'
 import Layout from './Layout.vue'
 import './custom.css'
 
@@ -14,6 +13,5 @@ export default {
       defaultLocale: 'en',
       syncDocument: false,
     }))
-    app.component('BidiDemo', BidiDemo)
   },
 } satisfies Theme

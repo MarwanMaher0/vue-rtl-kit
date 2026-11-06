@@ -47,3 +47,36 @@ jobs:
 
       - name: Build playground
         run: npx vite build -c playground/vite.config.ts
+
+  examples:
+    name: Example / ${{ matrix.example }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        example: [vite, nuxt]
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            examples/${{ matrix.example }}/package-lock.json
+
+      - name: Install library dependencies
+        run: npm ci
+
+      - name: Build library
+        run: npm run build
+
+      - name: Install example
+        run: npm ci
+        working-directory: examples/${{ matrix.example }}
+
+      - name: Build example
+        run: npm run build
+        working-directory: examples/${{ matrix.example }}

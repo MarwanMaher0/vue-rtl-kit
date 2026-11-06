@@ -41,6 +41,57 @@ export default defineConfig({
       light: 'github-light-high-contrast',
       dark: 'github-dark-high-contrast',
     },
+    config(md) {
+      md.renderer.rules.table_open = (tokens, idx, options, env, self) => {
+        const isArabic = String((env as { relativePath?: string })?.relativePath || '').startsWith('ar/')
+        const inlineText = (token: { children?: Array<{ type: string, content: string }> | null, content?: string } | undefined) =>
+          token?.children
+            ? token.children
+                .filter(child => child.type === 'text' || child.type === 'code_inline')
+                .map(child => child.content)
+                .join('')
+                .trim()
+            : (token?.content || '').trim()
+
+        const baseLabelFor = (tableIdx: number) => {
+          let headingText = ''
+          for (let i = tableIdx - 1; i >= 0; i--) {
+            if (tokens[i].type === 'heading_open' && tokens[i].tag !== 'h1') {
+              headingText = inlineText(tokens[i + 1])
+              break
+            }
+          }
+          const headers: string[] = []
+          for (let j = tableIdx + 1; j < tokens.length && tokens[j].type !== 'thead_close'; j++) {
+            if (tokens[j].type === 'th_open') {
+              const thText = inlineText(tokens[j + 1])
+              if (thText) headers.push(thText)
+            }
+          }
+          const headerList = headers.join(isArabic ? '، ' : ', ')
+          if (headingText && headerList) return `${headingText}: ${headerList}`
+          return headingText || headerList
+        }
+
+        const baseLabel = baseLabelFor(idx)
+        if (baseLabel) {
+          let duplicateCount = 0
+          let occurrence = 0
+          for (let k = 0; k < tokens.length; k++) {
+            if (tokens[k].type === 'table_open' && baseLabelFor(k) === baseLabel) {
+              duplicateCount++
+              if (k <= idx) occurrence = duplicateCount
+            }
+          }
+          const label = duplicateCount > 1
+            ? `${baseLabel} (${isArabic ? `جدول ${occurrence}` : `Table ${occurrence}`})`
+            : baseLabel
+          tokens[idx].attrSet('aria-label', label)
+        }
+        tokens[idx].attrSet('tabindex', '0')
+        return self.renderToken(tokens, idx, options)
+      }
+    },
   },
   head: [
     ['link', { rel: 'icon', type: 'image/svg+xml', href: `${siteBase}favicon.svg` }],

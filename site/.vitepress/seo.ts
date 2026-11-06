@@ -1,5 +1,5 @@
 import { existsSync } from 'node:fs'
-import { readFile, writeFile } from 'node:fs/promises'
+import { readdir, readFile, writeFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import process from 'node:process'
 import { URL } from 'node:url'
@@ -92,6 +92,9 @@ function jsonLd(value: Record<string, unknown>): HeadConfig {
 
 function socialHead(title: string, description: string, canonical: string, language: 'en' | 'ar', landing: boolean): HeadConfig[] {
   const image = absolute('og-image.png')
+  const imageAlt = language === 'ar'
+    ? 'vue-rtl-kit — أدوات RTL لتطبيقات Vue وNuxt'
+    : 'vue-rtl-kit — RTL tools for Vue and Nuxt'
   return [
     ['link', { rel: 'canonical', href: canonical }],
     ['meta', { property: 'og:type', content: landing ? 'website' : 'article' }],
@@ -104,12 +107,12 @@ function socialHead(title: string, description: string, canonical: string, langu
     ['meta', { property: 'og:image:width', content: '1200' }],
     ['meta', { property: 'og:image:height', content: '630' }],
     ['meta', { property: 'og:image:type', content: 'image/png' }],
-    ['meta', { property: 'og:image:alt', content: 'vue-rtl-kit — RTL tools for Vue and Nuxt' }],
+    ['meta', { property: 'og:image:alt', content: imageAlt }],
     ['meta', { name: 'twitter:card', content: 'summary_large_image' }],
     ['meta', { name: 'twitter:title', content: title }],
     ['meta', { name: 'twitter:description', content: description }],
     ['meta', { name: 'twitter:image', content: image }],
-    ['meta', { name: 'twitter:image:alt', content: 'vue-rtl-kit — RTL tools for Vue and Nuxt' }],
+    ['meta', { name: 'twitter:image:alt', content: imageAlt }],
   ]
 }
 
@@ -138,6 +141,7 @@ export const seo: Pick<UserConfig, 'transformPageData' | 'transformHead' | 'site
       head.push(
         ['link', { rel: 'alternate', hreflang: 'en', href: absolute(routeFor(englishFile)) }],
         ['link', { rel: 'alternate', hreflang: 'ar', href: absolute(routeFor(arabicFile)) }],
+        ['link', { rel: 'alternate', hreflang: 'x-default', href: absolute(routeFor(englishFile)) }],
         ['meta', { property: 'og:locale:alternate', content: language === 'ar' ? 'en_US' : 'ar_AR' }],
       )
     }
@@ -168,14 +172,28 @@ export const seo: Pick<UserConfig, 'transformPageData' | 'transformHead' | 'site
         })),
       }))
     } else {
+      const breadcrumbs = [
+        { '@type': 'ListItem', position: 1, name: language === 'ar' ? 'الرئيسية' : 'Home', item: absolute(language === 'ar' ? 'ar/' : '') },
+      ]
+      if (key.startsWith('guide/') && key !== 'guide/direction-store') {
+        breadcrumbs.push({
+          '@type': 'ListItem',
+          position: 2,
+          name: language === 'ar' ? 'الدليل' : 'Guide',
+          item: absolute(language === 'ar' ? 'ar/guide/direction-store' : 'guide/direction-store'),
+        })
+      }
+      breadcrumbs.push({
+        '@type': 'ListItem',
+        position: breadcrumbs.length + 1,
+        name: title,
+        item: canonical,
+      })
       head.push(jsonLd({
         '@context': 'https://schema.org',
         '@type': 'BreadcrumbList',
         '@id': `${canonical}#breadcrumbs`,
-        itemListElement: [
-          { '@type': 'ListItem', position: 1, name: language === 'ar' ? 'الرئيسية' : 'Home', item: absolute(language === 'ar' ? 'ar/' : '') },
-          { '@type': 'ListItem', position: 2, name: title, item: canonical },
-        ],
+        itemListElement: breadcrumbs,
       }))
     }
     pageData.frontmatter.head = [...(pageData.frontmatter.head || []), ...head]
@@ -189,17 +207,37 @@ export const seo: Pick<UserConfig, 'transformPageData' | 'transformHead' | 'site
   },
   sitemap: {
     hostname: siteUrl,
-    transformItems: items => items.filter(item => !/^404(?:\.html)?$/.test(item.url)).map(item => ({
-      ...item,
-      url: absolute(item.url),
-      links: item.links?.filter(link => link.lang === 'en' || link.lang === 'ar').map(link => ({ ...link, url: absolute(link.url) })),
-    })),
+    transformItems: items => items.filter(item => !/^404(?:\.html)?$/.test(item.url)).map((item) => {
+      const links = item.links?.filter(link => link.lang === 'en' || link.lang === 'ar').map(link => ({ ...link, url: absolute(link.url) }))
+      const enLink = links?.find(link => link.lang === 'en')
+      return {
+        ...item,
+        url: absolute(item.url),
+        links: links && enLink ? [...links, { lang: 'x-default', url: enLink.url }] : links,
+      }
+    }),
   },
   async buildEnd({ outDir }) {
     for (const name of ['robots.txt', 'llms.txt', 'llms-full.txt']) {
       const file = resolve(outDir, name)
       const content = await readFile(file, 'utf8')
       await writeFile(file, content.replaceAll(defaultSiteUrl, siteUrl))
+    }
+    const chunksDir = resolve(outDir, 'assets/chunks')
+    if (existsSync(chunksDir)) {
+      const landingChunk = (await readdir(chunksDir)).find(name => /^LandingPage\..+\.js$/.test(name))
+      if (landingChunk) {
+        const tag = `<link rel="modulepreload" href="${siteBase}assets/chunks/${landingChunk}">`
+        for (const relHtml of ['index.html', 'ar/index.html']) {
+          const htmlPath = resolve(outDir, relHtml)
+          if (existsSync(htmlPath)) {
+            const html = await readFile(htmlPath, 'utf8')
+            if (!html.includes(tag)) {
+              await writeFile(htmlPath, html.replace(/(<link rel="modulepreload"[^>]+>)/, `$1\n    ${tag}`))
+            }
+          }
+        }
+      }
     }
   },
 }

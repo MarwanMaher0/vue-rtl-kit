@@ -1,0 +1,20 @@
+{
+  "name": "vue-rtl-kit-example-nuxt",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "nuxt dev",
+    "build": "nuxt build",
+    "preview": "nuxt preview",
+    "postinstall": "nuxt prepare"
+  },
+  "dependencies": {
+    "nuxt": "~3.17.0",
+    "vue": "^3.5.13",
+    "vue-router": "^4.5.1",
+    "vue-rtl-kit": "file:../.."
+  },
+  "engines": {
+    "node": ">=20.19.0"
+  }
+}
