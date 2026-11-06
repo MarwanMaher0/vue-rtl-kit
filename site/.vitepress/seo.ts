@@ -90,18 +90,21 @@ function jsonLd(value: Record<string, unknown>): HeadConfig {
   return ['script', { type: 'application/ld+json' }, JSON.stringify(value).replace(/</g, '\\u003c')]
 }
 
-function socialHead(title: string, description: string, canonical: string, language: 'en' | 'ar', landing: boolean): HeadConfig[] {
+function socialHead(title: string, description: string, canonical: string | null, language: 'en' | 'ar', landing: boolean): HeadConfig[] {
   const image = absolute('og-image.png')
   const imageAlt = language === 'ar'
     ? 'vue-rtl-kit — أدوات RTL لتطبيقات Vue وNuxt'
     : 'vue-rtl-kit — RTL tools for Vue and Nuxt'
-  return [
-    ['link', { rel: 'canonical', href: canonical }],
+  const head: HeadConfig[] = []
+  if (canonical) head.push(['link', { rel: 'canonical', href: canonical }])
+  head.push(
     ['meta', { property: 'og:type', content: landing ? 'website' : 'article' }],
     ['meta', { property: 'og:site_name', content: 'vue-rtl-kit' }],
     ['meta', { property: 'og:title', content: title }],
     ['meta', { property: 'og:description', content: description }],
-    ['meta', { property: 'og:url', content: canonical }],
+  )
+  if (canonical) head.push(['meta', { property: 'og:url', content: canonical }])
+  head.push(
     ['meta', { property: 'og:locale', content: language === 'ar' ? 'ar_AR' : 'en_US' }],
     ['meta', { property: 'og:image', content: image }],
     ['meta', { property: 'og:image:width', content: '1200' }],
@@ -113,7 +116,8 @@ function socialHead(title: string, description: string, canonical: string, langu
     ['meta', { name: 'twitter:description', content: description }],
     ['meta', { name: 'twitter:image', content: image }],
     ['meta', { name: 'twitter:image:alt', content: imageAlt }],
-  ]
+  )
+  return head
 }
 
 export const seo: Pick<UserConfig, 'transformPageData' | 'transformHead' | 'sitemap' | 'buildEnd'> = {
@@ -202,7 +206,7 @@ export const seo: Pick<UserConfig, 'transformPageData' | 'transformHead' | 'site
     if (page !== '404.md') return
     return [
       ['meta', { name: 'robots', content: 'noindex, follow' }],
-      ...socialHead(title, description, absolute('404'), 'en', false),
+      ...socialHead(title, description, null, 'en', false),
     ]
   },
   sitemap: {
