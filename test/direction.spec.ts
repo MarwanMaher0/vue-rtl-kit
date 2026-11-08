@@ -508,9 +508,12 @@ describe('hard cases: runtime switching, nesting, hydration, and unmount cleanup
     expect(await renderToString(SecondApp)).toBe('<div>ltr</div>')
   })
 
-  it('does not throw when composables are called outside component setup', () => {
+  it('works outside component setup without Vue inject() warnings', () => {
     const warnings: string[] = []
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation((msg: unknown) => {
+      warnings.push(String(msg))
+    })
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation((msg: unknown) => {
       warnings.push(String(msg))
     })
 
@@ -519,11 +522,35 @@ describe('hard cases: runtime switching, nesting, hydration, and unmount cleanup
     const fmt = useFormat()
 
     expect(dir.dir.value).toBe('ltr')
+    expect(dir.locale.value).toBe('en')
     expect(logical.startSide.value).toBe('left')
+    expect(fmt.value.dir).toBe('ltr')
     expect(fmt.value.formatNumber(42)).toBe('42')
+
+    dir.setDirection('rtl')
+    expect(dir.dir.value).toBe('rtl')
+    expect(fmt.value.dir).toBe('rtl')
+    expect(useDirection()).toBe(dir)
+
     expect(() => useRtl()).toThrow(/useRtl\(\) needs the plugin/)
+    expect(warnings.filter(w => /inject\(\)/.test(w))).toEqual([])
     expect(warnings).toEqual([])
 
     warnSpy.mockRestore()
+    errorSpy.mockRestore()
+  })
+
+  it('does not leak a detached direction set outside setup into a later app render', async () => {
+    const outside = useDirection()
+    outside.setDirection('rtl')
+
+    const app = createSSRApp(defineComponent({
+      setup() {
+        const { dir } = useDirection()
+        return () => h('i', dir.value)
+      },
+    }))
+    expect(await renderToString(app)).toBe('<i>ltr</i>')
+    expect(outside.dir.value).toBe('rtl')
   })
 })

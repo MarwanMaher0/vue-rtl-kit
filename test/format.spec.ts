@@ -2,9 +2,12 @@ import { describe, expect, it, vi } from 'vitest'
 import { defineComponent, h, nextTick } from 'vue'
 import { mount } from '@vue/test-utils'
 import {
+  FORMATTER_CACHE_LIMIT,
   formatCurrency,
   formatDate,
   formatNumber,
+  formatterCacheStats,
+  resetFormatterCaches,
   transliterateDigits,
   withNumberingSystem,
 } from '../src/format'
@@ -228,5 +231,72 @@ describe('useFormat', () => {
       globalThis.window = originalWin
       warnSpy.mockRestore()
     }
+  })
+})
+
+describe('formatter caches', () => {
+  it('bounds the Intl.NumberFormat cache to a small fixed LRU and evicts the least recently used entry', () => {
+    resetFormatterCaches()
+    const ctor = vi.spyOn(Intl, 'NumberFormat')
+
+    formatNumber(1, { locale: 'en' })
+    formatNumber(2, { locale: 'en' })
+    expect(ctor).toHaveBeenCalledTimes(1)
+    expect(formatterCacheStats().number).toBe(1)
+
+    resetFormatterCaches()
+    ctor.mockClear()
+    const keys = Array.from({ length: FORMATTER_CACHE_LIMIT * 4 }, (_, i) => `en-u-nu-latn-x-k${i}`)
+    for (const locale of keys) formatNumber(1, { locale })
+    expect(formatterCacheStats().number).toBe(FORMATTER_CACHE_LIMIT)
+    expect(ctor).toHaveBeenCalledTimes(keys.length)
+
+    ctor.mockClear()
+    formatNumber(1, { locale: keys.at(-1)! })
+    expect(ctor).not.toHaveBeenCalled()
+
+    formatNumber(1, { locale: keys[0]! })
+    expect(ctor).toHaveBeenCalledTimes(1)
+    expect(formatterCacheStats().number).toBe(FORMATTER_CACHE_LIMIT)
+
+    ctor.mockClear()
+    formatNumber(1, { locale: keys[keys.length - FORMATTER_CACHE_LIMIT]! })
+    expect(ctor).toHaveBeenCalledTimes(1)
+
+    ctor.mockRestore()
+  })
+
+  it('bounds the Intl.DateTimeFormat cache the same way', () => {
+    resetFormatterCaches()
+    const ctor = vi.spyOn(Intl, 'DateTimeFormat')
+    const date = new Date(Date.UTC(2024, 4, 12))
+    const keys = Array.from({ length: FORMATTER_CACHE_LIMIT * 3 }, (_, i) => `en-u-ca-gregory-x-k${i}`)
+    for (const locale of keys) formatDate(date, { locale, timeZone: 'UTC' })
+    expect(formatterCacheStats().date).toBe(FORMATTER_CACHE_LIMIT)
+    expect(ctor).toHaveBeenCalledTimes(keys.length)
+
+    ctor.mockClear()
+    formatDate(date, { locale: keys.at(-1)!, timeZone: 'UTC' })
+    expect(ctor).not.toHaveBeenCalled()
+    formatDate(date, { locale: keys[0]!, timeZone: 'UTC' })
+    expect(ctor).toHaveBeenCalledTimes(1)
+    expect(formatterCacheStats().date).toBe(FORMATTER_CACHE_LIMIT)
+    ctor.mockRestore()
+  })
+
+  it('refreshes recency on hit so a hot formatter survives churn', () => {
+    resetFormatterCaches()
+    const ctor = vi.spyOn(Intl, 'NumberFormat')
+    const hot = 'en-x-hot'
+    formatNumber(1, { locale: hot })
+    for (let i = 0; i < FORMATTER_CACHE_LIMIT * 2; i++) {
+      formatNumber(1, { locale: `en-x-cold${i}` })
+      formatNumber(1, { locale: hot })
+    }
+    ctor.mockClear()
+    formatNumber(1, { locale: hot })
+    expect(ctor).not.toHaveBeenCalled()
+    expect(formatterCacheStats().number).toBe(FORMATTER_CACHE_LIMIT)
+    ctor.mockRestore()
   })
 })

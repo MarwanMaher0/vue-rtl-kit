@@ -41,8 +41,62 @@ export function withNumberingSystem(locale: string, numberingSystem?: NumberingS
     : `${locale}-u-nu-${numberingSystem}`
 }
 
-const numberFormatters = new Map<string, Intl.NumberFormat>()
-const dateFormatters = new Map<string, Intl.DateTimeFormat>()
+/**
+ * Upper bound on cached `Intl` formatters per kind. Formatter construction is
+ * the expensive part of `Intl`, so a small LRU keeps the hot paths fast without
+ * letting a long-running server or a locale-switching SPA grow the caches
+ * without limit.
+ */
+export const FORMATTER_CACHE_LIMIT = 32
+
+class LruCache<V> {
+  private readonly map = new Map<string, V>()
+
+  constructor(private readonly limit: number) {}
+
+  get size(): number {
+    return this.map.size
+  }
+
+  get(key: string): V | undefined {
+    const value = this.map.get(key)
+    if (value === undefined) return undefined
+    this.map.delete(key)
+    this.map.set(key, value)
+    return value
+  }
+
+  set(key: string, value: V): void {
+    if (this.map.has(key)) this.map.delete(key)
+    else if (this.map.size >= this.limit) {
+      const oldest = this.map.keys().next()
+      if (!oldest.done) this.map.delete(oldest.value)
+    }
+    this.map.set(key, value)
+  }
+
+  has(key: string): boolean {
+    return this.map.has(key)
+  }
+
+  clear(): void {
+    this.map.clear()
+  }
+}
+
+const numberFormatters = new LruCache<Intl.NumberFormat>(FORMATTER_CACHE_LIMIT)
+const dateFormatters = new LruCache<Intl.DateTimeFormat>(FORMATTER_CACHE_LIMIT)
+
+/** Inspect the formatter caches. Test helper; not part of the public contract. */
+export function formatterCacheStats(): { number: number, date: number, limit: number } {
+  return { number: numberFormatters.size, date: dateFormatters.size, limit: FORMATTER_CACHE_LIMIT }
+}
+
+/** Empty the formatter caches. Test helper; not part of the public contract. */
+export function resetFormatterCaches(): void {
+  numberFormatters.clear()
+  dateFormatters.clear()
+}
 
 function cacheKey(locale: string, options: object): string {
   return `${locale}|${JSON.stringify(options)}`

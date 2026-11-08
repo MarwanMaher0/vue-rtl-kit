@@ -98,8 +98,8 @@ CI enforces raw and gzipped size budgets for every published entry point via `np
 
 | Entry point | Artifact | Raw (current / budget) | Gzip (current / budget) |
 | --- | --- | --- | --- |
-| `vue-rtl-kit` (ESM) | `dist/vue-rtl-kit.js` | 21.93 kB / ≤ 25.00 kB | 7.31 kB / ≤ 8.50 kB |
-| `vue-rtl-kit` (CJS) | `dist/vue-rtl-kit.cjs` | 15.73 kB / ≤ 18.00 kB | 5.86 kB / ≤ 7.00 kB |
+| `vue-rtl-kit` (ESM) | `dist/vue-rtl-kit.js` | 22.47 kB / ≤ 25.00 kB | 7.47 kB / ≤ 8.50 kB |
+| `vue-rtl-kit` (CJS) | `dist/vue-rtl-kit.cjs` | 16.13 kB / ≤ 18.00 kB | 6.00 kB / ≤ 7.00 kB |
 | `vue-rtl-kit/nuxt` | `dist/nuxt/module.js` | 1.56 kB / ≤ 3.00 kB | 0.64 kB / ≤ 1.50 kB |
 | `vue-rtl-kit/nuxt` (runtime plugin) | `dist/nuxt/runtime/plugin.js` | 1.06 kB / ≤ 2.50 kB | 0.48 kB / ≤ 1.20 kB |
 | `vue-rtl-kit/styles.css` | `dist/styles.css` | 6.37 kB / ≤ 8.00 kB | 1.63 kB / ≤ 2.50 kB |
