@@ -85,11 +85,25 @@ toPhysicalStyle({ marginInlineStart: '8px' }, 'rtl')
 
 | Export | Signature | Description |
 | --- | --- | --- |
-| `directionOfLocale` | `(locale: string \| undefined \| null, fallback?: Direction) => Direction` | Resolve a BCP-47 language and script tag. |
+| `directionOfLocale` | `(locale: string \| undefined \| null, fallback?: Direction) => Direction` | Infer direction from a BCP-47 language tag; use fallback only for empty or invalid tags. |
 | `normaliseLocales` | `(locales: string[] \| LocaleMap \| undefined) => LocaleMap` | Normalize a locale list or map to an explicit map. |
-| `resolveDirection` | `(locale: string, locales: LocaleMap, fallback?: Direction) => Direction` | Resolve exact, language, then script-based direction. |
+| `resolveDirection` | `(locale: string, locales: LocaleMap, fallback?: Direction) => Direction` | Resolve an exact-tag map override, then a language override, then built-in inference. |
 | `oppositeDirection` | `(dir: Direction) => Direction` | Return the opposite direction. |
-| `RTL_LANGUAGES` | `ReadonlySet<string>` | Language subtags written right-to-left. |
+| `RTL_LANGUAGES` | `ReadonlySet<string>` | Language subtags whose default direction is right-to-left. |
+
+Built-in inference gives an explicit script in the language portion precedence over the language's default direction. Only scripts before the first singleton (a one-character subtag such as `u` or `x`) count. Extensions such as `-u-` and private-use subtags after `-x-` do not supply scripts. Explicit locale-map overrides take precedence over this inference, including explicit scripts.
+
+| Locale input | Built-in direction | Rule |
+| --- | --- | --- |
+| `az-Arab`, `ha-Arab`, `ku-Arab` | `rtl` | An explicit RTL script wins. |
+| `ar-Latn`, `ku-Latn` | `ltr` | An explicit non-RTL script wins. |
+| `ar-u-nu-latn`, `he-x-abcd` | `rtl` | Extension and private-use subtags do not override the language's default. |
+| `ha`, `ku` | `ltr` | Hausa and Kurdish default to Latin script. |
+| `pnb`, `mzn`, `lrc`, `glk`, `bal`, `sdh` | `rtl` | These languages have RTL defaults. |
+| `fr`, `qaa` | `ltr` | Well-formed non-RTL or unrecognized languages return `ltr`, even with an `rtl` fallback. |
+| `''`, `null`, `undefined`, `en--US` | `fallback` | Empty or invalid tags use the fallback, which defaults to `ltr`. |
+
+Unpinned stores infer direction even for locales absent from their map. An unpinned `RtlProvider` with `locale="fr"` likewise resolves to `ltr` inside an RTL parent unless a map override applies. Locale changes do not change a pinned direction. See [createRtl](/guide/create-rtl#locale-direction-rules) for store behavior.
 
 ```ts
 import { directionOfLocale, oppositeDirection, resolveDirection } from 'vue-rtl-kit'

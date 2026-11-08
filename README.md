@@ -98,8 +98,8 @@ CI enforces raw and gzipped size budgets for every published entry point via `np
 
 | Entry point | Artifact | Raw (current / budget) | Gzip (current / budget) |
 | --- | --- | --- | --- |
-| `vue-rtl-kit` (ESM) | `dist/vue-rtl-kit.js` | 22.47 kB / ≤ 25.00 kB | 7.47 kB / ≤ 8.50 kB |
-| `vue-rtl-kit` (CJS) | `dist/vue-rtl-kit.cjs` | 16.13 kB / ≤ 18.00 kB | 6.00 kB / ≤ 7.00 kB |
+| `vue-rtl-kit` (ESM) | `dist/vue-rtl-kit.js` | 23.16 kB / ≤ 25.00 kB | 7.76 kB / ≤ 8.50 kB |
+| `vue-rtl-kit` (CJS) | `dist/vue-rtl-kit.cjs` | 16.71 kB / ≤ 18.00 kB | 6.29 kB / ≤ 7.00 kB |
 | `vue-rtl-kit/nuxt` | `dist/nuxt/module.js` | 1.56 kB / ≤ 3.00 kB | 0.64 kB / ≤ 1.50 kB |
 | `vue-rtl-kit/nuxt` (runtime plugin) | `dist/nuxt/runtime/plugin.js` | 1.06 kB / ≤ 2.50 kB | 0.48 kB / ≤ 1.20 kB |
 | `vue-rtl-kit/styles.css` | `dist/styles.css` | 6.37 kB / ≤ 8.00 kB | 1.63 kB / ≤ 2.50 kB |
@@ -276,9 +276,26 @@ you did not format yourself.
 
 ### Locale helpers
 
-`directionOfLocale(tag, fallback?)` resolves a BCP-47 tag to a direction. The script subtag wins
-when present, so `az-Arab` is RTL and `ku-Latn` is LTR. Also exported: `resolveDirection`,
-`normaliseLocales`, `oppositeDirection`, `RTL_LANGUAGES`.
+`directionOfLocale(tag, fallback?)` resolves a BCP-47 tag to a direction. An explicit script
+subtag in the language portion, before any singleton such as `-u-` or `-x-`, wins over the
+language default. Extension and private-use subtags do not change direction.
+
+| Locale tags | Direction | Reason |
+| --- | --- | --- |
+| `ar-u-nu-latn`, `he-x-abcd` | `rtl` | Numbering-system extensions and private-use text are not scripts. |
+| `ha`, `ku` | `ltr` | Hausa and Kurdish default to Latin in CLDR. |
+| `ha-Arab`, `ku-Arab`, `az-Arab` | `rtl` | An explicit Arabic script overrides the language default. |
+| `ar-Latn`, `ku-Latn` | `ltr` | An explicit Latin script overrides the language default. |
+| `pnb`, `mzn`, `lrc`, `glk`, `bal`, `sdh` | `rtl` | These languages default to RTL scripts. |
+| `fr` or another well-formed non-RTL language | `ltr` | The fallback is used only for empty or invalid tags. |
+
+`resolveDirection` checks an explicit locale map first (exact tag, then language), then applies
+these rules. For an unpinned store starting in Arabic, `setLocale('fr')` changes direction to
+`ltr` even when `fr` is not in `locales`. Likewise, `<RtlProvider locale="fr">` infers `ltr`
+inside an RTL parent unless its direction is explicitly set. Explicit map overrides and pinned
+directions remain authoritative.
+
+Also exported: `normaliseLocales`, `oppositeDirection`, `RTL_LANGUAGES`.
 
 ---
 

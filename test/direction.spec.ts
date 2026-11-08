@@ -8,7 +8,7 @@ import { resetDetachedDirection, useDirection, useRtl } from '../src/composables
 import { useFormat } from '../src/composables/useFormat'
 import { useLogicalStyles } from '../src/composables/useLogicalStyles'
 import { vRtl } from '../src/directives/vRtl'
-import { directionOfLocale, oppositeDirection, resolveDirection } from '../src/locale'
+import { directionOfLocale, normaliseLocales, oppositeDirection, resolveDirection } from '../src/locale'
 
 describe('createRtl', () => {
   beforeEach(() => {
@@ -145,6 +145,130 @@ describe('useDirection', () => {
 })
 
 describe('locale helpers', () => {
+  const localeCases = [
+    ['ar-u-nu-latn', 'rtl'],
+    ['he-x-abcd', 'rtl'],
+    ['ar-EG-u-nu-latn', 'rtl'],
+    ['ar-x-latn', 'rtl'],
+    ['ar-a-foo-latn', 'rtl'],
+    ['fr-u-attr-arab', 'ltr'],
+    ['fr-x-arab', 'ltr'],
+    ['ar-Latn-u-nu-arab', 'ltr'],
+    ['en-Arab-x-latn', 'rtl'],
+    ['ha', 'ltr'],
+    ['ku', 'ltr'],
+    ['ha-Arab', 'rtl'],
+    ['ku-Arab', 'rtl'],
+    ['ku-Latn', 'ltr'],
+    ['ha_Latn_NG', 'ltr'],
+    ['pnb', 'rtl'],
+    ['mzn', 'rtl'],
+    ['lrc', 'rtl'],
+    ['glk', 'rtl'],
+    ['bal', 'rtl'],
+    ['sdh', 'rtl'],
+    ['pnb-Latn', 'ltr'],
+    ['fr', 'ltr'],
+    ['fr-FR', 'ltr'],
+    ['qaa', 'ltr'],
+    ['arab', 'ltr'],
+    ['de-1996', 'ltr'],
+    ['ar-aao-Arab-EG', 'rtl'],
+    ['uz-AF-u-nu-latn', 'rtl'],
+    ['uz-Latn-AF', 'ltr'],
+    ['AR_arab_EG_U_NU_LATN', 'rtl'],
+    ['x-arab', 'ltr'],
+    ['i-klingon', 'ltr'],
+    ['en-GB-oed', 'ltr'],
+    ['sgn-BE-FR', 'ltr'],
+  ] as const
+
+  it.each(localeCases)('detects %s as %s regardless of fallback', (locale, direction) => {
+    for (const fallback of ['ltr', 'rtl'] as const) {
+      expect(directionOfLocale(locale, fallback)).toBe(direction)
+      expect(resolveDirection(locale, {}, fallback)).toBe(direction)
+    }
+    expect(normaliseLocales([locale])).toEqual({ [locale]: direction })
+  })
+
+  it.each(localeCases)('setLocale(%s) derives %s for an unlisted locale after Arabic', (locale, direction) => {
+    const rtl = createRtl({ locales: {}, defaultLocale: 'ar', syncDocument: false })
+    try {
+      expect(rtl.dir.value).toBe('rtl')
+      rtl.setLocale(locale)
+      expect(rtl.htmlAttrs()).toEqual({ dir: direction, lang: locale })
+      rtl.setLocale('ar')
+      expect(rtl.dir.value).toBe('rtl')
+    }
+    finally {
+      rtl.dispose()
+    }
+  })
+
+  it.each(localeCases)('RtlProvider locale %s derives %s inside an RTL parent', async (locale, direction) => {
+    const rtl = createRtl({ locales: {}, defaultLocale: 'ar', syncDocument: false })
+    const Probe = defineComponent({
+      setup() {
+        const scope = useDirection()
+        return () => h('i', `${scope.dir.value}:${scope.locale.value}`)
+      },
+    })
+    const wrapper = mount(RtlProvider, {
+      props: { locale },
+      slots: { default: () => h(Probe) },
+      global: { plugins: [rtl] },
+    })
+    try {
+      expect(wrapper.attributes('dir')).toBe(direction)
+      expect(wrapper.attributes('lang')).toBe(locale)
+      expect(wrapper.text()).toBe(`${direction}:${locale}`)
+      await wrapper.setProps({ locale: 'ar' })
+      expect(wrapper.attributes('dir')).toBe('rtl')
+      await wrapper.setProps({ locale })
+      expect(wrapper.attributes('dir')).toBe(direction)
+      expect(wrapper.text()).toBe(`${direction}:${locale}`)
+      expect(rtl.htmlAttrs()).toEqual({ dir: 'rtl', lang: 'ar' })
+    }
+    finally {
+      wrapper.unmount()
+      rtl.dispose()
+    }
+  })
+
+  it.each([
+    undefined,
+    null,
+    '',
+    '   ',
+    'a',
+    '12',
+    'en--US',
+    'ar-1234abcde',
+    'ar-u',
+    'he-x',
+    'ar-EG-Latn',
+    'fr-Latn-Abcd',
+    'en-u-nu-latn-u-ca-gregory',
+    'sl-rozaj-rozaj',
+  ])('uses the fallback only for an empty or invalid tag: %s', (locale) => {
+    expect(directionOfLocale(locale, 'rtl')).toBe('rtl')
+    expect(directionOfLocale(locale, 'ltr')).toBe('ltr')
+  })
+
+  it('retains explicit locale map overrides and pinned direction', () => {
+    expect(resolveDirection('ku-Arab', { ku: 'ltr' }, 'rtl')).toBe('ltr')
+    expect(resolveDirection('fr', { fr: 'rtl' })).toBe('rtl')
+    expect(resolveDirection('ar-Latn', { ar: 'rtl', 'ar-Latn': 'ltr' })).toBe('ltr')
+    const rtl = createRtl({ defaultLocale: 'ar', dir: 'rtl', syncDocument: false })
+    try {
+      rtl.setLocale('fr')
+      expect(rtl.htmlAttrs()).toEqual({ dir: 'rtl', lang: 'fr' })
+    }
+    finally {
+      rtl.dispose()
+    }
+  })
+
   it('maps language subtags to directions', () => {
     expect(directionOfLocale('ar-EG')).toBe('rtl')
     expect(directionOfLocale('he')).toBe('rtl')
