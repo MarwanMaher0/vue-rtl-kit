@@ -125,12 +125,20 @@ export const BidiText = defineComponent({
         return h(props.as, attrs, isolateRuns(source, baseDir))
       }
 
-      const runs = splitBidiRuns(source, baseDir)
-      return h(
-        props.as,
-        attrs,
-        runs.map(run => (run.isolated ? h('bdi', { dir: run.dir }, run.text) : run.text)),
-      )
+      // Adjacent plain runs are merged into one string: the server renderer
+      // emits them as a single text node, and Vue < 3.5 hydration does not
+      // reconcile one DOM text node against several text vnodes.
+      const nodes: (string | VNode)[] = []
+      for (const run of splitBidiRuns(source, baseDir)) {
+        if (run.isolated) {
+          nodes.push(h('bdi', { dir: run.dir }, run.text))
+          continue
+        }
+        const last = nodes.length - 1
+        if (typeof nodes[last] === 'string') nodes[last] += run.text
+        else nodes.push(run.text)
+      }
+      return h(props.as, attrs, nodes)
     }
   },
 })

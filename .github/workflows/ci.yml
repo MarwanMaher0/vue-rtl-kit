@@ -36,8 +36,8 @@ jobs:
       - name: Type-check
         run: npm run typecheck
 
-      - name: Unit tests
-        run: npx vitest run --exclude test/nuxt.spec.ts
+      - name: Unit tests (with coverage thresholds)
+        run: npx vitest run --coverage --exclude test/nuxt.spec.ts
 
       - name: Build library
         run: npm run build
@@ -50,6 +50,116 @@ jobs:
 
       - name: Build playground
         run: npx vite build -c playground/vite.config.ts
+
+  vue-compat:
+    # package.json allows vue ^3.3.0; the default job only sees the Vue that
+    # package-lock pins. Vue < 3.5 has no `app.onUnmount`, so this also covers
+    # the unmount fallback in src/core.ts. @vue/test-utils >= 2.4.6 itself needs
+    # Vue 3.5, hence the 2.4.5 pin. Type-checking stays on the pinned Vue.
+    name: Vue ${{ matrix.vue }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        vue: ['3.3', '3.4']
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Install Vue ${{ matrix.vue }}
+        run: >
+          npm install --no-save --no-audit --no-fund
+          vue@${{ matrix.vue }}
+          @vue/server-renderer@${{ matrix.vue }}
+          @vue/compiler-sfc@${{ matrix.vue }}
+          @vue/test-utils@2.4.5
+
+      - name: Verify resolved versions
+        run: |
+          node -e "
+            const v = p => JSON.parse(require('fs').readFileSync('node_modules/' + p + '/package.json', 'utf8')).version
+            console.log('vue', v('vue'), '| @vue/server-renderer', v('@vue/server-renderer'), '| @vue/test-utils', v('@vue/test-utils'))
+            if (!v('vue').startsWith('${{ matrix.vue }}.')) process.exit(1)
+            if (v('@vue/server-renderer') !== v('vue')) process.exit(1)
+          "
+
+      - name: Unit tests
+        run: npx vitest run --exclude test/nuxt.spec.ts
+
+  nuxt4:
+    # @nuxt/kit peer range is ^3 || ^4; the default job only exercises Nuxt 3.
+    # Nuxt 4 needs a current Node 22; --legacy-peer-deps only resolves the
+    # optional jsdom peer of @nuxt/test-utils 4 (we stay on vitest 2 / jsdom 25).
+    name: Nuxt 4
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Install Nuxt 4
+        run: >
+          npm install --no-save --no-audit --no-fund --legacy-peer-deps
+          nuxt@4 @nuxt/kit@4 @nuxt/schema@4 @nuxt/test-utils@4
+
+      - name: Verify resolved versions
+        run: |
+          node -e "
+            const v = p => JSON.parse(require('fs').readFileSync('node_modules/' + p + '/package.json', 'utf8')).version
+            console.log('nuxt', v('nuxt'), '| @nuxt/kit', v('@nuxt/kit'), '| @nuxt/test-utils', v('@nuxt/test-utils'))
+            if (!v('nuxt').startsWith('4.') || !v('@nuxt/kit').startsWith('4.')) process.exit(1)
+          "
+
+      - name: Build library
+        run: npm run build
+
+      - name: Nuxt SSR test (test/fixtures/basic + cookie fixture)
+        run: npx vitest run test/nuxt.spec.ts
+
+  node18:
+    # engines.node is >=18, but vite.config.ts uses import.meta.dirname (Node
+    # 20.11+), so the package is built on Node 20 and then consumed on Node 18
+    # through both the ESM and the CJS entry.
+    name: Node 18 (consume dist)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Build library on Node 20
+        run: npm run build
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 18
+
+      - name: Import dist through ESM and CJS on Node 18
+        run: |
+          node --version
+          node test/dist-smoke.mjs
 
   examples:
     name: Example / ${{ matrix.example }}

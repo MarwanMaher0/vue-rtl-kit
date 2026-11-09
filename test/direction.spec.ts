@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { createSSRApp, defineComponent, h, nextTick, ref, withDirectives } from 'vue'
+import { createApp, createSSRApp, defineComponent, h, nextTick, ref, withDirectives } from 'vue'
 import { renderToString } from 'vue/server-renderer'
 import { mount } from '@vue/test-utils'
 import { BidiText, RtlProvider } from '../src/components'
@@ -565,6 +565,41 @@ describe('hard cases: runtime switching, nesting, hydration, and unmount cleanup
     await nextTick()
     expect(document.documentElement.getAttribute('dir')).toBe('ltr')
     expect(document.documentElement.classList.contains('rtl')).toBe(false)
+  })
+
+  it('stops document sync on unmount without app.onUnmount (Vue < 3.5)', async () => {
+    const rtl = createRtl({ locales: { en: 'ltr', ar: 'rtl' }, defaultLocale: 'en', htmlClass: true })
+    const app = createApp(defineComponent({ setup: () => () => h('div') }))
+    // Vue 3.3 and 3.4 have no `app.onUnmount`; emulate that so the fallback
+    // (wrapping `app.unmount`) is exercised whatever Vue version runs the suite.
+    delete (app as { onUnmount?: unknown }).onUnmount
+    expect('onUnmount' in app).toBe(false)
+
+    const host = document.createElement('div')
+    document.body.appendChild(host)
+    app.use(rtl).mount(host)
+    await nextTick()
+    expect(document.documentElement.getAttribute('dir')).toBe('ltr')
+    expect(document.documentElement.classList.contains('ltr')).toBe(true)
+
+    app.unmount()
+    host.remove()
+
+    rtl.setDirection('rtl')
+    await nextTick()
+    expect(document.documentElement.getAttribute('dir')).toBe('ltr')
+    expect(document.documentElement.classList.contains('rtl')).toBe(false)
+
+    const again = createApp(defineComponent({ setup: () => () => h('div') }))
+    delete (again as { onUnmount?: unknown }).onUnmount
+    const host2 = document.createElement('div')
+    document.body.appendChild(host2)
+    again.use(rtl).mount(host2)
+    await nextTick()
+    expect(document.documentElement.getAttribute('dir')).toBe('rtl')
+    again.unmount()
+    host2.remove()
+    rtl.dispose()
   })
 
   it('keeps syncing documentElement when one of two apps sharing a store unmounts, and stops after the last app unmounts', async () => {

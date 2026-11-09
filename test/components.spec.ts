@@ -22,6 +22,20 @@ describe('BidiText', () => {
     expect(wrapper.text()).toBe(ARABIC_WITH_DATE)
   })
 
+  it('merges adjacent plain runs into one text node so SSR output hydrates on Vue 3.3', () => {
+    const wrapper = mount(BidiText, {
+      props: { text: 'آخر تحديث 12-05-2024 عبر api.example.com/v1', dir: 'rtl' },
+    })
+    const nodes = Array.from(wrapper.element.childNodes) as ChildNode[]
+    const kinds = nodes.map(node => (node.nodeType === Node.TEXT_NODE ? 'text' : (node as Element).tagName.toLowerCase()))
+    expect(kinds).toEqual(['text', 'bdi', 'text', 'bdi'])
+    expect(nodes[0]!.textContent).toBe('آخر تحديث ')
+    expect(nodes[2]!.textContent).toBe(' عبر ')
+    for (let i = 1; i < kinds.length; i++) {
+      expect(kinds[i] === 'text' && kinds[i - 1] === 'text').toBe(false)
+    }
+  })
+
   it('emits Unicode isolates with the chars strategy', () => {
     const wrapper = mount(BidiText, {
       props: { text: ARABIC_WITH_DATE, dir: 'rtl', strategy: 'chars' },

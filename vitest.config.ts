@@ -13,6 +13,12 @@ export default defineConfig({
       provider: 'v8',
       include: ['src/**/*.ts'],
       exclude: ['src/nuxt/**'],
+      thresholds: {
+        statements: 96.99,
+        branches: 94.06,
+        functions: 96.7,
+        lines: 96.99,
+      },
     },
   },
 })
