@@ -47,6 +47,14 @@ const LETTER = /[\p{L}\p{Nl}]/u
 
 type CharClass = 'L' | 'R' | 'EN' | 'AN' | 'N'
 
+const OPEN_BRACKETS: Record<string, string> = {
+  '(': ')',
+  '[': ']',
+  '{': '}',
+}
+
+const CLOSE_BRACKETS = new Set([')', ']', '}'])
+
 /** Classify a single character into its (simplified) bidi class. */
 export function classifyChar(char: string): CharClass {
   if (EN_DIGIT.test(char)) return 'EN'
@@ -117,6 +125,60 @@ interface Segment {
   hasNeutral: boolean
 }
 
+function resolvePairedBrackets(
+  chars: string[],
+  classes: CharClass[],
+  baseDir: Direction,
+): Map<number, 'L' | 'R'> {
+  const stack: { index: number, close: string }[] = []
+  const pairs: { open: number, close: number }[] = []
+
+  for (let i = 0; i < chars.length; i++) {
+    const ch = chars[i]!
+    const close = OPEN_BRACKETS[ch]
+    if (close) {
+      stack.push({ index: i, close })
+    }
+    else if (CLOSE_BRACKETS.has(ch)) {
+      for (let s = stack.length - 1; s >= 0; s--) {
+        if (stack[s]!.close === ch) {
+          pairs.push({ open: stack[s]!.index, close: i })
+          stack.length = s
+          break
+        }
+      }
+    }
+  }
+
+  const resolved = new Map<number, 'L' | 'R'>()
+  const baseClass: 'L' | 'R' = baseDir === 'rtl' ? 'R' : 'L'
+
+  for (const { open, close } of pairs) {
+    let sawL = false
+    let sawR = false
+    for (let i = open + 1; i < close; i++) {
+      const cls = classes[i]!
+      if (cls === 'L' || cls === 'EN') sawL = true
+      else if (cls === 'R' || cls === 'AN') sawR = true
+      if (sawL && sawR) break
+    }
+    if (sawL && sawR) {
+      resolved.set(open, baseClass)
+      resolved.set(close, baseClass)
+    }
+    else if (sawL) {
+      resolved.set(open, 'L')
+      resolved.set(close, 'L')
+    }
+    else if (sawR) {
+      resolved.set(open, 'R')
+      resolved.set(close, 'R')
+    }
+  }
+
+  return resolved
+}
+
 /**
  * Split text into directional runs against a base direction, marking the ones
  * that need isolating.
@@ -125,6 +187,12 @@ interface Segment {
  * that run (so `John Smith` is one isolate, not two). Neutrals on a boundary
  * between opposite directions stay in the base direction, so trailing commas
  * and full stops are never dragged inside an isolate.
+ *
+ * Paired brackets (`()`, `[]`, `{}`) are matched via the Unicode Bidirectional
+ * Algorithm paired-bracket rule (N0): a matched pair enclosing only opposite-
+ * direction characters is absorbed into that run so both brackets stay inside
+ * the isolate, while a pair enclosing both directions resolves to `baseDir` so
+ * both brackets stay outside. Unmatched brackets remain neutral.
  *
  * A run of digits with no internal punctuation is left alone: a bare `2024`
  * renders identically in either direction. `12-05-2024` is not - it has an
@@ -136,6 +204,10 @@ interface Segment {
 export function splitBidiRuns(text: string, baseDir: Direction = 'ltr'): BidiRun[] {
   if (!text) return []
 
+  const chars = Array.from(text)
+  const classes = chars.map(classifyChar)
+  const bracketDirs = resolvePairedBrackets(chars, classes, baseDir)
+
   const segments: Segment[] = []
   let current: Segment | null = null
   let pendingNeutral = ''
@@ -145,16 +217,19 @@ export function splitBidiRuns(text: string, baseDir: Direction = 'ltr'): BidiRun
     current = null
   }
 
-  for (const char of text) {
-    const cls = classifyChar(char)
-    if (cls === 'N') {
+  for (let i = 0; i < chars.length; i++) {
+    const char = chars[i]!
+    const cls = classes[i]!
+    const bracketDir = bracketDirs.get(i)
+    if (cls === 'N' && bracketDir === undefined) {
       pendingNeutral += char
       continue
     }
     // EN digits run left-to-right even inside an RTL paragraph; AN digits
     // travel with the RTL text around them.
-    const dir: 'L' | 'R' = cls === 'L' || cls === 'EN' ? 'L' : 'R'
-    const strong = cls === 'L' || cls === 'R'
+    const dir: 'L' | 'R' = bracketDir ?? (cls === 'L' || cls === 'EN' ? 'L' : 'R')
+    const strong = bracketDir === undefined && (cls === 'L' || cls === 'R')
+    const isBracket = bracketDir !== undefined
 
     if (current && current.dir === dir) {
       if (pendingNeutral) {
@@ -164,6 +239,7 @@ export function splitBidiRuns(text: string, baseDir: Direction = 'ltr'): BidiRun
       }
       current.text += char
       current.hasStrong ||= strong
+      if (isBracket) current.hasNeutral = true
     }
     else {
       flush()
@@ -171,7 +247,7 @@ export function splitBidiRuns(text: string, baseDir: Direction = 'ltr'): BidiRun
         segments.push({ text: pendingNeutral, dir: null, hasStrong: false, hasNeutral: true })
         pendingNeutral = ''
       }
-      current = { text: char, dir, hasStrong: strong, hasNeutral: false }
+      current = { text: char, dir, hasStrong: strong, hasNeutral: isBracket }
     }
   }
 
