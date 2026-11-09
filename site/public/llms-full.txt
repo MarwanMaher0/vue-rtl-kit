@@ -315,6 +315,7 @@ Build-time controls:
 - autoImports: true by default, importing useDirection, useRtl, useLogicalStyles, and useFormat.
 - components: true by default, registering RtlProvider and BidiText through Nuxt.
 - css: true by default, injecting vue-rtl-kit/styles.css.
+- cookie: false by default; a cookie name or { name, maxAge, sameSite } enables persisting the visitor's locale/direction so SSR restores it for returning users. Unknown cookie values are ignored.
 
 Important limitations: the runtime plugin is always installed. registerGlobals is inherited in the options type but is not passed to runtime config, so changing it does not disable runtime global registration. components: false disables only Nuxt's build-time component registration; the runtime plugin still globally registers BidiText, RtlProvider, and v-rtl. autoImports: false requires explicit composable imports. css: false requires an explicit stylesheet import if you still want the utilities.
 

@@ -30,6 +30,24 @@ The configuration key is `rtl`. `ModuleOptions` extends `RtlOptions` with Nuxt-s
 | `autoImports` | `boolean` | `true` | Auto-import `useDirection`, `useRtl`, `useLogicalStyles`, and `useFormat`. |
 | `components` | `boolean` | `true` | Register `<RtlProvider>` and `<BidiText>` through Nuxt. |
 | `css` | `boolean` | `true` | Inject `vue-rtl-kit/styles.css`. |
+| `cookie` | `false \| string \| { name?, maxAge?, sameSite? }` | `false` | Persist the visitor's locale/direction in a cookie (see below). |
+
+## Cookie persistence
+
+Persistence is opt-in and off by default. Set `rtl.cookie` to a cookie name, or to `{ name, maxAge, sameSite }` (`maxAge` in seconds; defaults are the name `'vue-rtl-kit'`, one year, and `'lax'`):
+
+```ts
+export default defineNuxtConfig({
+  modules: ['vue-rtl-kit/nuxt'],
+  rtl: {
+    locales: { en: 'ltr', ar: 'rtl' },
+    defaultLocale: 'en',
+    cookie: { name: 'site-rtl', maxAge: 60 * 60 * 24 * 365, sameSite: 'lax' },
+  },
+})
+```
+
+With it enabled, the runtime plugin reads the cookie during SSR and seeds the store with the saved locale/direction, so a returning Arabic user gets `<html dir="rtl" lang="ar">` in the server HTML with no direction flash. It writes the current `locale:dir` pair back whenever `setLocale`, `setDirection`, or `toggleDirection` is called. A saved bare locale (`ar`) or direction (`rtl`) is also accepted; values that are not a configured locale, a direction, or such a pair are ignored and the configured defaults apply. With `cookie: false` no cookie is read or written.
 
 `dir`, `syncDocument`, `htmlClass`, and `numberingSystem` are omitted from runtime configuration when not provided, allowing `createRtl()` to apply its own resolution rules.
 

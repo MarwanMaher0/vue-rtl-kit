@@ -24,6 +24,18 @@ export interface ModuleOptions extends RtlOptions {
   components?: boolean
   /** Inject `vue-rtl-kit/styles.css`. Default `true`. */
   css?: boolean
+  /**
+   * Persist the visitor's locale/direction in a cookie so returning users get
+   * the right `dir`/`lang` in server-rendered HTML. `false` (default) disables
+   * persistence; a string is the cookie name; an object overrides the cookie
+   * `name`, `maxAge` (seconds) and `sameSite`. Defaults are name
+   * `'vue-rtl-kit'`, `maxAge` one year and `sameSite: 'lax'`.
+   */
+  cookie?: false | string | {
+    name?: string
+    maxAge?: number
+    sameSite?: boolean | 'lax' | 'strict' | 'none'
+  }
 }
 
 export default defineNuxtModule<ModuleOptions>({
@@ -42,12 +54,21 @@ export default defineNuxtModule<ModuleOptions>({
   setup(options: ModuleOptions, nuxt: Nuxt) {
     const { resolve } = createResolver(import.meta.url)
 
+    const cookie = options.cookie
+      ? {
+          name: (typeof options.cookie === 'string' ? options.cookie : options.cookie.name) || 'vue-rtl-kit',
+          maxAge: (typeof options.cookie === 'object' ? options.cookie.maxAge : undefined) ?? 60 * 60 * 24 * 365,
+          sameSite: (typeof options.cookie === 'object' ? options.cookie.sameSite : undefined) ?? 'lax',
+        }
+      : undefined
+
     // Exposed to the runtime plugin through `useRuntimeConfig().public.rtl`.
     // Undefined option values are omitted: Nuxt would serialise them as "".
     nuxt.options.runtimeConfig.public.rtl = {
       locales: options.locales,
       defaultLocale: options.defaultLocale,
       ...(options.dir !== undefined && { dir: options.dir }),
+      ...(cookie && { cookie }),
       ...(options.syncDocument !== undefined && { syncDocument: options.syncDocument }),
       ...(options.htmlClass !== undefined && { htmlClass: options.htmlClass }),
       ...(options.numberingSystem !== undefined && { numberingSystem: options.numberingSystem }),

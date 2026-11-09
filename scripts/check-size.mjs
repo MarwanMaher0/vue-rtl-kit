@@ -32,7 +32,7 @@ const BUDGETS = [
     entry: 'vue-rtl-kit/nuxt (runtime plugin)',
     exportKey: './nuxt',
     file: 'dist/nuxt/runtime/plugin.js',
-    maxRawBytes: Math.round(2.5 * 1024),
+    maxRawBytes: 3 * 1024,
     maxGzipBytes: Math.round(1.2 * 1024),
   },
   {

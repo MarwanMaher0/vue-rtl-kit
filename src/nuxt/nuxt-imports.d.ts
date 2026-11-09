@@ -12,10 +12,19 @@ declare module '#app' {
 
   export function defineNuxtPlugin<T>(plugin: T): T
   export function useRuntimeConfig(): { public: { rtl?: RtlOptions } }
+  export interface CookieOptions {
+    maxAge?: number
+    sameSite?: boolean | 'lax' | 'strict' | 'none'
+    path?: string
+  }
+  export function useCookie<T = string>(
+    name: string,
+    options?: CookieOptions,
+  ): { value: T | null | undefined }
 }
 
 declare module '#imports' {
-  export { defineNuxtPlugin, useRuntimeConfig } from '#app'
+  export { defineNuxtPlugin, useCookie, useRuntimeConfig } from '#app'
   export function useHead(
     input:
       | { htmlAttrs: { dir?: string, lang?: string, class?: string } }

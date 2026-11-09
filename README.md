@@ -100,8 +100,8 @@ CI enforces raw and gzipped size budgets for every published entry point via `np
 | --- | --- | --- | --- |
 | `vue-rtl-kit` (ESM) | `dist/vue-rtl-kit.js` | 26.20 kB / ≤ 26.75 kB | 8.74 kB / ≤ 8.85 kB |
 | `vue-rtl-kit` (CJS) | `dist/vue-rtl-kit.cjs` | 18.85 kB / ≤ 19.50 kB | 7.16 kB / ≤ 7.40 kB |
-| `vue-rtl-kit/nuxt` | `dist/nuxt/module.js` | 1.56 kB / ≤ 3.00 kB | 0.64 kB / ≤ 1.50 kB |
-| `vue-rtl-kit/nuxt` (runtime plugin) | `dist/nuxt/runtime/plugin.js` | 1.06 kB / ≤ 2.50 kB | 0.48 kB / ≤ 1.20 kB |
+| `vue-rtl-kit/nuxt` | `dist/nuxt/module.js` | 1.95 kB / ≤ 3.00 kB | 0.75 kB / ≤ 1.50 kB |
+| `vue-rtl-kit/nuxt` (runtime plugin) | `dist/nuxt/runtime/plugin.js` | 2.77 kB / ≤ 3.00 kB | 1.02 kB / ≤ 1.20 kB |
 | `vue-rtl-kit/styles.css` | `dist/styles.css` | 6.37 kB / ≤ 8.00 kB | 1.63 kB / ≤ 2.50 kB |
 
 ## Quickstart — Vue
@@ -171,6 +171,17 @@ direction and there is no flash of LTR before hydration.
 | `autoImports` | `true` | auto-import `useDirection`, `useRtl`, `useLogicalStyles`, `useFormat` |
 | `components` | `true` | register `<RtlProvider>` and `<BidiText>` globally |
 | `css` | `true` | inject `vue-rtl-kit/styles.css` |
+| `cookie` | `false` | persist locale/direction — see below |
+
+Persistence is opt-in. Set `rtl.cookie` to a cookie name, or to
+`{ name, maxAge, sameSite }` (`maxAge` in seconds; defaults are the name
+`'vue-rtl-kit'`, one year, and `'lax'`), and the runtime plugin restores the
+visitor's saved locale/direction from that cookie during SSR — a returning
+Arabic user gets `<html dir="rtl" lang="ar">` on the first paint — then writes
+the choice back whenever `setLocale`, `setDirection` or `toggleDirection` is
+called. Cookie values that are not a configured locale, `'rtl'`/`'ltr'`, or a
+`locale:dir` pair previously written by the plugin are ignored, and with
+`cookie: false` (the default) no cookie is read or written at all.
 
 ---
 

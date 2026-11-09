@@ -30,6 +30,24 @@ export default defineNuxtConfig({
 | `autoImports` | `boolean` | `true` | استيراد `useDirection` و`useRtl` و`useLogicalStyles` و`useFormat` تلقائيًا. |
 | `components` | `boolean` | `true` | تسجيل `<RtlProvider>` و`<BidiText>` عبر Nuxt. |
 | `css` | `boolean` | `true` | حقن `vue-rtl-kit/styles.css`. |
+| `cookie` | `false \| string \| { name?, maxAge?, sameSite? }` | `false` | حفظ لغة الزائر واتجاهه في ملف تعريف ارتباط (انظر أدناه). |
+
+## الحفظ في ملف تعريف الارتباط
+
+الحفظ اختياري ومعطّل افتراضيًا. اضبط `rtl.cookie` على اسم ملف تعريف الارتباط، أو على `{ name, maxAge, sameSite }` (`maxAge` بالثواني؛ والقيم الافتراضية هي الاسم `'vue-rtl-kit'` وسنة واحدة و`'lax'`):
+
+```ts
+export default defineNuxtConfig({
+  modules: ['vue-rtl-kit/nuxt'],
+  rtl: {
+    locales: { en: 'ltr', ar: 'rtl' },
+    defaultLocale: 'en',
+    cookie: { name: 'site-rtl', maxAge: 60 * 60 * 24 * 365, sameSite: 'lax' },
+  },
+})
+```
+
+عند تفعيله، تقرأ إضافة التشغيل ملف تعريف الارتباط أثناء SSR وتبذر المخزن باللغة والاتجاه المحفوظين، فيحصل الزائر العربي العائد على `<html dir="rtl" lang="ar">` في HTML الخادم دون وميض اتجاه. وتكتب زوج `locale:dir` الحالي مجددًا كلما استُدعي `setLocale` أو `setDirection` أو `toggleDirection`. تُقبل أيضًا لغة محفوظة بمفردها (`ar`) أو اتجاه بمفرده (`rtl`)؛ أما القيم التي ليست لغة مُعدّة أو اتجاهًا أو زوجًا كهذا فتُتجاهل وتُطبق القيم الافتراضية المُعدّة. ومع `cookie: false` لا يُقرأ أي ملف تعريف ارتباط ولا يُكتب.
 
 تُحذف `dir` و`syncDocument` و`htmlClass` و`numberingSystem` من إعدادات التشغيل عند عدم توفيرها، مما يسمح لـ `createRtl()` بتطبيق قواعد الحسم الخاصة به.
 
