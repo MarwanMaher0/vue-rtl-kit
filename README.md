@@ -98,8 +98,8 @@ CI enforces raw and gzipped size budgets for every published entry point via `np
 
 | Entry point | Artifact | Raw (current / budget) | Gzip (current / budget) |
 | --- | --- | --- | --- |
-| `vue-rtl-kit` (ESM) | `dist/vue-rtl-kit.js` | 24.21 kB / ≤ 25.00 kB | 8.13 kB / ≤ 8.50 kB |
-| `vue-rtl-kit` (CJS) | `dist/vue-rtl-kit.cjs` | 17.40 kB / ≤ 18.00 kB | 6.62 kB / ≤ 7.00 kB |
+| `vue-rtl-kit` (ESM) | `dist/vue-rtl-kit.js` | 26.20 kB / ≤ 26.75 kB | 8.74 kB / ≤ 8.85 kB |
+| `vue-rtl-kit` (CJS) | `dist/vue-rtl-kit.cjs` | 18.85 kB / ≤ 19.50 kB | 7.16 kB / ≤ 7.40 kB |
 | `vue-rtl-kit/nuxt` | `dist/nuxt/module.js` | 1.56 kB / ≤ 3.00 kB | 0.64 kB / ≤ 1.50 kB |
 | `vue-rtl-kit/nuxt` (runtime plugin) | `dist/nuxt/runtime/plugin.js` | 1.06 kB / ≤ 2.50 kB | 0.48 kB / ≤ 1.20 kB |
 | `vue-rtl-kit/styles.css` | `dist/styles.css` | 6.37 kB / ≤ 8.00 kB | 1.63 kB / ≤ 2.50 kB |
@@ -244,18 +244,27 @@ import { toLogicalStyle, toPhysicalStyle } from 'vue-rtl-kit'
 toLogicalStyle({ marginLeft: '8px', textAlign: 'left' })
 // { marginInlineStart: '8px', textAlign: 'start' }
 
+toLogicalStyle({ margin: '1px 2px 3px 4px' }, { shorthands: true })
+// { marginBlockStart: '1px', marginInlineEnd: '2px', marginBlockEnd: '3px', marginInlineStart: '4px' }
+
 toPhysicalStyle({ marginInlineStart: '8px' }, 'rtl')
 // { marginRight: '8px' }   ← for <canvas>, SVG, PDF and email templates
+
+toPhysicalStyle({ marginInline: '1px 2px' }, 'rtl')
+// { marginRight: '1px', marginLeft: '2px' }
 ```
 
 | Function | Description |
 | --- | --- |
-| `toLogicalStyle(style, options?)` | Physical → logical. `{ size: true }` also maps `width`/`height`; `{ values: false }` leaves `textAlign: 'left'` alone. |
-| `toPhysicalStyle(style, dir)` | Logical → physical, for environments without logical-property support. |
+| `toLogicalStyle(style, options?)` | Physical → logical. `{ size: true }` also maps `width`/`height`; `{ values: false }` leaves `textAlign: 'left'` alone; `{ shorthands: true }` expands 1–4-value (or numeric) `margin`/`padding`/`inset`/`borderWidth`/`borderStyle`/`borderColor`/`borderRadius` into logical longhands. |
+| `toPhysicalStyle(style, dir)` | Logical → physical, for environments without logical-property support. Expands 1–2-value logical shorthands (`marginInline`, `paddingInline`, `insetInline`, `insetBlock`, `borderInlineWidth/Style/Color`, `scrollMarginInline`, `scrollPaddingInline`, …) to the physical sides for `dir`. |
 | `logicalProperty(name, options?)` | One property name, either casing preserved. |
 
 Covers margin, padding, border (width/style/colour), corner radii, inset, scroll margin/padding,
 overflow, and the directional *values* of `text-align`, `float`, `clear`, `caption-side`, `resize`.
+Values containing `var()`, `calc()`, `!important` or a top-level `border-radius` `/` slash are
+left untouched rather than mis-parsed. Other functions such as `rgb()`, `hsl()` and `env()` are
+kept intact and split only at top-level whitespace.
 
 ### Formatting
 

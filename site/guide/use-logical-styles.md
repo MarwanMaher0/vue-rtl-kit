@@ -50,6 +50,31 @@ console.log(dragTransform.value, physicalStyle.value)
 </template>
 ```
 
-`toLogical()` accepts `size` (default `false`) to include width/height mappings and `values` (default `true`) to convert values such as `textAlign: 'left'` to `'start'`.
+`toLogical()` accepts `size` (default `false`) to include width/height mappings, `values` (default `true`) to convert values such as `textAlign: 'left'` to `'start'`, and `shorthands` (default `false`) to expand physical shorthands into logical longhands.
 
 `toPhysical()` follows the current scope and is useful for canvas, SVG, PDF, email, and legacy rendering paths that cannot consume logical CSS.
+
+## Shorthands
+
+Physical box shorthands are ambiguous without a direction: `margin: '1px 2px 3px 4px'` means top, right, bottom, left, which maps to different logical properties depending on how you think about the inline axis. Pass `{ shorthands: true }` to `toLogical()` to expand them:
+
+```ts
+toLogical({ margin: '1px 2px 3px 4px' }, { shorthands: true })
+// {
+//   marginBlockStart: '1px',
+//   marginInlineEnd: '2px',
+//   marginBlockEnd: '3px',
+//   marginInlineStart: '4px',
+// }
+```
+
+The option handles `margin`, `padding`, `inset`, `borderWidth`, `borderStyle`, `borderColor`, and `borderRadius`, accepting the usual 1–4-value CSS box forms as well as numeric values. Values containing `var()`, `calc()`, `!important`, or a top-level `border-radius: … / …` slash are left untouched. Other functions such as `rgb()`, `hsl()`, and `env()` are preserved, with values split only at top-level whitespace.
+
+In the other direction, `toPhysical()` expands the 1- and 2-value logical shorthands to the physical sides for the given direction:
+
+```ts
+toPhysical({ marginInline: '1px 2px', insetBlock: '3px 4px' }, 'rtl')
+// { marginRight: '1px', marginLeft: '2px', top: '3px', bottom: '4px' }
+```
+
+Supported logical shorthands are `marginInline`, `marginBlock`, `paddingInline`, `paddingBlock`, `insetInline`, `insetBlock`, `borderInlineWidth`/`Style`/`Color`, `borderBlockWidth`/`Style`/`Color`, `scrollMarginInline`/`Block`, and `scrollPaddingInline`/`Block`. Kebab-case keys keep their casing in the output.

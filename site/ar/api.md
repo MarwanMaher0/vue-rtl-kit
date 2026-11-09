@@ -293,6 +293,7 @@ interface BidiRun {
 interface LogicalStyleOptions {
   size?: boolean
   values?: boolean
+  shorthands?: boolean
 }
 
 type StyleObject = Record<string, string | number | undefined>

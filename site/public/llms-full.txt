@@ -334,7 +334,7 @@ Core types:
 - DirectionState omits isRoot; DirectionStateOptions requires dir and locale and optionally locales and pinned.
 - BoundFormatters exposes locale, dir, formatNumber, formatCurrency, and formatDate.
 - BidiRun contains text, dir, isolated, and hasStrong.
-- LogicalStyleOptions contains optional size and values flags.
+- LogicalStyleOptions contains optional size, values, and shorthands flags.
 - RtlDirectiveValue accepts DirectionOrAuto, boolean, undefined, null, or { dir?, isolate? }.
 
 The reference includes signatures for every export and complete type shapes:

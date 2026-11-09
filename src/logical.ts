@@ -99,11 +99,99 @@ function toCamel(name: string): string {
   return name.replace(/-([a-z])/g, (_, char: string) => char.toUpperCase())
 }
 
+/**
+ * Split a shorthand value into at most `max` top-level parts.
+ * Whitespace inside functions such as `rgb(1, 2, 3)` is preserved. Returns
+ * `null` for values we cannot split safely: `var()`, `calc()`, `!important`,
+ * unbalanced parentheses, or a top-level `border-radius` slash.
+ */
+function shorthandValues(value: string, max: number): string[] | null {
+  if (/(?:var|calc)\(/i.test(value) || /!\s*important/i.test(value)) return null
+  const parts: string[] = []
+  let depth = 0
+  let start = 0
+  for (let i = 0; i < value.length; i++) {
+    const char = value[i]!
+    if (char === '(') depth++
+    else if (char === ')') depth--
+    else if (depth === 0 && char === '/') return null
+    else if (depth === 0 && /\s/.test(char)) {
+      if (i > start) parts.push(value.slice(start, i))
+      start = i + 1
+    }
+  }
+  if (depth !== 0) return null
+  if (start < value.length) parts.push(value.slice(start))
+  return parts[0] && parts.length <= max ? parts : null
+}
+
+/** The two logical longhands behind a logical shorthand (`marginInline` …). */
+function logicalLonghands(camel: string): [string, string] | null {
+  if (/^(?:margin|padding|inset|scrollMargin|scrollPadding)(?:Inline|Block)$/.test(camel)) {
+    return [`${camel}Start`, `${camel}End`]
+  }
+  const border = /^border(Inline|Block)(Width|Style|Color)$/.exec(camel)
+  if (border) {
+    return [`border${border[1]}Start${border[2]}`, `border${border[1]}End${border[2]}`]
+  }
+  return null
+}
+
+/** The four logical longhands behind a physical box shorthand, in CSS order. */
+function physicalLonghands(camel: string): readonly string[] | null {
+  const box = /^(margin|padding|inset)$/.exec(camel)
+  if (box) {
+    const base = box[1]!
+    return [`${base}BlockStart`, `${base}InlineEnd`, `${base}BlockEnd`, `${base}InlineStart`]
+  }
+  const border = /^border(Width|Style|Color)$/.exec(camel)
+  if (border) {
+    const suffix = border[1]!
+    return [
+      `borderBlockStart${suffix}`,
+      `borderInlineEnd${suffix}`,
+      `borderBlockEnd${suffix}`,
+      `borderInlineStart${suffix}`,
+    ]
+  }
+  if (camel === 'borderRadius') {
+    return ['borderStartStartRadius', 'borderStartEndRadius', 'borderEndEndRadius', 'borderEndStartRadius']
+  }
+  return null
+}
+
+/**
+ * Resolve a single logical property name (camelCase) to its physical twin.
+ */
+function toPhysicalProperty(camel: string, rtl: boolean): string {
+  if (LOGICAL_TO_PHYSICAL_STATIC[camel]) return LOGICAL_TO_PHYSICAL_STATIC[camel]!
+  if (/Inline(Start|End)/.test(camel)) {
+    const side = camel.includes('Start') === !rtl ? 'Left' : 'Right'
+    return camel.replace(/Inline(Start|End)/, side).replace(/^inset(Left|Right)$/, m => m.slice(5).toLowerCase())
+  }
+  if (/Block(Start|End)/.test(camel)) {
+    const side = camel.includes('Start') ? 'Top' : 'Bottom'
+    return camel.replace(/Block(Start|End)/, side).replace(/^inset(Top|Bottom)$/, m => m.slice(5).toLowerCase())
+  }
+  if (camel === 'borderStartStartRadius') return rtl ? 'borderTopRightRadius' : 'borderTopLeftRadius'
+  if (camel === 'borderStartEndRadius') return rtl ? 'borderTopLeftRadius' : 'borderTopRightRadius'
+  if (camel === 'borderEndStartRadius') return rtl ? 'borderBottomRightRadius' : 'borderBottomLeftRadius'
+  if (camel === 'borderEndEndRadius') return rtl ? 'borderBottomLeftRadius' : 'borderBottomRightRadius'
+  return camel
+}
+
 export interface LogicalStyleOptions {
   /** Also map `width`/`height` to `inlineSize`/`blockSize`. Default `false`. */
   size?: boolean
   /** Map directional values such as `textAlign: 'left'`. Default `true`. */
   values?: boolean
+  /**
+   * Expand physical box shorthands (`margin`, `padding`, `inset`,
+   * `borderWidth`, `borderStyle`, `borderColor`, `borderRadius`) into logical
+   * longhands. Values containing `var()`, `calc()`, `!important` or a top-level
+   * `/` are left untouched. Default `false`.
+   */
+  shorthands?: boolean
 }
 
 /**
@@ -146,8 +234,27 @@ export function toLogicalStyle<T extends StyleObject>(style: T, options: Logical
   const out: StyleObject = {}
 
   for (const [key, value] of Object.entries(style)) {
+    const kebab = key.includes('-')
+    const camel = kebab ? toCamel(key) : key
+
+    if (options.shorthands) {
+      const longhands = physicalLonghands(camel)
+      const parts = typeof value === 'number'
+        ? [value]
+        : typeof value === 'string'
+          ? shorthandValues(value, 4)
+          : null
+      if (longhands && parts) {
+        const [a, b = a, c = a, d = b] = parts
+        const box = [a!, b!, c!, d!]
+        longhands.forEach((longhand, i) => {
+          out[kebab ? toKebab(longhand) : longhand] = box[i]
+        })
+        continue
+      }
+    }
+
     const property = logicalProperty(key, options)
-    const camel = key.includes('-') ? toCamel(key) : key
     const valueMap = mapValues ? VALUE_MAP[camel] : undefined
     out[property] = valueMap && typeof value === 'string' ? (valueMap[value] ?? value) : value
   }
@@ -172,24 +279,26 @@ export function toPhysicalStyle<T extends StyleObject>(style: T, dir: Direction)
   for (const [key, value] of Object.entries(style)) {
     const kebab = key.includes('-')
     const camel = kebab ? toCamel(key) : key
-    let property = camel
-    let next = value
 
-    if (LOGICAL_TO_PHYSICAL_STATIC[camel]) {
-      property = LOGICAL_TO_PHYSICAL_STATIC[camel]!
+    const longhands = logicalLonghands(camel)
+    let values: (string | number | undefined)[] | null = null
+    if (longhands) {
+      if (typeof value === 'number') values = [value, value]
+      else if (typeof value === 'string') {
+        const parts = shorthandValues(value, 2)
+        if (parts) values = [parts[0], parts[1] ?? parts[0]]
+      }
     }
-    else if (/Inline(Start|End)/.test(camel)) {
-      const side = camel.includes('Start') === !rtl ? 'Left' : 'Right'
-      property = camel.replace(/Inline(Start|End)/, side).replace(/^inset(Left|Right)$/, m => m.slice(5).toLowerCase())
+    if (longhands && values) {
+      longhands.forEach((longhand, i) => {
+        const property = toPhysicalProperty(longhand, rtl)
+        out[kebab ? toKebab(property) : property] = values![i]
+      })
+      continue
     }
-    else if (/Block(Start|End)/.test(camel)) {
-      const side = camel.includes('Start') ? 'Top' : 'Bottom'
-      property = camel.replace(/Block(Start|End)/, side).replace(/^inset(Top|Bottom)$/, m => m.slice(5).toLowerCase())
-    }
-    else if (camel === 'borderStartStartRadius') property = rtl ? 'borderTopRightRadius' : 'borderTopLeftRadius'
-    else if (camel === 'borderStartEndRadius') property = rtl ? 'borderTopLeftRadius' : 'borderTopRightRadius'
-    else if (camel === 'borderEndStartRadius') property = rtl ? 'borderBottomRightRadius' : 'borderBottomLeftRadius'
-    else if (camel === 'borderEndEndRadius') property = rtl ? 'borderBottomLeftRadius' : 'borderBottomRightRadius'
+
+    const property = toPhysicalProperty(camel, rtl)
+    let next = value
 
     if (typeof value === 'string' && (camel === 'textAlign' || camel === 'float' || camel === 'clear' || camel === 'captionSide')) {
       const physical = value === 'start' || value === 'inline-start'
