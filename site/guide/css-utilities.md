@@ -76,10 +76,12 @@ Use `bidi-plaintext` for code and paths whose own direction is authoritative. Fo
 
 | Class | Effect |
 | --- | --- |
-| `ltr-only` | Hidden inside an RTL ancestor |
-| `rtl-only` | Hidden inside an LTR ancestor |
-| `rtl-flip` | Mirrors the element with `scaleX(-1)` in RTL |
+| `ltr-only` | Hidden when the element's own direction is RTL (`:dir(rtl)`) |
+| `rtl-only` | Hidden when the element's own direction is LTR (`:dir(ltr)`) |
+| `rtl-flip` | Mirrors the element with `scale: -1 1` when its own direction is RTL |
 | `rtl-noflip` | Cancels an ancestor `rtl-flip` for a nested element |
-| `rtl-scroll-x` | Sets `direction: rtl` for logical horizontal scroll shadows or gradients |
+| `rtl-scroll-x` | Sets `direction: rtl` when the element's own direction is RTL |
+
+These utilities key off the element's own direction with `:dir(rtl)` / `:dir(ltr)`, not any ancestor `dir` attribute. Inside a `dir="ltr"` island on an RTL page — an `<RtlProvider dir="ltr">` scope or a `v-rtl:ltr` subtree, say — `.ltr-only` shows, `.rtl-only` hides, and `.rtl-flip` does not mirror; an RTL island inside that behaves as RTL again. `.rtl-flip` uses the independent `scale` property, so it composes with a `transform` the element already carries instead of overwriting it.
 
 Only mirror directional glyphs such as arrows and chevrons. Do not mirror logos, clocks, checkmarks, or media controls.

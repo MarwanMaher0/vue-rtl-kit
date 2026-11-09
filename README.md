@@ -102,7 +102,7 @@ CI enforces raw and gzipped size budgets for every published entry point via `np
 | `vue-rtl-kit` (CJS) | `dist/vue-rtl-kit.cjs` | 18.94 kB / ≤ 19.50 kB | 7.19 kB / ≤ 7.40 kB |
 | `vue-rtl-kit/nuxt` | `dist/nuxt/module.js` | 1.95 kB / ≤ 3.00 kB | 0.75 kB / ≤ 1.50 kB |
 | `vue-rtl-kit/nuxt` (runtime plugin) | `dist/nuxt/runtime/plugin.js` | 2.77 kB / ≤ 3.00 kB | 1.02 kB / ≤ 1.20 kB |
-| `vue-rtl-kit/styles.css` | `dist/styles.css` | 6.37 kB / ≤ 8.00 kB | 1.63 kB / ≤ 2.50 kB |
+| `vue-rtl-kit/styles.css` | `dist/styles.css` | 6.80 kB / ≤ 8.00 kB | 1.83 kB / ≤ 2.50 kB |
 
 `sideEffects` lists only `*.css`, so a bundler can drop unused helpers. `npm run check:treeshake` bundles each import on its own against `dist/vue-rtl-kit.js` (Rollup, `vue` external, esbuild minify). Vue stays external, so Rollup would otherwise keep a bare `import 'vue'`; the check declares `vue` side-effect free with `treeshake.moduleSideEffects` (the same assumption a consumer bundler makes for an unused Vue import) and fails if `chunk.imports` still includes `vue`. It also fails if `{ isolateRuns }`, `{ toLogicalStyle }` or `{ directionOfLocale }` exceeds 2 kB gzip, or if `{ formatNumber }` still contains component or directive code:
 
@@ -352,6 +352,13 @@ resolves it from the nearest `dir` attribute and a runtime direction flip needs 
 | `.rtl-flip` / `.rtl-noflip` | mirror a directional glyph in RTL (arrows, chevrons — never logos or checkmarks) |
 | `.rtl-only` / `.ltr-only` | show in one direction only |
 | `.nums-latn` | lining figures, isolated |
+
+The direction utilities (`.rtl-only`, `.ltr-only`, `.rtl-flip`, `.rtl-noflip`, `.rtl-scroll-x`) key
+off the element's own direction with `:dir(rtl)` / `:dir(ltr)`, not any ancestor `[dir]`, so inside a
+`dir="ltr"` island on an RTL page (an `<RtlProvider dir="ltr">` scope, a `v-rtl:ltr` subtree) they
+behave as LTR — and the reverse inside an RTL island. `.rtl-flip` mirrors with the independent
+`scale: -1 1` property, so it composes with a `transform` the element already carries instead of
+overwriting it; `.rtl-noflip` inside a flipped subtree cancels the mirror for a nested element.
 
 One component, one set of markup, both directions — no `[dir="rtl"]` override block anywhere in it:
 

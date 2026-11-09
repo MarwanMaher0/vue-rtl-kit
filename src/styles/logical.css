@@ -151,25 +151,31 @@
 /* ------------------------------------------------------------- direction */
 
 /* Show an element in one direction only - swapped icons, direction-specific
-   copy, a hint that only makes sense in one script. */
-[dir='ltr'] .rtl-only,
-[dir='rtl'] .ltr-only {
+   copy, a hint that only makes sense in one script. `:dir()` matches the
+   element's own direction (the nearest `dir` in force for that element), so
+   an element inside a `dir="ltr"` island on an RTL page is decided by the
+   island, not by any distant RTL ancestor - and vice versa. */
+.rtl-only:dir(ltr),
+.ltr-only:dir(rtl) {
   display: none !important;
 }
 
 /* Mirror a directional glyph (arrows, chevrons, send icons, undo/redo) in RTL.
-   Never apply it to logos, clock faces, checkmarks or media controls. */
-[dir='rtl'] .rtl-flip {
-  transform: scaleX(-1);
+   Never apply it to logos, clock faces, checkmarks or media controls. Uses the
+   independent `scale` property, so it composes with - instead of overwriting -
+   a `transform` the element already carries (a rotation, say). */
+.rtl-flip:dir(rtl) {
+  scale: -1 1;
 }
 
-/* Opt a subtree out of an ancestor's `rtl-flip`. */
-[dir='rtl'] .rtl-flip .rtl-noflip {
-  transform: scaleX(-1);
+/* Opt a subtree out of an ancestor's `rtl-flip`: a second mirror cancels the
+   first, leaving the nested element facing its original way. */
+.rtl-flip:dir(rtl) .rtl-noflip {
+  scale: -1 1;
 }
 
 /* Logical scroll shadows / gradients need the direction too. */
-[dir='rtl'] .rtl-scroll-x {
+.rtl-scroll-x:dir(rtl) {
   direction: rtl;
 }
 

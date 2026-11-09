@@ -294,14 +294,15 @@ const next = () => emit('next')
 </template>
 ```
 
-`.rtl-flip` applies `transform: scaleX(-1)` under `[dir="rtl"]` only, and `.rtl-noflip` inside a
-flipped subtree cancels it again for a child that must stay put. Like any transform, it has no
-effect on a plain inline `<span>` — put it on the `<svg>`/`<img>`, or give the wrapper
-`display: inline-block`. Nothing else in the stylesheet
-touches your icons — the classification in the table above is still yours to make. One limit of
-that `[dir="rtl"]` ancestor selector: it also matches inside a nested `dir="ltr"` subtree, so a
-flipped icon inside an LTR island on an RTL page needs an explicit reset there, or a rule keyed off
-`:dir(rtl)`, which matches the element's own direction.
+`.rtl-flip` applies `scale: -1 1` only when the element's own direction is RTL
+(`.rtl-flip:dir(rtl)`), and `.rtl-noflip` inside a flipped subtree cancels it again for a child
+that must stay put. Because the mirror uses the independent `scale` property, it composes with a
+`transform` the element already carries instead of overwriting it. `:dir()` matches the
+element's own direction — the direction in force from the nearest `dir` — so a flipped icon
+inside a nested `dir="ltr"` island on an RTL page is not mirrored, and one inside an RTL island
+inside that is. Like any transform, the mirror has no effect on a plain inline `<span>` — put it
+on the `<svg>`/`<img>`, or give the wrapper `display: inline-block`. Nothing else in the
+stylesheet touches your icons — the classification in the table above is still yours to make.
 
 ---
 
