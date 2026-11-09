@@ -98,11 +98,20 @@ CI enforces raw and gzipped size budgets for every published entry point via `np
 
 | Entry point | Artifact | Raw (current / budget) | Gzip (current / budget) |
 | --- | --- | --- | --- |
-| `vue-rtl-kit` (ESM) | `dist/vue-rtl-kit.js` | 26.20 kB / ≤ 26.75 kB | 8.74 kB / ≤ 8.85 kB |
-| `vue-rtl-kit` (CJS) | `dist/vue-rtl-kit.cjs` | 18.85 kB / ≤ 19.50 kB | 7.16 kB / ≤ 7.40 kB |
+| `vue-rtl-kit` (ESM) | `dist/vue-rtl-kit.js` | 26.44 kB / ≤ 26.75 kB | 8.78 kB / ≤ 8.85 kB |
+| `vue-rtl-kit` (CJS) | `dist/vue-rtl-kit.cjs` | 18.94 kB / ≤ 19.50 kB | 7.19 kB / ≤ 7.40 kB |
 | `vue-rtl-kit/nuxt` | `dist/nuxt/module.js` | 1.95 kB / ≤ 3.00 kB | 0.75 kB / ≤ 1.50 kB |
 | `vue-rtl-kit/nuxt` (runtime plugin) | `dist/nuxt/runtime/plugin.js` | 2.77 kB / ≤ 3.00 kB | 1.02 kB / ≤ 1.20 kB |
 | `vue-rtl-kit/styles.css` | `dist/styles.css` | 6.37 kB / ≤ 8.00 kB | 1.63 kB / ≤ 2.50 kB |
+
+`sideEffects` lists only `*.css`, so a bundler can drop unused helpers. `npm run check:treeshake` bundles each import on its own against `dist/vue-rtl-kit.js` (Rollup, `vue` external, esbuild minify). Vue stays external, so Rollup would otherwise keep a bare `import 'vue'`; the check declares `vue` side-effect free with `treeshake.moduleSideEffects` (the same assumption a consumer bundler makes for an unused Vue import) and fails if `chunk.imports` still includes `vue`. It also fails if `{ isolateRuns }`, `{ toLogicalStyle }` or `{ directionOfLocale }` exceeds 2 kB gzip, or if `{ formatNumber }` still contains component or directive code:
+
+| Import | Gzip (current / budget) | Must not include |
+| --- | --- | --- |
+| `{ isolateRuns }` | 1.03 kB / ≤ 2.00 kB | `vue` |
+| `{ toLogicalStyle }` | 1.21 kB / ≤ 2.00 kB | `vue` |
+| `{ directionOfLocale }` | 0.62 kB / ≤ 2.00 kB | `vue` |
+| `{ formatNumber }` | 0.54 kB | components, directives |
 
 ## Quickstart — Vue
 

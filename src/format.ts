@@ -84,8 +84,8 @@ class LruCache<V> {
   }
 }
 
-const numberFormatters = new LruCache<Intl.NumberFormat>(FORMATTER_CACHE_LIMIT)
-const dateFormatters = new LruCache<Intl.DateTimeFormat>(FORMATTER_CACHE_LIMIT)
+const numberFormatters = /*#__PURE__*/ new LruCache<Intl.NumberFormat>(FORMATTER_CACHE_LIMIT)
+const dateFormatters = /*#__PURE__*/ new LruCache<Intl.DateTimeFormat>(FORMATTER_CACHE_LIMIT)
 
 /** Inspect the formatter caches. Test helper; not part of the public contract. */
 export function formatterCacheStats(): { number: number, date: number, limit: number } {

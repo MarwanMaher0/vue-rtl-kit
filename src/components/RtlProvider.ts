@@ -28,7 +28,7 @@ import type { Direction, DirectionContext } from '../types'
  *   <button @click="toggleDirection">{{ isRtl ? 'LTR' : 'RTL' }}</button>
  * </RtlProvider>
  */
-export const RtlProvider = defineComponent({
+export const RtlProvider = /*#__PURE__*/ defineComponent({
   name: 'RtlProvider',
   props: {
     /** Direction for the subtree. Defaults to the direction of `locale`. */

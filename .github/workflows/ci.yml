@@ -45,6 +45,9 @@ jobs:
       - name: Bundle size budgets
         run: npm run check:size
 
+      - name: Tree-shaking
+        run: npm run check:treeshake
+
       - name: Nuxt SSR test
         run: npx vitest run test/nuxt.spec.ts
 

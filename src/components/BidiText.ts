@@ -69,7 +69,7 @@ function slotText(nodes: VNodeChild[] | undefined): string | null {
  * <!-- correct -->
  * <BidiText as="p" text="آخر تحديث 12-05-2024" />
  */
-export const BidiText = defineComponent({
+export const BidiText = /*#__PURE__*/ defineComponent({
   name: 'BidiText',
   props: {
     /** The text to render. Falls back to the default slot's text content. */
