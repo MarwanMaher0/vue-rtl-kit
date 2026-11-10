@@ -84,4 +84,6 @@ Use `bidi-plaintext` for code and paths whose own direction is authoritative. Fo
 
 These utilities key off the element's own direction with `:dir(rtl)` / `:dir(ltr)`, not any ancestor `dir` attribute. Inside a `dir="ltr"` island on an RTL page — an `<RtlProvider dir="ltr">` scope or a `v-rtl:ltr` subtree, say — `.ltr-only` shows, `.rtl-only` hides, and `.rtl-flip` does not mirror; an RTL island inside that behaves as RTL again. `.rtl-flip` uses the independent `scale` property, so it composes with a `transform` the element already carries instead of overwriting it.
 
+This behavior requires Chrome 120+, Firefox 72+, or Safari 16.4+ (`:dir()` and `scale`). Browsers without `:dir()` use the previous ancestor selectors and `transform: scaleX(-1)` inside `@supports not selector(:dir(rtl))`; this fallback needs an explicit `dir`, can match distant ancestors across direction islands, and overwrites an existing `transform`. With `:dir()`, `.rtl-only` also hides on pages without `dir`, since HTML defaults to LTR.
+
 Only mirror directional glyphs such as arrows and chevrons. Do not mirror logos, clocks, checkmarks, or media controls.

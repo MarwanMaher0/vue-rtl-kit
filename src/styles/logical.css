@@ -179,6 +179,25 @@
   direction: rtl;
 }
 
+@supports not selector(:dir(rtl)) {
+  [dir='ltr'] .rtl-only,
+  [dir='rtl'] .ltr-only {
+    display: none !important;
+  }
+
+  [dir='rtl'] .rtl-flip {
+    transform: scaleX(-1);
+  }
+
+  [dir='rtl'] .rtl-flip .rtl-noflip {
+    transform: scaleX(-1);
+  }
+
+  [dir='rtl'] .rtl-scroll-x {
+    direction: rtl;
+  }
+}
+
 /* Numbers that must stay Western even in an Arabic-Indic locale. */
 .nums-latn {
   font-feature-settings: 'lnum' 1;

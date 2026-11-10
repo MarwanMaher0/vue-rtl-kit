@@ -257,14 +257,17 @@ const next = () => emit('next')
 | breadcrumb separators that are chevrons | charts, maps, and anything depicting a real object |
 
 Characters that are already `Bidi_Mirrored` — `‹ ›`, `( )`, `« »` — are mirrored by the browser
-itself in RTL, so they must **not** get `.rtl-flip`: `scaleX(-1)` would flip them back to their LTR
+itself in RTL, so they must **not** get `.rtl-flip`: `scale: -1 1` would flip them back to their LTR
 shape. Only flip glyphs and SVGs that have no mirrored form of their own, such as `→`.
 
-Three practical notes. `transform` does not apply to a plain inline box, so a glyph in a `<span>`
-needs `display: inline-block` before it can flip; `<svg>` and `<img>` flip as they are. If an icon
-already carries a `transform` (rotation for an expand/collapse state, say), wrap it in an
-inline-block `<span>` and flip the wrapper so the two transforms do not overwrite each other. And a flipped icon that conveys meaning still needs an accessible name on the control itself
-— `aria-hidden="true"` on the glyph, a real label on the button.
+Three practical notes. Transforms do not apply to a plain inline box, so a glyph in a `<span>`
+needs `display: inline-block` before it can flip; `<svg>` and `<img>` flip as they are. For
+hand-written `transform: scaleX(-1)` rules, if an icon already carries a `transform` (rotation
+for an expand/collapse state, say), wrap it in an inline-block `<span>` and flip the wrapper so
+the two transforms do not overwrite each other. Modern `.rtl-flip` uses the independent `scale`
+property and needs no wrapper to preserve `transform`. And a flipped icon that conveys meaning
+still needs an accessible name on the control itself — `aria-hidden="true"` on the glyph, a real
+label on the button.
 
 ### Fix — vue-rtl-kit
 
@@ -303,6 +306,9 @@ inside a nested `dir="ltr"` island on an RTL page is not mirrored, and one insid
 inside that is. Like any transform, the mirror has no effect on a plain inline `<span>` — put it
 on the `<svg>`/`<img>`, or give the wrapper `display: inline-block`. Nothing else in the
 stylesheet touches your icons — the classification in the table above is still yours to make.
+Browsers without `:dir()` fall back to ancestor `[dir]` selectors and `transform: scaleX(-1)`,
+retaining their nested-island and transform-overwrite limitations; see
+[Browser support](../README.md#browser-support) for version floors.
 
 ---
 

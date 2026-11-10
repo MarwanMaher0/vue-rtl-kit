@@ -102,7 +102,7 @@ CI enforces raw and gzipped size budgets for every published entry point via `np
 | `vue-rtl-kit` (CJS) | `dist/vue-rtl-kit.cjs` | 18.94 kB / ≤ 19.50 kB | 7.19 kB / ≤ 7.40 kB |
 | `vue-rtl-kit/nuxt` | `dist/nuxt/module.js` | 1.95 kB / ≤ 3.00 kB | 0.75 kB / ≤ 1.50 kB |
 | `vue-rtl-kit/nuxt` (runtime plugin) | `dist/nuxt/runtime/plugin.js` | 2.77 kB / ≤ 3.00 kB | 1.02 kB / ≤ 1.20 kB |
-| `vue-rtl-kit/styles.css` | `dist/styles.css` | 6.80 kB / ≤ 8.00 kB | 1.83 kB / ≤ 2.50 kB |
+| `vue-rtl-kit/styles.css` | `dist/styles.css` | 7.10 kB / ≤ 8.00 kB | 1.91 kB / ≤ 2.50 kB |
 
 `sideEffects` lists only `*.css`, so a bundler can drop unused helpers. `npm run check:treeshake` bundles each import on its own against `dist/vue-rtl-kit.js` (Rollup, `vue` external, esbuild minify). Vue stays external, so Rollup would otherwise keep a bare `import 'vue'`; the check declares `vue` side-effect free with `treeshake.moduleSideEffects` (the same assumption a consumer bundler makes for an unused Vue import) and fails if `chunk.imports` still includes `vue`. It also fails if `{ isolateRuns }`, `{ toLogicalStyle }` or `{ directionOfLocale }` exceeds 2 kB gzip, or if `{ formatNumber }` still contains component or directive code:
 
@@ -330,9 +330,9 @@ Also exported: `normaliseLocales`, `oppositeDirection`, `RTL_LANGUAGES`.
 
 ## CSS utilities
 
-`import 'vue-rtl-kit/styles.css'` — plain CSS. No preprocessor, no PostCSS plugin, no build step,
-and no `[dir="rtl"]` override blocks: every rule is written in logical properties, so the browser
-resolves it from the nearest `dir` attribute and a runtime direction flip needs no stylesheet swap.
+`import 'vue-rtl-kit/styles.css'` — plain CSS. No preprocessor, no PostCSS plugin, no build step.
+Layout rules use logical properties, and modern direction utilities use `:dir()`, so the browser
+resolves the element's direction and a runtime direction flip needs no stylesheet swap.
 
 | Class | Property |
 | --- | --- |
@@ -359,6 +359,8 @@ off the element's own direction with `:dir(rtl)` / `:dir(ltr)`, not any ancestor
 behave as LTR — and the reverse inside an RTL island. `.rtl-flip` mirrors with the independent
 `scale: -1 1` property, so it composes with a `transform` the element already carries instead of
 overwriting it; `.rtl-noflip` inside a flipped subtree cancels the mirror for a nested element.
+Older browsers use an ancestor-selector fallback; see [Browser support](#browser-support) for
+version floors and fallback limitations.
 
 One component, one set of markup, both directions — no `[dir="rtl"]` override block anywhere in it:
 
@@ -394,7 +396,17 @@ Everything is native platform behaviour, no polyfills:
 | `<bdi>` and Unicode isolates | 16 | 10 | 6.1 |
 | CSS logical properties (margin/padding/inset/border) | 87 | 66 | 14.1 |
 | Flow-relative corner radii (`border-start-start-radius`) | 89 | 66 | 15 |
+| `:dir()` (own-direction utilities) | 120 | 49 | 16.4 |
+| Independent `scale` property | 104 | 72 | 14.1 |
 | `Intl` numbering systems (`-u-nu-`) | 24 | 29 | 10 |
+
+Own-direction utilities and transform-preserving mirroring require Chrome 120+, Firefox 72+,
+or Safari 16.4+ (both `:dir()` and `scale`). Browsers without `:dir()` use the previous ancestor
+`[dir]` selectors and `transform: scaleX(-1)` via `@supports not selector(:dir(rtl))`. This fallback
+keeps explicit-direction display and mirroring working, but retains the old limitations: nested
+direction islands can match distant ancestors, and mirroring overwrites an existing `transform`.
+On pages with no `dir` attribute, `.rtl-only` now hides in browsers with `:dir()` because HTML
+defaults to LTR; the legacy fallback still needs an explicit `dir`.
 
 `toPhysicalStyle()` is the escape hatch for anywhere logical properties do not reach — `<canvas>`,
 inline SVG, PDF renderers, email templates.
