@@ -34,11 +34,31 @@ export type DateFormatOptions = FormatOptionsBase & Intl.DateTimeFormatOptions
  * route and is what `Intl.NumberFormat` does internally anyway.
  */
 export function withNumberingSystem(locale: string, numberingSystem?: NumberingSystem): string {
-  if (!numberingSystem) return locale
-  if (/-u-.*nu-/.test(locale)) return locale
-  return locale.includes('-u-')
-    ? `${locale}-nu-${numberingSystem}`
-    : `${locale}-u-nu-${numberingSystem}`
+  const tag = locale.replace(/_/g, '-')
+  const base = tag.split(/-x-/i)[0]!
+  if (!numberingSystem || /-u-.*nu-/i.test(base)) return tag
+  return tag.replace(/(?=-x-)|$/i, `${/-u-/i.test(base) ? '-nu-' : '-u-nu-'}${numberingSystem}`)
+}
+
+function makeFormatter<F>(
+  locale: string,
+  numberingSystem: NumberingSystem | undefined,
+  options: Intl.NumberFormatOptions & Intl.DateTimeFormatOptions,
+  Formatter: new (
+    locale: string,
+    options: Intl.NumberFormatOptions & Intl.DateTimeFormatOptions,
+  ) => F,
+): F {
+  const base = locale.replace(/_/g, '-')
+  for (const candidate of [base, base.split('-')[0]!]) {
+    try {
+      return new Formatter(withNumberingSystem(candidate, numberingSystem), options)
+    }
+    catch {
+      continue
+    }
+  }
+  return new Formatter(withNumberingSystem('en', numberingSystem), options)
 }
 
 /**
@@ -125,7 +145,7 @@ export function formatNumber(value: number, options: NumberFormatOptions = {}): 
   const key = cacheKey(tag, intl)
   let formatter = numberFormatters.get(key)
   if (!formatter) {
-    formatter = new Intl.NumberFormat(tag, intl)
+    formatter = makeFormatter(locale, numberingSystem, intl, Intl.NumberFormat)
     numberFormatters.set(key, formatter)
   }
   return maybeIsolate(formatter.format(value), wrap)
@@ -164,15 +184,16 @@ export function formatDate(
   value: Date | number | string,
   options: DateFormatOptions = {},
 ): string {
+  const date = new Date(value as string | number)
+  if (Number.isNaN(date.getTime())) return ''
   const { locale = 'en', numberingSystem, wrap, intl } = split(options)
   const tag = withNumberingSystem(locale, numberingSystem)
   const key = cacheKey(tag, intl)
   let formatter = dateFormatters.get(key)
   if (!formatter) {
-    formatter = new Intl.DateTimeFormat(tag, intl)
+    formatter = makeFormatter(locale, numberingSystem, intl, Intl.DateTimeFormat)
     dateFormatters.set(key, formatter)
   }
-  const date = value instanceof Date ? value : new Date(value)
   return maybeIsolate(formatter.format(date), wrap)
 }
 

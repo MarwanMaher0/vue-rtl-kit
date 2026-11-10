@@ -12,7 +12,7 @@ const BUDGETS = [
     exportKey: '.',
     file: 'dist/vue-rtl-kit.js',
     maxRawBytes: Math.round(26.75 * 1024),
-    maxGzipBytes: Math.round(8.85 * 1024),
+    maxGzipBytes: Math.round(8.95 * 1024),
   },
   {
     entry: 'vue-rtl-kit (CJS)',

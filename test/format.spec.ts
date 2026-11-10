@@ -19,20 +19,19 @@ import { PDI } from '../src/bidi'
 const ARABIC_INDIC = /[٠-٩]/
 
 describe('withNumberingSystem', () => {
-  it('appends the -u-nu- extension', () => {
-    expect(withNumberingSystem('ar-EG', 'latn')).toBe('ar-EG-u-nu-latn')
-  })
-
-  it('extends an existing -u- section rather than duplicating it', () => {
-    expect(withNumberingSystem('ar-EG-u-ca-gregory', 'latn')).toBe('ar-EG-u-ca-gregory-nu-latn')
-  })
-
-  it('leaves a tag that already names a numbering system alone', () => {
-    expect(withNumberingSystem('ar-EG-u-nu-arab', 'latn')).toBe('ar-EG-u-nu-arab')
-  })
-
-  it('is a no-op without a numbering system', () => {
-    expect(withNumberingSystem('ar-EG')).toBe('ar-EG')
+  it.each([
+    { locale: 'ar-EG', numberingSystem: 'latn', expected: 'ar-EG-u-nu-latn' },
+    { locale: 'ar-EG-u-ca-gregory', numberingSystem: 'latn', expected: 'ar-EG-u-ca-gregory-nu-latn' },
+    { locale: 'ar-EG-u-nu-arab', numberingSystem: 'latn', expected: 'ar-EG-u-nu-arab' },
+    { locale: 'en-x-foo', numberingSystem: 'arab', expected: 'en-u-nu-arab-x-foo' },
+    { locale: 'en-u-ca-gregory-x-foo', numberingSystem: 'arab', expected: 'en-u-ca-gregory-nu-arab-x-foo' },
+    { locale: 'en-x-u-nu-latn', numberingSystem: 'arab', expected: 'en-u-nu-arab-x-u-nu-latn' },
+    { locale: 'en-US-X-foo', numberingSystem: 'arab', expected: 'en-US-u-nu-arab-X-foo' },
+    { locale: 'en-US-U-NU-latn-X-foo', numberingSystem: 'arab', expected: 'en-US-U-NU-latn-X-foo' },
+    { locale: 'ar_EG', numberingSystem: 'latn', expected: 'ar-EG-u-nu-latn' },
+    { locale: 'en-x-foo', numberingSystem: undefined, expected: 'en-x-foo' },
+  ] as const)('normalizes and extends $locale', ({ locale, numberingSystem, expected }) => {
+    expect(withNumberingSystem(locale, numberingSystem)).toBe(expected)
   })
 })
 
@@ -57,6 +56,24 @@ describe('formatNumber', () => {
     expect(out.startsWith('⁦')).toBe(true)
     expect(out.endsWith(PDI)).toBe(true)
   })
+
+  it.each([
+    { locale: 'ar_EG', numberingSystem: undefined, expected: '١٢' },
+    { locale: 'en-x-foo', numberingSystem: 'arab', expected: '١٢' },
+    { locale: 'en-!!', numberingSystem: 'arab', expected: '١٢' },
+    { locale: 'ar_EG', numberingSystem: 'latn', expected: '12' },
+  ] as const)('formats $locale with numbering system $numberingSystem', ({ locale, numberingSystem, expected }) => {
+    expect(formatNumber(12, { locale, numberingSystem })).toBe(expected)
+  })
+
+  it.each([
+    { locale: 'ar--EG', expected: formatNumber(12, { locale: 'ar' }) },
+    { locale: '123-en', expected: '12' },
+    { locale: '', expected: '12' },
+    { locale: '@', expected: '12' },
+  ])('falls back from invalid locale $locale', ({ locale, expected }) => {
+    expect(formatNumber(12, { locale })).toBe(expected)
+  })
 })
 
 describe('formatCurrency', () => {
@@ -68,6 +85,10 @@ describe('formatCurrency', () => {
 
   it('keeps the currency symbol for the locale', () => {
     expect(formatCurrency(10, 'USD', { locale: 'en-US' })).toBe('$10.00')
+  })
+
+  it('keeps throwing for invalid Intl options', () => {
+    expect(() => formatCurrency(12, 'not-a-currency')).toThrow(RangeError)
   })
 })
 
@@ -99,6 +120,24 @@ describe('formatDate', () => {
     })
     expect(out.length).toBeGreaterThan(0)
   })
+
+  it.each([
+    { value: 'not a date' },
+    { value: new Date(NaN) },
+    { value: NaN },
+    { value: Infinity },
+  ])('returns an empty string for invalid date $value', ({ value }) => {
+    expect(formatDate(value)).toBe('')
+    expect(formatDate(value, { isolate: true })).toBe('')
+  })
+
+  it.each([
+    { locale: 'ar_EG', expected: formatDate('2024-05-12T00:00:00Z', { locale: 'ar-EG', timeZone: 'UTC' }) },
+    { locale: 'ar--EG', expected: formatDate('2024-05-12T00:00:00Z', { locale: 'ar', timeZone: 'UTC' }) },
+    { locale: '123-en', expected: formatDate('2024-05-12T00:00:00Z', { locale: 'en', timeZone: 'UTC' }) },
+  ])('falls back from invalid locale $locale', ({ locale, expected }) => {
+    expect(formatDate('2024-05-12T00:00:00Z', { locale, timeZone: 'UTC' })).toBe(expected)
+  })
 })
 
 describe('transliterateDigits', () => {
@@ -125,6 +164,27 @@ describe('useFormat', () => {
     mount(Probe, { global: { plugins: [rtl] } })
     return { rtl, formatters: formatters! }
   }
+
+  it.each([
+    { locale: 'ar_EG', numberingSystem: 'arab', fallbackNumberingSystem: 'arab', expected: '١٢', fallbackLocale: 'ar-EG' },
+    { locale: 'en-x-foo', numberingSystem: 'arab', fallbackNumberingSystem: 'arab', expected: '١٢', fallbackLocale: 'en-x-foo' },
+    { locale: 'en-!!', numberingSystem: 'arab', fallbackNumberingSystem: 'arab', expected: '١٢', fallbackLocale: 'en' },
+    { locale: 'ar-EG-!!', numberingSystem: { ar: 'arab' }, fallbackNumberingSystem: 'arab', expected: '١٢', fallbackLocale: 'ar' },
+    { locale: 'ar--EG', numberingSystem: undefined, fallbackNumberingSystem: undefined, expected: '12', fallbackLocale: 'ar' },
+    { locale: '123-en', numberingSystem: undefined, fallbackNumberingSystem: undefined, expected: '12', fallbackLocale: 'en' },
+  ] as const)('formats bound locale $locale without throwing', ({ locale, numberingSystem, fallbackNumberingSystem, expected, fallbackLocale }) => {
+    const { rtl, formatters } = setup({
+      locales: [locale],
+      defaultLocale: locale,
+      numberingSystem,
+    })
+    expect(formatters.value.locale).toBe(locale)
+    expect(formatters.value.formatNumber(12)).toBe(expected)
+    expect(formatters.value.formatDate('not a date')).toBe('')
+    expect(formatters.value.formatDate('2024-05-12T00:00:00Z', { timeZone: 'UTC' }))
+      .toBe(formatDate('2024-05-12T00:00:00Z', { locale: fallbackLocale, numberingSystem: fallbackNumberingSystem, timeZone: 'UTC' }))
+    rtl.dispose()
+  })
 
   it('binds to the current locale', () => {
     const { rtl, formatters } = setup({ locales: ['en', 'ar-EG'], defaultLocale: 'en' })

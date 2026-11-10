@@ -98,8 +98,8 @@ CI enforces raw and gzipped size budgets for every published entry point via `np
 
 | Entry point | Artifact | Raw (current / budget) | Gzip (current / budget) |
 | --- | --- | --- | --- |
-| `vue-rtl-kit` (ESM) | `dist/vue-rtl-kit.js` | 26.44 kB / ≤ 26.75 kB | 8.78 kB / ≤ 8.85 kB |
-| `vue-rtl-kit` (CJS) | `dist/vue-rtl-kit.cjs` | 18.94 kB / ≤ 19.50 kB | 7.19 kB / ≤ 7.40 kB |
+| `vue-rtl-kit` (ESM) | `dist/vue-rtl-kit.js` | 26.75 kB / ≤ 26.75 kB | 8.92 kB / ≤ 8.95 kB |
+| `vue-rtl-kit` (CJS) | `dist/vue-rtl-kit.cjs` | 19.18 kB / ≤ 19.50 kB | 7.33 kB / ≤ 7.40 kB |
 | `vue-rtl-kit/nuxt` | `dist/nuxt/module.js` | 1.95 kB / ≤ 3.00 kB | 0.75 kB / ≤ 1.50 kB |
 | `vue-rtl-kit/nuxt` (runtime plugin) | `dist/nuxt/runtime/plugin.js` | 2.77 kB / ≤ 3.00 kB | 1.02 kB / ≤ 1.20 kB |
 | `vue-rtl-kit/styles.css` | `dist/styles.css` | 7.10 kB / ≤ 8.00 kB | 1.91 kB / ≤ 2.50 kB |
@@ -111,7 +111,7 @@ CI enforces raw and gzipped size budgets for every published entry point via `np
 | `{ isolateRuns }` | 1.03 kB / ≤ 2.00 kB | `vue` |
 | `{ toLogicalStyle }` | 1.21 kB / ≤ 2.00 kB | `vue` |
 | `{ directionOfLocale }` | 0.62 kB / ≤ 2.00 kB | `vue` |
-| `{ formatNumber }` | 0.54 kB | components, directives |
+| `{ formatNumber }` | 0.64 kB | components, directives |
 
 ## Quickstart — Vue
 
