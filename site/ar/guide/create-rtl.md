@@ -77,6 +77,29 @@ const rtl = createRtl({
 
 وبالمثل، يستخدم `RtlProvider` غير المثبّت ذو الخاصية `locale="fr"` الاتجاه `ltr` داخل نطاق أب باتجاه RTL، ما لم تحدّد خريطة اللغات اتجاهًا آخر. يؤدي توفير `dir` إلى تثبيت الاتجاه، فلا يغيّره تغيير اللغة.
 
+## أنواع العناصر العامة
+
+تضيف تعريفات الأنواع في الحزمة `BidiText` و`RtlProvider` إلى `GlobalComponents` في Vue، و`vRtl` إلى `GlobalDirectives`. بمجرد أن يستورد أي ملف في المشروع `vue-rtl-kit` — ويكفي استيراد `createRtl` في `main.ts` — يتحقق `vue-tsc` وأدوات لغة Vue من العناصر العامة المسجّلة في كل القوالب، دون استيراد في كل ملف:
+
+```vue
+<template>
+  <RtlProvider dir="ltr" v-slot="{ isRtl, toggleDirection }">
+    <button @click="toggleDirection">{{ isRtl ? 'LTR' : 'RTL' }}</button>
+  </RtlProvider>
+  <BidiText text="الإصدار v1.2.3" strategy="chars" />
+  <code v-rtl:ltr>feature/rtl</code>
+
+  <!-- أخطاء في الأنواع: -->
+  <BidiText text="v1.2.3" strategy="inline" />
+  <RtlProvider dir="auto" />
+  <p v-rtl="42" />
+</template>
+```
+
+يشمل التحقق الخصائص وخصائص الفتحات وقيمة `v-rtl`: فالخاصية `strategy` هي `'element' | 'chars'`، و`dir` في `RtlProvider` هي `'rtl' | 'ltr'`، وتقبل `v-rtl` اتجاهًا أو `'auto'` أو قيمة منطقية أو مرجعًا (ref) لأيٍّ منها أو `{ dir, isolate }`.
+
+لا يتغيّر شيء وقت التشغيل، وتُرفق التعريفات نفسها مع مدخلَي ESM وCommonJS.
+
 ## إلغاء التسجيل العام
 
 عند تعطيل التسجيل العام، استورد العناصر في المواضع التي تُستخدم فيها:
@@ -95,6 +118,8 @@ import { BidiText, vRtl } from 'vue-rtl-kit'
   <code v-rtl:ltr>feature/rtl</code>
 </template>
 ```
+
+تُعرَّف الأنواع العامة دون شرط، فلا يمكنها أن تتبع هذا الخيار. مع `registerGlobals: false` يبقى القالب الذي يستخدم `<BidiText>` أو `<RtlProvider>` أو `v-rtl` دون استيراد سليمًا من ناحية الأنواع، لكن Vue لا يستطيع إيجاد العنصر وقت التشغيل؛ لذا أبقِ الاستيراد المحلي.
 
 ## التنظيف
 

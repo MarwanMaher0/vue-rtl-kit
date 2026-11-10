@@ -87,6 +87,7 @@
     "test:watch": "vitest",
     "coverage": "vitest run --coverage",
     "typecheck": "vue-tsc --noEmit",
+    "test:types": "vue-tsc --noEmit -p test/types/tsconfig.json && vue-tsc --noEmit -p test/types/tsconfig.cjs.json",
     "lint": "eslint . --max-warnings 0",
     "lint:fix": "eslint . --fix",
     "play": "vite --config playground/vite.config.ts",

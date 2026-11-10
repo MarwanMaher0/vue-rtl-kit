@@ -9,6 +9,8 @@
  * @packageDocumentation
  */
 
+import type { BidiText, RtlProvider } from './components'
+import type { vRtl } from './directives/vRtl'
 import type { RtlInstance } from './types'
 
 export { createRtl } from './core'
@@ -91,5 +93,17 @@ declare module 'vue' {
   interface ComponentCustomProperties {
     /** The app-level direction store installed by `createRtl()`. */
     $rtl: RtlInstance
+  }
+
+  interface GlobalComponents {
+    /** Registered by `createRtl()` unless `registerGlobals` is `false`. */
+    BidiText: typeof BidiText
+    /** Registered by `createRtl()` unless `registerGlobals` is `false`. */
+    RtlProvider: typeof RtlProvider
+  }
+
+  interface GlobalDirectives {
+    /** `v-rtl`, registered by `createRtl()` unless `registerGlobals` is `false`. */
+    vRtl: typeof vRtl
   }
 }

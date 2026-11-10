@@ -77,6 +77,29 @@ The fallback is used only for empty or invalid tags, not for a well-formed local
 
 An unpinned `RtlProvider` with `locale="fr"` inside an RTL parent likewise uses `ltr`, unless a locale-map override applies. Supplying `dir` pins direction: changing the locale does not change that pinned direction.
 
+## Typed globals
+
+The package's type declarations add `BidiText` and `RtlProvider` to Vue's `GlobalComponents` and `vRtl` to `GlobalDirectives`. Once any file in the project imports `vue-rtl-kit` — the `createRtl` import in `main.ts` is enough — `vue-tsc` and the Vue language tools check the registered globals in every template, with no per-file import:
+
+```vue
+<template>
+  <RtlProvider dir="ltr" v-slot="{ isRtl, toggleDirection }">
+    <button @click="toggleDirection">{{ isRtl ? 'LTR' : 'RTL' }}</button>
+  </RtlProvider>
+  <BidiText text="الإصدار v1.2.3" strategy="chars" />
+  <code v-rtl:ltr>feature/rtl</code>
+
+  <!-- Type errors: -->
+  <BidiText text="v1.2.3" strategy="inline" />
+  <RtlProvider dir="auto" />
+  <p v-rtl="42" />
+</template>
+```
+
+Props, slot props, and the `v-rtl` value are checked: `strategy` is `'element' | 'chars'`, `RtlProvider`'s `dir` is `'rtl' | 'ltr'`, and `v-rtl` accepts a direction, `'auto'`, a boolean, a ref of those, or `{ dir, isolate }`.
+
+Nothing changes at runtime, and the same declarations ship for the ESM and CommonJS entries.
+
 ## Global registration opt-out
 
 With global registration disabled, import the pieces where they are used:
@@ -95,6 +118,8 @@ import { BidiText, vRtl } from 'vue-rtl-kit'
   <code v-rtl:ltr>feature/rtl</code>
 </template>
 ```
+
+The global types are declared unconditionally, so they cannot see this option. With `registerGlobals: false`, a template that uses `<BidiText>`, `<RtlProvider>`, or `v-rtl` without importing it still type-checks, but Vue cannot resolve it at runtime — keep the local imports.
 
 ## Cleanup
 

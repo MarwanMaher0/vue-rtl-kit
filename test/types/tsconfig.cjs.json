@@ -1,0 +1,9 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "paths": {
+      "vue-rtl-kit": ["../../dist/index.d.cts"]
+    }
+  },
+  "include": ["main.ts", "App.vue"]
+}

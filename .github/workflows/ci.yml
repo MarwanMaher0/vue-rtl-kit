@@ -45,6 +45,9 @@ jobs:
       - name: Bundle size budgets
         run: npm run check:size
 
+      - name: Type tests (global components and directive against dist)
+        run: npm run test:types
+
       - name: Tree-shaking
         run: npm run check:treeshake
 

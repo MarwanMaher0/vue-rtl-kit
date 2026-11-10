@@ -135,7 +135,11 @@ createApp(App).use(rtl).mount('#app')
 ```
 
 `createRtl` keeps `<html dir>` and `<html lang>` in sync, and registers `<BidiText>`,
-`<RtlProvider>` and `v-rtl` globally.
+`<RtlProvider>` and `v-rtl` globally. The globals are typed: the package augments Vue's
+`GlobalComponents` and `GlobalDirectives`, so once a file imports `vue-rtl-kit`, `vue-tsc` and
+the Vue language tools check their props, slot props and the `v-rtl` value in every template
+without a per-file import. With `registerGlobals: false` they still type-check but are not
+registered, so import them where you use them.
 
 ```vue
 <script setup lang="ts">
