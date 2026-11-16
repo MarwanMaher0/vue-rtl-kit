@@ -26,6 +26,25 @@ export interface FormatOptionsBase {
 export type NumberFormatOptions = FormatOptionsBase & Intl.NumberFormatOptions
 export type DateFormatOptions = FormatOptionsBase & Intl.DateTimeFormatOptions
 
+let supportedNumberingSystems: Set<string> | null | undefined
+
+function resolveNumberingSystem(numberingSystem: NumberingSystem | undefined): string | undefined {
+  if (numberingSystem === undefined) return undefined
+  const normalized = String(numberingSystem).toLowerCase()
+  if (supportedNumberingSystems === undefined) {
+    try {
+      supportedNumberingSystems = new Set(Intl.supportedValuesOf('numberingSystem'))
+    }
+    catch {
+      supportedNumberingSystems = null
+    }
+  }
+  if (supportedNumberingSystems) {
+    return supportedNumberingSystems.has(normalized) ? normalized : 'latn'
+  }
+  return /^[a-z0-9]{3,8}$/i.test(normalized) ? normalized : 'latn'
+}
+
 /**
  * Apply a numbering system to a locale tag through the `-u-nu-` extension.
  *
@@ -36,8 +55,9 @@ export type DateFormatOptions = FormatOptionsBase & Intl.DateTimeFormatOptions
 export function withNumberingSystem(locale: string, numberingSystem?: NumberingSystem): string {
   const tag = locale.replace(/_/g, '-')
   const base = tag.split(/-x-/i)[0]!
-  if (!numberingSystem || /-u-.*nu-/i.test(base)) return tag
-  return tag.replace(/(?=-x-)|$/i, `${/-u-/i.test(base) ? '-nu-' : '-u-nu-'}${numberingSystem}`)
+  const resolved = resolveNumberingSystem(numberingSystem)
+  if (!resolved || /-u-.*nu-/i.test(base)) return tag
+  return tag.replace(/(?=-x-)|$/i, `${/-u-/i.test(base) ? '-nu-' : '-u-nu-'}${resolved}`)
 }
 
 function makeFormatter<F>(
@@ -112,10 +132,14 @@ export function formatterCacheStats(): { number: number, date: number, limit: nu
   return { number: numberFormatters.size, date: dateFormatters.size, limit: FORMATTER_CACHE_LIMIT }
 }
 
-/** Empty the formatter caches. Test helper; not part of the public contract. */
+/**
+ * Empty the formatter caches and clear the cached `Intl.supportedValuesOf`
+ * result. Test helper; not part of the public contract.
+ */
 export function resetFormatterCaches(): void {
   numberFormatters.clear()
   dateFormatters.clear()
+  supportedNumberingSystems = undefined
 }
 
 function cacheKey(locale: string, options: object): string {

@@ -15,7 +15,7 @@ import { useLogicalStyles } from '../src/composables/useLogicalStyles'
 import { createRtl } from '../src/core'
 import { vRtl } from '../src/directives/vRtl'
 import { isClient, isServer } from '../src/env'
-import { isolateRuns } from '../src/bidi'
+import { LRI, PDI, isolateRuns } from '../src/bidi'
 
 describe('SSR environment', () => {
   it('reports a server environment', () => {
@@ -53,14 +53,15 @@ describe('SSR environment', () => {
     rtl.dispose()
   })
 
-  it('renders BidiText isolates on the server', async () => {
+  it('renders BidiText isolates on the server and strips embedded bidi controls', async () => {
     const app = createSSRApp(
       defineComponent({
-        render: () => h(BidiText, { text: 'آخر تحديث 12-05-2024', dir: 'rtl', as: 'p' }),
+        render: () => h(BidiText, { text: 'آخر تحديث \u202E12-05-2024\u202C', dir: 'rtl', as: 'p' }),
       }),
     )
     const html = await renderToString(app)
     expect(html).toContain('<bdi dir="ltr">12-05-2024</bdi>')
+    expect(html).not.toMatch(/\p{Bidi_Control}/u)
   })
 
   it('renders RtlProvider scopes on the server', async () => {
@@ -87,7 +88,7 @@ describe('SSR environment', () => {
   })
 
   it('isolates text identically on server and client', () => {
-    expect(isolateRuns('تم في 12-05-2024', 'rtl')).toBe('تم في ⁦12-05-2024⁩')
+    expect(isolateRuns('تم في 12-05-2024', 'rtl')).toBe(`تم في ${LRI}12-05-2024${PDI}`)
   })
 
   it('switches ltr -> rtl -> ltr across all composables, providers, and directives with no window or document', async () => {

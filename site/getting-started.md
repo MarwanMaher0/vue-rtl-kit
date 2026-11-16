@@ -1,19 +1,11 @@
 # Getting started
 
-vue-rtl-kit supports Vue 3.3+ and Nuxt 3 or 4. It has no runtime dependencies beyond Vue; Nuxt already provides the optional `@nuxt/kit` peer.
+vue-rtl-kit supports Vue 3.3+ and Nuxt 3 or 4 on Node 20.11+. It has no runtime dependencies beyond Vue; Nuxt already provides the optional `@nuxt/kit` peer.
 
 ## Install
 
-Once published, the default npm install will be:
-
 ```sh
 npm install vue-rtl-kit
-```
-
-Until then, install the tagged GitHub release. Its `prepare` script builds the package during installation:
-
-```sh
-npm install github:MarwanMaher0/vue-rtl-kit#v0.1.1
 ```
 
 ## Vue
@@ -65,7 +57,7 @@ Use `setLocale()` when a language choice should update direction. Use `setDirect
 Try the Nuxt 3 starter with SSR direction:
 [Open in StackBlitz](https://stackblitz.com/github/MarwanMaher0/vue-rtl-kit/tree/main/examples/nuxt).
 Both starters install `vue-rtl-kit` from the repository using `file:../..`, so they
-work before publishing. Keep the full checkout available, run `npm ci` at its root
+run directly against the local checkout. Keep the full checkout available, run `npm ci` at its root
 to build the library, then follow the README in `examples/vite` or `examples/nuxt`.
 
 Add `vue-rtl-kit/nuxt` to `nuxt.config.ts`:

@@ -25,8 +25,8 @@ const metadata: Record<string, { en: [string, string], ar: [string, string] }> =
     ar: ['أدوات RTL لتطبيقات Vue وNuxt', 'ابنِ واجهات Vue وNuxt ثنائية الاتجاه بحالة تفاعلية ونطاقات مستقلة وأنماط منطقية وتنسيق حسب اللغة وعزل للنص العادي.'],
   },
   'getting-started': {
-    en: ['Getting started with Vue and Nuxt', 'Install the tagged vue-rtl-kit v0.1.1 GitHub release, configure the Vue plugin or Nuxt module, and start switching locale and direction.'],
-    ar: ['ابدأ مع Vue وNuxt', 'ثبّت إصدار vue-rtl-kit الموسوم v0.1.1 من GitHub، وأعدّ إضافة Vue أو وحدة Nuxt، وابدأ بتغيير اللغة واتجاه الواجهة.'],
+    en: ['Getting started with Vue and Nuxt', 'Install vue-rtl-kit from npm, configure the Vue plugin or Nuxt module, and start switching locale and direction.'],
+    ar: ['ابدأ مع Vue وNuxt', 'ثبّت حزمة vue-rtl-kit من npm، وأعدّ إضافة Vue أو وحدة Nuxt، وابدأ بتغيير اللغة واتجاه الواجهة.'],
   },
   api: {
     en: ['API reference', 'Explore vue-rtl-kit exports and TypeScript signatures for direction stores, composables, components, bidi utilities, logical styles, and formatting.'],

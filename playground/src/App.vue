@@ -173,7 +173,7 @@ const activeCopy = computed(() => cardCopy[locale.value as keyof typeof cardCopy
               :dir="run.dir"
             >{{ run.text }}<small>{{ run.isolated ? `isolate ${run.dir}` : run.dir }}</small></span>
           </div>
-          <pre class="code" v-rtl:ltr><code>{{ isolateRuns(samples[0]!.text, dir).replace(/⁦/g, '⟦LRI⟧').replace(/⁩/g, '⟦PDI⟧') }}</code></pre>
+          <pre class="code" v-rtl:ltr><code>{{ isolateRuns(samples[0]!.text, dir).replace(/\u2066/g, '⟦LRI⟧').replace(/\u2069/g, '⟦PDI⟧') }}</code></pre>
         </details>
       </DemoSection>
 

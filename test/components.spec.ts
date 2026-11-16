@@ -44,6 +44,39 @@ describe('BidiText', () => {
     expect(wrapper.text()).toBe(`آخر تحديث ${LRI}12-05-2024${PDI}`)
   })
 
+  it('strips embedded bidi control characters in the default element strategy', () => {
+    const spoofed = 'ملف \u202Egpj.exe\u202C مرفق في 12-05-2024'
+    const wrapper = mount(BidiText, {
+      props: { text: spoofed, dir: 'rtl' },
+    })
+    expect(wrapper.text()).toBe('ملف gpj.exe مرفق في 12-05-2024')
+    expect(wrapper.html()).not.toMatch(/\p{Bidi_Control}/u)
+    const bdi = wrapper.findAll('bdi')
+    expect(bdi.map(node => node.text())).toEqual(['gpj.exe', '12-05-2024'])
+
+    const slotWrapper = mount(BidiText, {
+      props: { dir: 'rtl' },
+      slots: { default: () => `آخر تحديث \u202E12-05-2024` },
+    })
+    expect(slotWrapper.text()).toBe(ARABIC_WITH_DATE)
+    expect(slotWrapper.html()).not.toMatch(/\p{Bidi_Control}/u)
+    expect(slotWrapper.find('bdi').text()).toBe('12-05-2024')
+  })
+
+  it('preserves bidi control characters when disabled or rendering markup slots', () => {
+    const raw = 'آخر تحديث \u202E12-05-2024'
+    const disabledWrapper = mount(BidiText, {
+      props: { text: raw, dir: 'rtl', enabled: false },
+    })
+    expect(disabledWrapper.text()).toBe(raw)
+
+    const markupWrapper = mount(BidiText, {
+      props: { dir: 'rtl' },
+      slots: { default: () => h('strong', raw) },
+    })
+    expect(markupWrapper.find('strong').text()).toBe(raw)
+  })
+
   it('renders raw text when disabled, for a before/after comparison', () => {
     const wrapper = mount(BidiText, {
       props: { text: ARABIC_WITH_DATE, dir: 'rtl', enabled: false },

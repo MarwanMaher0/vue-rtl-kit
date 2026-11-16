@@ -71,11 +71,10 @@ bare `2024` — which reads the same either way — is left alone.
 ## Install
 
 ```sh
-# Not on npm yet: install a tagged release from GitHub (it builds on install)
-npm install github:MarwanMaher0/vue-rtl-kit#v0.1.1
+npm install vue-rtl-kit
 ```
 
-Vue 3.3+. No runtime dependencies. For Nuxt, `@nuxt/kit` is an optional peer you already have.
+Vue 3.3+ on Node 20.11+. No runtime dependencies. For Nuxt, `@nuxt/kit` is an optional peer you already have.
 
 ### Module formats
 
@@ -87,19 +86,22 @@ Vue 3.3+. No runtime dependencies. For Nuxt, `@nuxt/kit` is an optional peer you
 
 `vue-rtl-kit/nuxt` is deliberately **ESM-only**. Nuxt loads modules through its own ESM loader
 (jiti), never via `require()`, and `@nuxt/kit` itself ships ESM only, so a CommonJS build could not
-even load on Node 18/20. Tools such as [arethetypeswrong](https://arethetypeswrong.github.io/) will
+even load on any supported Node (20.11+). Tools such as [arethetypeswrong](https://arethetypeswrong.github.io/) will
 report "ESM (dynamic import only)" for that one entry point under `node16 (from CJS)` — that is
 expected; `npm run check:publish` scopes that single allowance to `./nuxt` and keeps every other
 entry point strictly green.
 
 ### Bundle size budgets
 
-CI enforces raw and gzipped size budgets for every published entry point via `npm run check:size`:
+CI enforces raw and gzipped size budgets for every published entry point — and verifies that the
+table below matches the built artifacts — via `npm run check:size`. The main ESM and CJS entry
+budgets are set to their measured byte counts plus fixed `+256 B` (`0.25 kB`) raw and `+102 B`
+(`0.10 kB`) gzip margins:
 
 | Entry point | Artifact | Raw (current / budget) | Gzip (current / budget) |
 | --- | --- | --- | --- |
-| `vue-rtl-kit` (ESM) | `dist/vue-rtl-kit.js` | 26.75 kB / ≤ 26.75 kB | 8.92 kB / ≤ 8.95 kB |
-| `vue-rtl-kit` (CJS) | `dist/vue-rtl-kit.cjs` | 19.18 kB / ≤ 19.50 kB | 7.33 kB / ≤ 7.40 kB |
+| `vue-rtl-kit` (ESM) | `dist/vue-rtl-kit.js` | 27.08 kB / ≤ 27.33 kB | 9.02 kB / ≤ 9.12 kB |
+| `vue-rtl-kit` (CJS) | `dist/vue-rtl-kit.cjs` | 19.43 kB / ≤ 19.68 kB | 7.42 kB / ≤ 7.52 kB |
 | `vue-rtl-kit/nuxt` | `dist/nuxt/module.js` | 1.95 kB / ≤ 3.00 kB | 0.75 kB / ≤ 1.50 kB |
 | `vue-rtl-kit/nuxt` (runtime plugin) | `dist/nuxt/runtime/plugin.js` | 2.77 kB / ≤ 3.00 kB | 1.02 kB / ≤ 1.20 kB |
 | `vue-rtl-kit/styles.css` | `dist/styles.css` | 7.10 kB / ≤ 8.00 kB | 1.91 kB / ≤ 2.50 kB |
@@ -108,10 +110,10 @@ CI enforces raw and gzipped size budgets for every published entry point via `np
 
 | Import | Gzip (current / budget) | Must not include |
 | --- | --- | --- |
-| `{ isolateRuns }` | 1.03 kB / ≤ 2.00 kB | `vue` |
+| `{ isolateRuns }` | 1.02 kB / ≤ 2.00 kB | `vue` |
 | `{ toLogicalStyle }` | 1.21 kB / ≤ 2.00 kB | `vue` |
 | `{ directionOfLocale }` | 0.62 kB / ≤ 2.00 kB | `vue` |
-| `{ formatNumber }` | 0.64 kB | components, directives |
+| `{ formatNumber }` | 0.75 kB | components, directives |
 
 ## Quickstart — Vue
 
@@ -228,7 +230,7 @@ Returns an `RtlInstance`: a Vue plugin *and* a store you can drive from outside 
 
 | Component | Props | Description |
 | --- | --- | --- |
-| `<BidiText>` | `text`, `as` (`'span'`), `dir` (`'rtl' \| 'ltr' \| 'auto'`), `strategy` (`'element' \| 'chars'`), `enabled` (`true`) | Isolates mixed-direction runs. `strategy="element"` emits `<bdi>`; `strategy="chars"` emits `U+2066`/`U+2067` … `U+2069`. `:enabled="false"` renders raw text, for A/B-ing the fix. |
+| `<BidiText>` | `text`, `as` (`'span'`), `dir` (`'rtl' \| 'ltr' \| 'auto'`), `strategy` (`'element' \| 'chars'`), `enabled` (`true`) | Isolates mixed-direction runs after stripping embedded bidi control characters. `strategy="element"` emits `<bdi>`; `strategy="chars"` emits `U+2066`/`U+2067` … `U+2069`. `:enabled="false"` renders raw text untouched, for A/B-ing the fix. |
 | `<RtlProvider>` | `dir`, `locale`, `tag` (`'div'`, `null` for renderless), `isolate` (`true`) | Scopes a subtree to its own direction. Slot props: `{ dir, isRtl, setDirection, toggleDirection }`. |
 
 ### Directive
@@ -303,7 +305,8 @@ formatDate(date, { locale: 'ar-SA', calendar: 'islamic-umalqura', dateStyle: 'lo
 
 Thin wrappers over `Intl` that add two things RTL products keep needing: an explicit numbering
 system (Arabic locales default to Arabic-Indic digits — plenty of Arabic products want Western
-digits for figures, IDs and versions), and `isolate: true` to wrap the result before it is spliced
+digits for figures, IDs and versions; unrecognized `numberingSystem` values safely fall back to
+`'latn'`), and `isolate: true` to wrap the result before it is spliced
 into a sentence. `transliterateDigits(text, 'arab' | 'latn' | 'arabext')` converts digits in text
 you did not format yourself.
 

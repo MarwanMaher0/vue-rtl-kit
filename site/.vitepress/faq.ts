@@ -10,8 +10,8 @@ export const faqs: { en: Faq[], ar: Faq[] } = {
       answer: 'vue-rtl-kit is an MIT-licensed toolkit for Vue 3.3+ and Nuxt 3 or 4. It provides reactive direction state, scoped RTL and LTR layouts, logical style helpers, locale-aware formatting, and plain-text bidirectional isolation.',
     },
     {
-      question: 'How do I install it before npm publication?',
-      answer: 'Install the tagged GitHub release with npm install github:MarwanMaher0/vue-rtl-kit#v0.1.1. Its prepare script builds the package during installation. The npm install vue-rtl-kit command is intended for use after npm publication.',
+      question: 'How do I install vue-rtl-kit?',
+      answer: 'Install the package from npm with npm install vue-rtl-kit. It supports Vue 3.3+ and Nuxt 3 or 4 on Node 20.11+, with no runtime dependencies beyond Vue.',
     },
     {
       question: 'Does it replace a translation library?',
@@ -40,8 +40,8 @@ export const faqs: { en: Faq[], ar: Faq[] } = {
       answer: 'vue-rtl-kit مجموعة أدوات بترخيص MIT تدعم Vue 3.3 والإصدارات الأحدث وNuxt 3 و4. توفر حالة اتجاه تفاعلية، ونطاقات مستقلة لتخطيطات RTL وLTR، وأدوات للأنماط المنطقية، وتنسيقًا حسب اللغة، وعزلًا للنص العادي ثنائي الاتجاه.',
     },
     {
-      question: 'كيف أثبّت الحزمة قبل نشرها على npm؟',
-      answer: 'ثبّت الإصدار الموسوم من GitHub بالأمر npm install github:MarwanMaher0/vue-rtl-kit#v0.1.1. يبني سكربت prepare الحزمة أثناء التثبيت. أما الأمر npm install vue-rtl-kit فهو مخصص للاستخدام بعد نشر الحزمة على npm.',
+      question: 'كيف أثبّت vue-rtl-kit؟',
+      answer: 'ثبّت الحزمة من npm بالأمر npm install vue-rtl-kit. تدعم Vue 3.3 والإصدارات الأحدث وNuxt 3 و4 على Node 20.11+، دون اعتماديات تشغيل أخرى بخلاف Vue.',
     },
     {
       question: 'هل تحل محل مكتبة الترجمة؟',

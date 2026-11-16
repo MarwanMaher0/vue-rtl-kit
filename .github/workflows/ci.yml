@@ -137,11 +137,11 @@ jobs:
       - name: Nuxt SSR test (test/fixtures/basic + cookie fixture)
         run: npx vitest run test/nuxt.spec.ts
 
-  node18:
-    # engines.node is >=18, but vite.config.ts uses import.meta.dirname (Node
-    # 20.11+), so the package is built on Node 20 and then consumed on Node 18
-    # through both the ESM and the CJS entry.
-    name: Node 18 (consume dist)
+  node20-11:
+    # engines.node is >=20.11; some devDependencies require a newer Node 20.x,
+    # so the package is built on current Node 20 and then consumed on Node
+    # 20.11.0 through both the ESM and the CJS entry.
+    name: Node 20.11 (consume dist)
     runs-on: ubuntu-latest
 
     steps:
@@ -160,9 +160,9 @@ jobs:
 
       - uses: actions/setup-node@v5
         with:
-          node-version: 18
+          node-version: '20.11.0'
 
-      - name: Import dist through ESM and CJS on Node 18
+      - name: Import dist through ESM and CJS on Node 20.11
         run: |
           node --version
           node test/dist-smoke.mjs

@@ -1,23 +1,20 @@
 # vue-rtl-kit — full documentation reference
 
-> vue-rtl-kit is an MIT-licensed Vue 3.3+ and Nuxt 3/4 toolkit for reactive direction state, local RTL/LTR scopes, logical styles, locale-aware formatting, and simplified plain-text bidirectional isolation. This reference summarizes the documented v0.1.1 API and links to each English and Arabic guide.
+> vue-rtl-kit is an MIT-licensed Vue 3.3+ and Nuxt 3/4 toolkit for reactive direction state, local RTL/LTR scopes, logical styles, locale-aware formatting, and simplified plain-text bidirectional isolation. This reference summarizes the documented API and links to each English and Arabic guide.
 
 Documentation: https://marwanmaher0.github.io/vue-rtl-kit/
 Arabic documentation: https://marwanmaher0.github.io/vue-rtl-kit/ar/
 Source: https://github.com/MarwanMaher0/vue-rtl-kit
-Tagged source: https://github.com/MarwanMaher0/vue-rtl-kit/tree/v0.1.1
 
 ## Installation and support
 
-Vue 3.3 or later is required. The Nuxt module supports Nuxt 3 and 4; Nuxt provides the optional @nuxt/kit peer. The package has no runtime dependencies beyond Vue. The optional stylesheet is exported separately.
+Vue 3.3 or later and Node 20.11+ are required. The Nuxt module supports Nuxt 3 and 4; Nuxt provides the optional @nuxt/kit peer. The package has no runtime dependencies beyond Vue. The optional stylesheet is exported separately.
 
-Until npm publication, use the tagged GitHub release:
+Install from npm:
 
 ```sh
-npm install github:MarwanMaher0/vue-rtl-kit#v0.1.1
+npm install vue-rtl-kit
 ```
-
-The prepare script builds the package during this installation. The command `npm install vue-rtl-kit` is the intended post-publication command, not a claim that this package version is currently available from npm.
 
 This toolkit is not a message-translation library, a rich-text engine, an automatic interface converter, or a complete implementation of the Unicode bidirectional algorithm. Keep your translation library and use native CSS logical properties for ordinary layouts. Use BidiText only for plain-text run isolation and test the actual scripts and strings your application displays.
 
@@ -163,7 +160,7 @@ Props:
 - strategy: 'element' by default, or 'chars'.
 - enabled: true by default; false renders untouched text.
 
-The default element strategy wraps runs needing isolation in bdi elements. The chars strategy inserts LRI/RLI and PDI Unicode controls. Prefer elements for normal HTML when copied text should not contain injected control characters.
+Both strategies strip pre-existing Unicode bidi control characters from plain-text input before splitting runs (unless enabled is false or the slot contains element markup). The default element strategy wraps runs needing isolation in bdi elements. The chars strategy inserts LRI/RLI and PDI Unicode controls. Prefer elements for normal HTML when copied text should not contain injected control characters.
 
 ```vue
 <BidiText as="p" dir="rtl" text="الإصدار v1.2.3 متاح الآن" />
@@ -286,7 +283,7 @@ Standalone functions:
 - transliterateDigits(text, 'latn' | 'arab' | 'arabext'): converts only digits in an existing string.
 - withNumberingSystem(locale, numberingSystem?): adds a Unicode -u-nu- locale extension.
 
-NumberingSystem accepts latn, arab, arabext, hanidec, deva, beng, or another supported string. Actual Intl behavior depends on the runtime's locale support.
+NumberingSystem accepts latn, arab, arabext, hanidec, deva, beng, or another runtime-supported string; unrecognized or empty values safely fall back to latn. Actual Intl behavior depends on the runtime's locale support.
 
 Sources:
 - [useFormat](https://marwanmaher0.github.io/vue-rtl-kit/guide/use-format)
@@ -317,7 +314,7 @@ Build-time controls:
 - css: true by default, injecting vue-rtl-kit/styles.css.
 - cookie: false by default; a cookie name or { name, maxAge, sameSite } enables persisting the visitor's locale/direction so SSR restores it for returning users. Unknown cookie values are ignored.
 
-Important limitations: the runtime plugin is always installed. registerGlobals is inherited in the options type but is not passed to runtime config, so changing it does not disable runtime global registration. components: false disables only Nuxt's build-time component registration; the runtime plugin still globally registers BidiText, RtlProvider, and v-rtl. autoImports: false requires explicit composable imports. css: false requires an explicit stylesheet import if you still want the utilities.
+Important limitations: the runtime plugin is always installed. registerGlobals defaults to true and is forwarded to createRtl() via runtime config; set both components: false and registerGlobals: false to disable both Nuxt's build-time component registration and runtime global registration of BidiText, RtlProvider, and v-rtl. autoImports: false requires explicit composable imports. css: false requires an explicit stylesheet import if you still want the utilities.
 
 Sources:
 - [Nuxt module](https://marwanmaher0.github.io/vue-rtl-kit/guide/nuxt-module)
@@ -344,10 +341,10 @@ The reference includes signatures for every export and complete type shapes:
 
 ## ملخص عربي وحدود الاستخدام
 
-vue-rtl-kit تدير اتجاه الواجهة وتنسيق القيم، ولا تترجم الرسائل ولا تحوّل الواجهة بأكملها تلقائيًا. يدعم الإصدار الموثق Vue 3.3 وما بعده وNuxt 3 و4. إلى أن تُنشر الحزمة على npm، استخدم الإصدار الموسوم v0.1.1 من GitHub بالأمر المذكور في قسم التثبيت.
+vue-rtl-kit تدير اتجاه الواجهة وتنسيق القيم، ولا تترجم الرسائل ولا تحوّل الواجهة بأكملها تلقائيًا. يدعم الإصدار الموثق Vue 3.3 وما بعده وNuxt 3 و4 على Node 20.11+، ويُثبَّت من npm بالأمر المذكور في قسم التثبيت.
 
 يتبع اتجاه الجذر اللغة حتى يُثبّت عبر dir الأولي أو setDirection() أو toggleDirection(). بعد التثبيت، تغيّر setLocale() اللغة فقط. تقرأ useDirection() أقرب نطاق، أما useRtl() فتصل إلى الجذر المثبّت وترمي خطأ إن لم تكن الإضافة مثبتة. ينشئ RtlProvider نطاقًا محليًا؛ وعند غياب العنصر الحاوي يجب وضع سمات الاتجاه على الأبناء.
 
 BidiText أداة مبسطة لعزل مقاطع النص العادي، وليس محرّكًا للنص الغني ولا تنفيذًا كاملًا لخوارزمية Unicode ثنائية الاتجاه. لا يعالج الوسوم الغنية داخل الخانة؛ استخدم text لعزل النص العادي. يظل المتصفح مسؤولًا عن التخطيط النهائي. تتكيف أدوات CSS المنطقية مع أقرب dir، وتنسّق useFormat الأرقام والعملات والتواريخ عبر Intl.
 
-تدعم وحدة Nuxt سمات dir وlang في العرض على الخادم. تعطيل components يوقف تسجيل Nuxt وقت البناء فقط؛ لا يوقف التسجيل العام من إضافة التشغيل. راجع الدليل العربي لكل واجهة قبل افتراض سلوك غير موثق.
+تدعم وحدة Nuxt سمات dir وlang في العرض على الخادم. تعطيل components يوقف تسجيل Nuxt وقت البناء فقط؛ اضبط registerGlobals: false أيضًا لإيقاف التسجيل العام من إضافة التشغيل. راجع الدليل العربي لكل واجهة قبل افتراض سلوك غير موثق.

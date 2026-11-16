@@ -57,11 +57,12 @@ const isolated = format.value.formatDate(updatedAt, {
 
 ## Input fallbacks
 
-Underscores in locale tags are normalized to hyphens, so `ar_EG` formats as `ar-EG`. If a tag is invalid, the formatter tries its language subtag and then falls back to `en`. Numbering systems are inserted before a private-use `-x-` section, so `en-x-foo` with `numberingSystem: 'arab'` produces Arabic-Indic digits. `formatDate()` returns an empty string for invalid dates instead of throwing.
+Underscores in locale tags are normalized to hyphens, so `ar_EG` formats as `ar-EG`. If a tag is invalid, the formatter tries its language subtag and then falls back to `en`. Numbering systems are inserted before a private-use `-x-` section, so `en-x-foo` with `numberingSystem: 'arab'` produces Arabic-Indic digits; unrecognized or empty `numberingSystem` values safely fall back to `'latn'`. `formatDate()` returns an empty string for invalid dates instead of throwing.
 
 ```ts
 formatNumber(12, { locale: 'ar_EG' }) // '١٢'
 formatNumber(12, { locale: 'en-x-foo', numberingSystem: 'arab' }) // '١٢'
+formatNumber(12, { locale: 'ar-EG', numberingSystem: 'invalid' }) // '12'
 formatDate('not a date') // ''
 ```
 

@@ -3,7 +3,7 @@
 `v-rtl` pins an element to a direction. It supports SSR attributes, reactive updates, optional Unicode isolation, and restoration of the previous DOM values on unmount.
 
 ```vue
-<pre v-rtl:ltr><code>npm install github:MarwanMaher0/vue-rtl-kit#v0.1.1</code></pre>
+<pre v-rtl:ltr><code>npm install vue-rtl-kit</code></pre>
 <span v-rtl.ltr.isolate>feature/rtl</span>
 <div v-rtl>...</div>
 ```

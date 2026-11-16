@@ -24,7 +24,7 @@
   "bugs": {
     "url": "https://github.com/MarwanMaher0/vue-rtl-kit/issues"
   },
-  "homepage": "https://github.com/MarwanMaher0/vue-rtl-kit#readme",
+  "homepage": "https://marwanmaher0.github.io/vue-rtl-kit/",
   "type": "module",
   "sideEffects": [
     "*.css"
@@ -132,7 +132,7 @@
     "vue-tsc": "^2.1.10"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=20.11"
   },
   "publishConfig": {
     "access": "public"

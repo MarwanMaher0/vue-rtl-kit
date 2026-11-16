@@ -3,7 +3,7 @@
 يثبّت `v-rtl` اتجاه عنصر. يدعم سمات SSR والتحديثات التفاعلية وعزل Unicode الاختياري واستعادة قيم DOM السابقة عند إزالة العنصر.
 
 ```vue
-<pre v-rtl:ltr><code>npm install github:MarwanMaher0/vue-rtl-kit#v0.1.1</code></pre>
+<pre v-rtl:ltr><code>npm install vue-rtl-kit</code></pre>
 <span v-rtl.ltr.isolate>feature/rtl</span>
 <div v-rtl>...</div>
 ```

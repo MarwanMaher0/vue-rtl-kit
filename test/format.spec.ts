@@ -14,7 +14,7 @@ import {
 import { useFormat } from '../src/composables/useFormat'
 import { createRtl } from '../src/core'
 import { RtlProvider } from '../src/components/RtlProvider'
-import { PDI } from '../src/bidi'
+import { LRI, PDI } from '../src/bidi'
 
 const ARABIC_INDIC = /[٠-٩]/
 
@@ -30,8 +30,74 @@ describe('withNumberingSystem', () => {
     { locale: 'en-US-U-NU-latn-X-foo', numberingSystem: 'arab', expected: 'en-US-U-NU-latn-X-foo' },
     { locale: 'ar_EG', numberingSystem: 'latn', expected: 'ar-EG-u-nu-latn' },
     { locale: 'en-x-foo', numberingSystem: undefined, expected: 'en-x-foo' },
+    { locale: 'ar-EG', numberingSystem: 'invalid', expected: 'ar-EG-u-nu-latn' },
+    { locale: 'ar-EG', numberingSystem: 'not-a-numbering-system', expected: 'ar-EG-u-nu-latn' },
+    { locale: 'ar-EG', numberingSystem: '!!', expected: 'ar-EG-u-nu-latn' },
+    { locale: 'en-x-foo', numberingSystem: '', expected: 'en-u-nu-latn-x-foo' },
   ] as const)('normalizes and extends $locale', ({ locale, numberingSystem, expected }) => {
     expect(withNumberingSystem(locale, numberingSystem)).toBe(expected)
+  })
+
+  it('falls back to syntax validation and latn when Intl.supportedValuesOf is unavailable', () => {
+    const descriptor = Object.getOwnPropertyDescriptor(Intl, 'supportedValuesOf')
+    delete (Intl as { supportedValuesOf?: unknown }).supportedValuesOf
+    resetFormatterCaches()
+    try {
+      expect('supportedValuesOf' in Intl).toBe(false)
+      expect(withNumberingSystem('ar-EG', undefined)).toBe('ar-EG')
+      expect(withNumberingSystem('ar-EG', 'latn')).toBe('ar-EG-u-nu-latn')
+      expect(withNumberingSystem('en', 'ARAB')).toBe('en-u-nu-arab')
+      expect(withNumberingSystem('ar-EG', 'arabext')).toBe('ar-EG-u-nu-arabext')
+      expect(withNumberingSystem('ar-EG', 'not-a-numbering-system')).toBe('ar-EG-u-nu-latn')
+      expect(withNumberingSystem('ar-EG', 'ab')).toBe('ar-EG-u-nu-latn')
+      expect(withNumberingSystem('ar-EG', '123456789')).toBe('ar-EG-u-nu-latn')
+      expect(withNumberingSystem('ar-EG', '!!')).toBe('ar-EG-u-nu-latn')
+      expect(withNumberingSystem('ar-EG', '')).toBe('ar-EG-u-nu-latn')
+      expect(formatNumber(1234.5, { locale: 'ar-EG', numberingSystem: 'latn' })).toBe('1,234.5')
+      expect(formatNumber(12, { locale: 'en', numberingSystem: 'arab' })).toBe('١٢')
+      expect(formatNumber(1234.5, { locale: 'ar-EG', numberingSystem: 'not-a-numbering-system' })).toBe('1,234.5')
+      expect(ARABIC_INDIC.test(formatCurrency(2500, 'EGP', { locale: 'ar-EG', numberingSystem: '!!' }))).toBe(false)
+      expect(ARABIC_INDIC.test(formatDate('2024-05-12T00:00:00Z', { locale: 'ar-EG', numberingSystem: '', timeZone: 'UTC', dateStyle: 'short' }))).toBe(false)
+    }
+    finally {
+      if (descriptor) Object.defineProperty(Intl, 'supportedValuesOf', descriptor)
+      resetFormatterCaches()
+    }
+    expect(withNumberingSystem('ar-EG', 'invalid')).toBe('ar-EG-u-nu-latn')
+  })
+
+  it('queries Intl.supportedValuesOf at most once across many calls and remembers when it throws', () => {
+    resetFormatterCaches()
+    const spy = vi.spyOn(Intl, 'supportedValuesOf')
+    try {
+      for (let i = 0; i < 50; i++) {
+        expect(withNumberingSystem('ar-EG', 'latn')).toBe('ar-EG-u-nu-latn')
+        expect(withNumberingSystem('en', 'arab')).toBe('en-u-nu-arab')
+        expect(withNumberingSystem('ar-EG', 'invalid')).toBe('ar-EG-u-nu-latn')
+        expect(withNumberingSystem('ar-EG', undefined)).toBe('ar-EG')
+        expect(formatNumber(i, { locale: 'ar-EG', numberingSystem: 'latn' })).toBe(String(i))
+        expect(ARABIC_INDIC.test(formatCurrency(10 + i, 'USD', { locale: 'ar-EG', numberingSystem: 'latn' }))).toBe(false)
+        expect(ARABIC_INDIC.test(formatDate('2024-05-12T00:00:00Z', { locale: 'ar-EG', numberingSystem: 'latn', timeZone: 'UTC' }))).toBe(false)
+      }
+      expect(spy).toHaveBeenCalledTimes(1)
+      expect(spy).toHaveBeenCalledWith('numberingSystem')
+
+      resetFormatterCaches()
+      spy.mockClear()
+      spy.mockImplementation(() => {
+        throw new RangeError('unsupported key')
+      })
+      for (let i = 0; i < 50; i++) {
+        expect(withNumberingSystem('ar-EG', 'latn')).toBe('ar-EG-u-nu-latn')
+        expect(withNumberingSystem('ar-EG', 'not-a-numbering-system')).toBe('ar-EG-u-nu-latn')
+        expect(formatNumber(i, { locale: 'ar-EG', numberingSystem: 'latn' })).toBe(String(i))
+      }
+      expect(spy).toHaveBeenCalledTimes(1)
+    }
+    finally {
+      spy.mockRestore()
+      resetFormatterCaches()
+    }
   })
 })
 
@@ -53,8 +119,19 @@ describe('formatNumber', () => {
 
   it('can isolate the result', () => {
     const out = formatNumber(1234, { locale: 'en', isolate: 'ltr' })
-    expect(out.startsWith('⁦')).toBe(true)
+    expect(out.startsWith(LRI)).toBe(true)
     expect(out.endsWith(PDI)).toBe(true)
+  })
+
+  it.each([
+    'invalid',
+    'not-a-numbering-system',
+    '!!',
+    '',
+  ])('falls back to latn when numberingSystem %j is invalid', (numberingSystem) => {
+    const out = formatNumber(1234.5, { locale: 'ar-EG', numberingSystem })
+    expect(out).toBe(formatNumber(1234.5, { locale: 'ar-EG', numberingSystem: 'latn' }))
+    expect(ARABIC_INDIC.test(out)).toBe(false)
   })
 
   it.each([
@@ -89,6 +166,13 @@ describe('formatCurrency', () => {
 
   it('keeps throwing for invalid Intl options', () => {
     expect(() => formatCurrency(12, 'not-a-currency')).toThrow(RangeError)
+  })
+
+  it('falls back to latn when numberingSystem is invalid', () => {
+    expect(formatCurrency(2500, 'EGP', { locale: 'ar-EG', numberingSystem: 'invalid' }))
+      .toBe(formatCurrency(2500, 'EGP', { locale: 'ar-EG', numberingSystem: 'latn' }))
+    expect(formatCurrency(2500, 'EGP', { locale: 'ar-EG', numberingSystem: 'not-a-numbering-system' }))
+      .toBe(formatCurrency(2500, 'EGP', { locale: 'ar-EG', numberingSystem: 'latn' }))
   })
 })
 
@@ -137,6 +221,27 @@ describe('formatDate', () => {
     { locale: '123-en', expected: formatDate('2024-05-12T00:00:00Z', { locale: 'en', timeZone: 'UTC' }) },
   ])('falls back from invalid locale $locale', ({ locale, expected }) => {
     expect(formatDate('2024-05-12T00:00:00Z', { locale, timeZone: 'UTC' })).toBe(expected)
+  })
+
+  it.each([
+    'invalid',
+    'not-a-numbering-system',
+    '!!',
+    '',
+  ])('falls back to latn in formatDate when numberingSystem %j is invalid', (numberingSystem) => {
+    const out = formatDate(date, {
+      locale: 'ar-EG',
+      numberingSystem,
+      timeZone: 'UTC',
+      dateStyle: 'short',
+    })
+    expect(out).toBe(formatDate(date, {
+      locale: 'ar-EG',
+      numberingSystem: 'latn',
+      timeZone: 'UTC',
+      dateStyle: 'short',
+    }))
+    expect(ARABIC_INDIC.test(out)).toBe(false)
   })
 })
 
@@ -213,6 +318,20 @@ describe('useFormat', () => {
     expect(ARABIC_INDIC.test(formatters.value.formatNumber(1234))).toBe(false)
     expect(formatters.value.dir).toBe('rtl')
     rtl.dispose()
+  })
+
+  it('falls back to latn when createRtl is configured with an invalid numbering system', () => {
+    for (const numberingSystem of ['invalid', 'not-a-numbering-system', '', { ar: 'invalid' }, { ar: '' }] as const) {
+      const { rtl, formatters } = setup({
+        locales: ['ar-EG'],
+        defaultLocale: 'ar-EG',
+        numberingSystem,
+      })
+      expect(formatters.value.formatNumber(1234)).toBe('1,234')
+      expect(ARABIC_INDIC.test(formatters.value.formatCurrency(2500, 'EGP'))).toBe(false)
+      expect(ARABIC_INDIC.test(formatters.value.formatDate('2024-05-12T00:00:00Z', { timeZone: 'UTC', dateStyle: 'short' }))).toBe(false)
+      rtl.dispose()
+    }
   })
 
   it('switches runtime direction and locale (ltr -> rtl -> ltr) and respects nested RtlProvider', async () => {

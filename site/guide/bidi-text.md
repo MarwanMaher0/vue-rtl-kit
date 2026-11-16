@@ -41,6 +41,8 @@ The slot may contain text, comments, and fragments. If it contains element marku
 
 ## Strategies
 
+Both strategies strip pre-existing Unicode bidi control characters from plain-text input before splitting directional runs (unless `:enabled="false"` or the slot contains element markup).
+
 The default `element` strategy creates elements such as:
 
 ```html

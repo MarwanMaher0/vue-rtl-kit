@@ -24,7 +24,7 @@ export function useFormat(): ComputedRef<BoundFormatters> {
 
   const numberingSystem = computed<NumberingSystem | undefined>(() => {
     const configured = instance?.options.numberingSystem
-    if (!configured) return undefined
+    if (configured === undefined) return undefined
     if (typeof configured === 'string') return configured
     const tag = locale.value
     return configured[tag] ?? configured[tag.split(/[-_]/)[0]!]

@@ -11,7 +11,8 @@
  * Why `./nuxt` is allowed to be ESM-only: it is a Nuxt module. Nuxt loads
  * modules through jiti and its own ESM loader, never through `require()`, and
  * `@nuxt/kit` - which the module imports - ships ESM only. A CommonJS build
- * would therefore be dead code that could not even load on Node 18/20, so the
+ * would therefore be dead code that could not even load on any supported Node
+ * (20.11+), so the
  * entry point deliberately has no `require` condition, and attw's "require
  * resolves to ESM" warning is expected there and only there. Everything else
  * (`.`, `./styles.css`, `./package.json`) must stay fully green.

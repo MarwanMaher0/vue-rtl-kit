@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { BidiText } from '../src/components/BidiText'
 import {
+  FSI,
   LRI,
   PDI,
   RLI,
@@ -258,7 +259,7 @@ describe('splitBidiRuns', () => {
 
 describe('isolate', () => {
   it('wraps with FSI by default', () => {
-    expect(isolate('مرحبا')).toBe(`⁨مرحبا${PDI}`)
+    expect(isolate('مرحبا')).toBe(`${FSI}مرحبا${PDI}`)
   })
 
   it('wraps with an explicit direction', () => {
@@ -338,6 +339,6 @@ describe('helpers', () => {
   })
 
   it('strips every bidi control character', () => {
-    expect(stripBidiControls(`‎‪abc‬${RLI}د${PDI}`)).toBe('abcد')
+    expect(stripBidiControls(`\u200E\u202Aabc\u202C${RLI}د${PDI}`)).toBe('abcد')
   })
 })

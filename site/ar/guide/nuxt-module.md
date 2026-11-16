@@ -26,7 +26,7 @@ export default defineNuxtConfig({
 | `syncDocument` | `boolean` | `true` | مزامنة `<html dir>` و`<html lang>` في العميل بعد التثبيت. |
 | `htmlClass` | `boolean \| { rtl: string, ltr: string }` | `false` | تبديل أصناف الاتجاه الافتراضية أو المخصصة على `<html>`. |
 | `numberingSystem` | `NumberingSystem \| Record<string, NumberingSystem>` | `undefined`؛ القيمة الافتراضية للغة | الأرقام الافتراضية لـ `useFormat()`، عالميًا أو لكل لغة. |
-| `registerGlobals` | `boolean` | مهمَل؛ يتصرف وقت التشغيل كأنه `true` | لا تمرر الوحدة هذا الخيار الموروث إلى إعدادات التشغيل، لذا لا يكون لضبطه أي تأثير في Nuxt. |
+| `registerGlobals` | `boolean` | `true` | يُمرَّر إلى `createRtl()` في إضافة التشغيل؛ اضبطه على `false` لتعطيل التسجيل العام لـ `<RtlProvider>` و`<BidiText>` و`v-rtl` وقت التشغيل. |
 | `autoImports` | `boolean` | `true` | استيراد `useDirection` و`useRtl` و`useLogicalStyles` و`useFormat` تلقائيًا. |
 | `components` | `boolean` | `true` | تسجيل `<RtlProvider>` و`<BidiText>` عبر Nuxt. |
 | `css` | `boolean` | `true` | حقن `vue-rtl-kit/styles.css`. |
@@ -49,9 +49,9 @@ export default defineNuxtConfig({
 
 عند تفعيله، تقرأ إضافة التشغيل ملف تعريف الارتباط أثناء SSR وتبذر المخزن باللغة والاتجاه المحفوظين، فيحصل الزائر العربي العائد على `<html dir="rtl" lang="ar">` في HTML الخادم دون وميض اتجاه. وتكتب زوج `locale:dir` الحالي مجددًا كلما استُدعي `setLocale` أو `setDirection` أو `toggleDirection`. تُقبل أيضًا لغة محفوظة بمفردها (`ar`) أو اتجاه بمفرده (`rtl`)؛ أما القيم التي ليست لغة مُعدّة أو اتجاهًا أو زوجًا كهذا فتُتجاهل وتُطبق القيم الافتراضية المُعدّة. ومع `cookie: false` لا يُقرأ أي ملف تعريف ارتباط ولا يُكتب.
 
-تُحذف `dir` و`syncDocument` و`htmlClass` و`numberingSystem` من إعدادات التشغيل عند عدم توفيرها، مما يسمح لـ `createRtl()` بتطبيق قواعد الحسم الخاصة به.
+تُحذف `dir` و`syncDocument` و`htmlClass` و`numberingSystem` و`registerGlobals` من إعدادات التشغيل عند عدم توفيرها، مما يسمح لـ `createRtl()` بتطبيق قواعد الحسم الخاصة به.
 
-يعطّل `components: false` تسجيل مكوّنات Nuxt فقط. ومع ذلك، تظل إضافة التشغيل تستدعي `createRtl()` مع القيمة الافتراضية `registerGlobals: true`، لذلك تظل `<RtlProvider>` و`<BidiText>` و`v-rtl` مسجلة عالميًا.
+يعطّل `components: false` تسجيل مكوّنات Nuxt وقت البناء فقط. اضبط `registerGlobals: false` أيضًا لمنع إضافة التشغيل من تسجيل `<RtlProvider>` و`<BidiText>` و`v-rtl` عالميًا في تطبيق Vue.
 
 ## سمات مستند SSR
 
@@ -83,6 +83,7 @@ export default defineNuxtConfig({
   rtl: {
     autoImports: false,
     components: false,
+    registerGlobals: false,
     css: false,
   },
 })
@@ -101,4 +102,4 @@ const { dir } = useDirection()
 </template>
 ```
 
-تُثبَّت إضافة اتجاه التشغيل دائمًا. وتتحكم الخيارات `autoImports` و`components` و`css` فقط في تكاملات Nuxt المقابلة لها أثناء البناء.
+تُثبَّت إضافة اتجاه التشغيل دائمًا. تتحكم الخيارات `autoImports` و`components` و`css` في تكاملات Nuxt وقت البناء، بينما يعطّل `registerGlobals: false` التسجيل العام للمكوّنات و`v-rtl` وقت التشغيل.

@@ -1,9 +1,9 @@
-// Smoke test for the built package on the oldest supported Node (18).
+// Smoke test for the built package on the oldest supported Node (20.11).
 //
-// The library is built on Node >= 20 (vite.config.ts uses import.meta.dirname),
-// so this script only consumes dist/: it loads the package through both the
-// ESM and the CJS entry, via the file paths and via the package's own
-// `exports` map, and exercises the SSR-safe surface. Run with:
+// Some devDependencies require a newer Node 20.x, so this script only consumes
+// dist/: it loads the package through both the ESM and the CJS entry, via the
+// file paths and via the package's own `exports` map, and exercises the
+// SSR-safe surface. Run with:
 //
 //   node test/dist-smoke.mjs
 import assert from 'node:assert/strict'

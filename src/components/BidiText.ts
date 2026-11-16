@@ -1,6 +1,6 @@
 import type { PropType, VNode, VNodeChild } from 'vue'
 import { Comment, Fragment, Text, defineComponent, h } from 'vue'
-import { detectDirection, isolateRuns, splitBidiRuns } from '../bidi'
+import { detectDirection, isolateRuns, splitBidiRuns, stripBidiControls } from '../bidi'
 import { useDirection } from '../composables/useDirection'
 import type { Direction } from '../types'
 
@@ -129,7 +129,7 @@ export const BidiText = /*#__PURE__*/ defineComponent({
       // emits them as a single text node, and Vue < 3.5 hydration does not
       // reconcile one DOM text node against several text vnodes.
       const nodes: (string | VNode)[] = []
-      for (const run of splitBidiRuns(source, baseDir)) {
+      for (const run of splitBidiRuns(stripBidiControls(source), baseDir)) {
         if (run.isolated) {
           nodes.push(h('bdi', { dir: run.dir }, run.text))
           continue

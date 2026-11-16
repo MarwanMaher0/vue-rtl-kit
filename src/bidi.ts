@@ -16,20 +16,20 @@
 import type { Direction, DirectionOrAuto } from './types'
 
 /** U+2066 LEFT-TO-RIGHT ISOLATE */
-export const LRI = '⁦'
+export const LRI = '\u2066'
 /** U+2067 RIGHT-TO-LEFT ISOLATE */
-export const RLI = '⁧'
+export const RLI = '\u2067'
 /** U+2068 FIRST STRONG ISOLATE */
-export const FSI = '⁨'
+export const FSI = '\u2068'
 /** U+2069 POP DIRECTIONAL ISOLATE */
-export const PDI = '⁩'
+export const PDI = '\u2069'
 /** U+200E LEFT-TO-RIGHT MARK */
-export const LRM = '‎'
+export const LRM = '\u200E'
 /** U+200F RIGHT-TO-LEFT MARK */
-export const RLM = '‏'
+export const RLM = '\u200F'
 
 /** Every Unicode bidi control character, for stripping. */
-const BIDI_CONTROLS = /[‎‏؜‪-‮⁦-⁩]/g
+const BIDI_CONTROLS = /[\u200E\u200F\u061C\u202A-\u202E\u2066-\u2069]/g
 
 /* Strong right-to-left scripts. Arabic-Indic digits live inside Script=Arabic
  * but are weak (AN), so digits are tested first in `classifyChar`. */
@@ -300,7 +300,7 @@ export function isolate(text: string, dir: DirectionOrAuto = 'auto'): string {
  *
  * @example
  * isolateRuns('تم التحديث في 12-05-2024', 'rtl')
- * // => 'تم التحديث في ⁦12-05-2024⁩'
+ * // => 'تم التحديث في \u206612-05-2024\u2069'
  */
 export function isolateRuns(text: string, baseDir: Direction = 'ltr'): string {
   return splitBidiRuns(stripBidiControls(text), baseDir)

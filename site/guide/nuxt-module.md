@@ -26,7 +26,7 @@ The configuration key is `rtl`. `ModuleOptions` extends `RtlOptions` with Nuxt-s
 | `syncDocument` | `boolean` | `true` | Synchronize client `<html dir>` and `<html lang>` after installation. |
 | `htmlClass` | `boolean \| { rtl: string, ltr: string }` | `false` | Toggle default or custom direction classes on `<html>`. |
 | `numberingSystem` | `NumberingSystem \| Record<string, NumberingSystem>` | `undefined`; locale default | Default digits for `useFormat()`, globally or per locale. |
-| `registerGlobals` | `boolean` | Ignored; runtime behaves as `true` | The module does not pass this inherited option to runtime config, so setting it has no effect under Nuxt. |
+| `registerGlobals` | `boolean` | `true` | Forwarded to `createRtl()` in the runtime plugin; set to `false` to skip runtime global registration of `<RtlProvider>`, `<BidiText>`, and `v-rtl`. |
 | `autoImports` | `boolean` | `true` | Auto-import `useDirection`, `useRtl`, `useLogicalStyles`, and `useFormat`. |
 | `components` | `boolean` | `true` | Register `<RtlProvider>` and `<BidiText>` through Nuxt. |
 | `css` | `boolean` | `true` | Inject `vue-rtl-kit/styles.css`. |
@@ -49,9 +49,9 @@ export default defineNuxtConfig({
 
 With it enabled, the runtime plugin reads the cookie during SSR and seeds the store with the saved locale/direction, so a returning Arabic user gets `<html dir="rtl" lang="ar">` in the server HTML with no direction flash. It writes the current `locale:dir` pair back whenever `setLocale`, `setDirection`, or `toggleDirection` is called. A saved bare locale (`ar`) or direction (`rtl`) is also accepted; values that are not a configured locale, a direction, or such a pair are ignored and the configured defaults apply. With `cookie: false` no cookie is read or written.
 
-`dir`, `syncDocument`, `htmlClass`, and `numberingSystem` are omitted from runtime configuration when not provided, allowing `createRtl()` to apply its own resolution rules.
+`dir`, `syncDocument`, `htmlClass`, `numberingSystem`, and `registerGlobals` are omitted from runtime configuration when not provided, allowing `createRtl()` to apply its own resolution rules.
 
-`components: false` disables Nuxt's component registration only. The runtime plugin still calls `createRtl()` with its default `registerGlobals: true`, so `<RtlProvider>`, `<BidiText>`, and `v-rtl` remain globally registered.
+`components: false` disables Nuxt's build-time component registration only. Set `registerGlobals: false` as well to stop the runtime plugin from registering `<RtlProvider>`, `<BidiText>`, and `v-rtl` globally on the Vue app.
 
 ## SSR document attributes
 
@@ -83,6 +83,7 @@ export default defineNuxtConfig({
   rtl: {
     autoImports: false,
     components: false,
+    registerGlobals: false,
     css: false,
   },
 })
@@ -101,4 +102,4 @@ const { dir } = useDirection()
 </template>
 ```
 
-The runtime direction plugin is always installed. The `autoImports`, `components`, and `css` options only control their respective Nuxt build-time integrations.
+The runtime direction plugin is always installed. `autoImports`, `components`, and `css` control Nuxt's build-time integrations, while `registerGlobals: false` disables runtime global registration of components and `v-rtl`.

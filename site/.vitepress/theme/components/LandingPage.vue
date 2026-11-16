@@ -16,7 +16,7 @@ const beforeBadge = computed(() => `${t.value.beforeBadgeLabel}: ${reversedDate.
 const afterBadge = computed(() => `${t.value.afterBadgeLabel}: ${sourceDate.value}`)
 const doc = (path: string) => withBase(`${locale.value === 'ar' ? '/ar' : ''}/${path}`)
 const github = 'https://github.com/MarwanMaher0/vue-rtl-kit'
-const install = 'npm install github:MarwanMaher0/vue-rtl-kit#v0.1.1'
+const install = 'npm install vue-rtl-kit'
 const exampleCode = computed(() => [
   '<script setup>',
   "import { BidiText, RtlProvider } from 'vue-rtl-kit'",

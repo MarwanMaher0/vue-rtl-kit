@@ -13,6 +13,7 @@ const errors = []
 const pages = new Map()
 const titles = new Map()
 const descriptions = new Map()
+const staleInstallPattern = /github:MarwanMaher0\/vue-rtl-kit#|not on npm|npm publication/i
 let references = 0
 
 function check(condition, message) {
@@ -118,12 +119,18 @@ async function main() {
   for (const file of htmlFiles) {
     const label = relative(output, file).split(sep).join('/')
     const canonical = new URL(routeFor(label), site).href
-    const dom = new JSDOM(await readFile(file, 'utf8'), { url: canonical })
-    pages.set(file, { document: dom.window.document, dom, label, canonical })
+    const html = await readFile(file, 'utf8')
+    const dom = new JSDOM(html, { url: canonical })
+    pages.set(file, { document: dom.window.document, dom, html, label, canonical })
   }
 
   const indexable = [...pages.values()].filter(page => page.label !== '404.html')
-  for (const { document, label, canonical } of pages.values()) {
+  for (const { document, html, label, canonical } of pages.values()) {
+    const pageBodyText = normalized(document.body.textContent)
+    check(
+      !staleInstallPattern.test(html) && !staleInstallPattern.test(pageBodyText),
+      `${label}: contains stale pre-publish or GitHub-install wording`,
+    )
     const title = single(document, 'head > title', label)?.textContent?.trim() || ''
     check(Boolean(title), `${label}: empty title`)
     unique(titles, title, label, 'title')
@@ -288,12 +295,38 @@ async function main() {
   check(robots.includes(`Sitemap: ${new URL('sitemap.xml', site).href}`), 'robots.txt: incorrect sitemap URL')
   for (const name of ['llms.txt', 'llms-full.txt']) {
     const text = await readFile(resolve(output, name), 'utf8')
-    check(text.includes('github:MarwanMaher0/vue-rtl-kit#v0.1.1'), `${name}: missing tagged installation guidance`)
+    check(text.includes('npm install vue-rtl-kit'), `${name}: missing npm installation guidance`)
+    check(!staleInstallPattern.test(text), `${name}: contains stale pre-publish or GitHub-install wording`)
     check(text.length >= (name === 'llms-full.txt' ? 10000 : 1000), `${name}: content is too short to be a substantive reference`)
     for (const match of text.matchAll(/https?:\/\/[^\s)<>]+/g)) await checkReference(match[0], site, name)
   }
   const image = await readFile(resolve(output, 'og-image.png'))
   check(image.length >= 24 && image.subarray(1, 4).toString() === 'PNG' && image.readUInt32BE(16) === 1200 && image.readUInt32BE(20) === 630, 'og-image.png: expected a 1200x630 PNG')
+
+  for (const installPageFile of ['index.html', 'ar/index.html', 'getting-started.html', 'ar/getting-started.html']) {
+    const installPage = pages.get(resolve(output, installPageFile))
+    const bodyText = normalized(installPage?.document.body.textContent)
+    check(
+      Boolean(installPage) && bodyText.includes('npm install vue-rtl-kit'),
+      `${installPageFile}: missing "npm install vue-rtl-kit" in rendered HTML`,
+    )
+  }
+
+  for (const sourceRelPath of [
+    'README.md',
+    'site/getting-started.md',
+    'site/ar/getting-started.md',
+    'site/guide/v-rtl.md',
+    'site/ar/guide/v-rtl.md',
+    'site/.vitepress/theme/components/LandingPage.vue',
+    'site/.vitepress/theme/landing-copy.ts',
+    'site/.vitepress/faq.ts',
+    'site/public/llms.txt',
+    'site/public/llms-full.txt',
+  ]) {
+    const sourceContent = await readFile(resolve(root, sourceRelPath), 'utf8')
+    check(!staleInstallPattern.test(sourceContent), `${sourceRelPath}: must not contain stale pre-publish or GitHub-install wording`)
+  }
 
   const landingCopySource = await readFile(resolve(root, 'site/.vitepress/theme/landing-copy.ts'), 'utf8')
   const landingVueSource = await readFile(resolve(root, 'site/.vitepress/theme/components/LandingPage.vue'), 'utf8')
