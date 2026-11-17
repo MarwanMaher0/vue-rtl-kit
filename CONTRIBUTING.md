@@ -21,7 +21,10 @@ npm run lint       # ESLint, zero warnings allowed
 npm run typecheck  # vue-tsc --noEmit
 npm run build      # ESM + CJS + types (.d.ts and .d.cts) + styles.css
 npm test           # Vitest, test/
+npm run check:size # bundle size budgets
 npm run check:publish  # publint + arethetypeswrong on the packed tarball
+npm run docs:build # VitePress production build
+npm run docs:check # documentation links and generated-output checks
 ```
 
 `check:publish` runs arethetypeswrong twice: strictly for every entry point, then for `./nuxt`
@@ -33,7 +36,10 @@ The Nuxt SSR test packs and installs the existing `dist/` offline, without rebui
 After changing source, build configuration, scripts, or package metadata, run `npm run build`
 before `npm test` or `npx vitest run test/nuxt.spec.ts`; missing or stale builds are rejected.
 
-CI also builds the playground: `npx vite build -c playground/vite.config.ts`.
+CI also builds the playground: `npx vite build -c playground/vite.config.ts`. It runs the
+production documentation build and documentation checks on every pull request; the Pages
+deployment repeats `docs:check` before uploading the artifact. Dependabot opens weekly, grouped
+updates for npm dependencies and GitHub Actions.
 
 ## Releases
 
@@ -63,9 +69,13 @@ Done once by a maintainer with publish rights on npm:
 
 ### Release flow
 
-1. **Add a changeset with each user-facing PR.** Run `npx changeset`, answer the prompts
+1. **Add a changeset with each PR that changes `src/`.** Run `npx changeset`, answer the prompts
    (patch for a fix, minor for a feature), and commit the generated `.changeset/*.md` file along
-   with the change. `npx changeset status` previews what the next release would look like.
+   with the change. `npx changeset status` previews what the next release would look like. For an
+   internal change that intentionally needs no release, run `npx changeset --empty` and commit the
+   generated empty changeset instead. CI runs `npx changeset status --since=origin/main` on pull
+   requests; the automated `changeset-release/main` **Version Packages** PR is exempt because it
+   consumes the pending changesets.
 2. **Merging to `main` opens the `Version Packages` PR.** The Release workflow runs lint,
    typecheck, unit tests, the build, the Nuxt SSR test and `npm run check:publish`, then
    `changesets/action` opens — or updates, when more changesets land — a pull request titled
