@@ -9,6 +9,24 @@ updates:
         patterns:
           - "*"
 
+  - package-ecosystem: npm
+    directory: /examples/vite
+    schedule:
+      interval: weekly
+    groups:
+      npm:
+        patterns:
+          - "*"
+
+  - package-ecosystem: npm
+    directory: /examples/nuxt
+    schedule:
+      interval: weekly
+    groups:
+      npm:
+        patterns:
+          - "*"
+
   - package-ecosystem: github-actions
     directory: /
     schedule:

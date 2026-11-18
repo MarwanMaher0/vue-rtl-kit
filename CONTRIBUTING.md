@@ -69,13 +69,18 @@ Done once by a maintainer with publish rights on npm:
 
 ### Release flow
 
-1. **Add a changeset with each PR that changes `src/`.** Run `npx changeset`, answer the prompts
-   (patch for a fix, minor for a feature), and commit the generated `.changeset/*.md` file along
-   with the change. `npx changeset status` previews what the next release would look like. For an
-   internal change that intentionally needs no release, run `npx changeset --empty` and commit the
-   generated empty changeset instead. CI runs `npx changeset status --since=origin/main` on pull
-   requests; the automated `changeset-release/main` **Version Packages** PR is exempt because it
-   consumes the pending changesets.
+1. **Add a changeset with each PR that changes the published package.** Run `npx changeset`,
+   answer the prompts (patch for a fix, minor for a feature), and commit the generated
+   `.changeset/*.md` file along with the change. `npx changeset status` previews what the next
+   release would look like. For an internal `src/` change that intentionally needs no release,
+   run `npx changeset --empty` and commit the generated empty changeset instead. Only `src/`
+   triggers the CI check (`"changedFilePatterns": ["src/**"]` in `.changeset/config.json`), so
+   docs, test, CI and Dependabot PRs pass without one; changes outside `src/` that alter the
+   published package (`package.json` exports or dependencies, build config) still need
+   `npx changeset` by hand. Run the CI check locally with
+   `git fetch origin main && npx changeset status --since=origin/main`. The same-repo
+   `changeset-release/main` **Version Packages** PR is exempt because it consumes the pending
+   changesets.
 2. **Merging to `main` opens the `Version Packages` PR.** The Release workflow runs lint,
    typecheck, unit tests, the build, the Nuxt SSR test and `npm run check:publish`, then
    `changesets/action` opens — or updates, when more changesets land — a pull request titled

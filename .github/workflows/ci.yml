@@ -207,7 +207,7 @@ jobs:
         working-directory: examples/${{ matrix.example }}
 
   docs:
-    name: Documentation
+    name: Docs check
     runs-on: ubuntu-latest
 
     steps:
@@ -232,7 +232,10 @@ jobs:
   changeset:
     name: Changeset
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request' && github.head_ref != 'changeset-release/main'
+    if: >-
+      github.event_name == 'pull_request' &&
+      (github.head_ref != 'changeset-release/main' ||
+      github.event.pull_request.head.repo.full_name != github.repository)
 
     steps:
       - name: Checkout
@@ -247,7 +250,7 @@ jobs:
           cache: npm
 
       - name: Install
-        run: npm ci
+        run: npm ci --ignore-scripts
 
       - name: Check changeset status
         run: npx changeset status --since=origin/main
