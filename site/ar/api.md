@@ -72,13 +72,15 @@ splitBidiRuns('آخر تحديث 12-05-2024', 'rtl')
 | `logicalProperty` | `(property: string, options?: LogicalStyleOptions) => string` | تحويل اسم خاصية فيزيائية واحدة مع الحفاظ على حالة الأحرف. |
 | `toLogicalStyle` | `<T extends StyleObject>(style: T, options?: LogicalStyleOptions) => StyleObject` | تحويل كائن أنماط فيزيائية إلى خصائص منطقية. |
 | `toPhysicalStyle` | `<T extends StyleObject>(style: T, dir: Direction) => StyleObject` | تحويل الخصائص المنطقية إلى ما يناسب اتجاهًا محددًا. |
+| `logicalArrow` | `(key: string, dir: Direction) => LogicalArrow \| null` | تحويل مفتاح سهم أو `Home` أو `End` إلى خطوة تنقل منطقية وفق WAI-ARIA. |
 
 ```ts
-import { logicalProperty, toLogicalStyle, toPhysicalStyle } from 'vue-rtl-kit'
+import { logicalArrow, logicalProperty, toLogicalStyle, toPhysicalStyle } from 'vue-rtl-kit'
 
 logicalProperty('marginLeft') // marginInlineStart
 toLogicalStyle({ textAlign: 'left' }) // { textAlign: 'start' }
 toPhysicalStyle({ marginInlineStart: '8px' }, 'rtl')
+logicalArrow('ArrowRight', 'rtl') // 'previous'
 ```
 
 ## أدوات اللغة المساعدة
@@ -238,9 +240,10 @@ interface UseLogicalStylesReturn {
   endSide: ComputedRef<'left' | 'right'>
   sign: ComputedRef<1 | -1>
   toLogical: (style: StyleObject, options?: LogicalStyleOptions) => StyleObject
-  toPhysical: (style: StyleObject) => StyleObject
+  toPhysical: (style: StyleObject, dir?: Direction) => StyleObject
   property: (name: string, options?: LogicalStyleOptions) => string
   mirror: (value: number) => number
+  arrow: (event: KeyboardEvent) => LogicalArrow | null
 }
 ```
 
@@ -290,6 +293,8 @@ interface BidiRun {
 ## أنواع الأنماط المنطقية
 
 ```ts
+type LogicalArrow = 'next' | 'previous' | 'first' | 'last' | 'up' | 'down'
+
 interface LogicalStyleOptions {
   size?: boolean
   values?: boolean

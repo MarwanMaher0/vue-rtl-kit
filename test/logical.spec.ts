@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { defineComponent, h } from 'vue'
+import { defineComponent, h, nextTick, ref } from 'vue'
 import { mount } from '@vue/test-utils'
-import { logicalProperty, toLogicalStyle, toPhysicalStyle } from '../src/logical'
-import { useLogicalStyles } from '../src/composables/useLogicalStyles'
+import { RtlProvider } from '../src/components'
 import { createRtl } from '../src/core'
+import { useLogicalStyles } from '../src/composables/useLogicalStyles'
+import { logicalArrow as rootLogicalArrow } from '../src/index'
+import { logicalArrow, logicalProperty, toLogicalStyle, toPhysicalStyle } from '../src/logical'
 
 describe('logicalProperty', () => {
   it('maps inline-axis properties', () => {
@@ -531,5 +533,285 @@ describe('useLogicalStyles', () => {
     expect(toLogical({ marginLeft: '4px' })).toEqual({ marginInlineStart: '4px' })
     expect(toPhysical({ marginInlineStart: '4px' })).toEqual({ marginRight: '4px' })
     expect(property('paddingLeft')).toBe('paddingInlineStart')
+  })
+
+  it('resolves arrow events in both directions and reacts to direction flips', () => {
+    const rtl = createRtl({ locales: { en: 'ltr', ar: 'rtl' }, defaultLocale: 'en', syncDocument: false })
+    const result: { value?: ReturnType<typeof useLogicalStyles> } = {}
+    const Probe = defineComponent({
+      setup() {
+        result.value = useLogicalStyles()
+        return () => h('i')
+      },
+    })
+    const wrapper = mount(Probe, { global: { plugins: [rtl] } })
+    try {
+      const { arrow } = result.value!
+      expect(arrow(new KeyboardEvent('keydown', { key: 'ArrowRight' }))).toBe('next')
+      expect(arrow(new KeyboardEvent('keydown', { key: 'ArrowLeft' }))).toBe('previous')
+      expect(arrow(new KeyboardEvent('keydown', { key: 'Home' }))).toBe('first')
+      expect(arrow(new KeyboardEvent('keydown', { key: 'End' }))).toBe('last')
+      expect(arrow(new KeyboardEvent('keydown', { key: 'ArrowUp' }))).toBe('up')
+      expect(arrow(new KeyboardEvent('keydown', { key: 'ArrowDown' }))).toBe('down')
+      expect(arrow(new KeyboardEvent('keydown', { key: 'Tab' }))).toBeNull()
+
+      rtl.setLocale('ar')
+      expect(arrow(new KeyboardEvent('keydown', { key: 'ArrowRight' }))).toBe('previous')
+      expect(arrow(new KeyboardEvent('keydown', { key: 'ArrowLeft' }))).toBe('next')
+      expect(arrow(new KeyboardEvent('keydown', { key: 'Home' }))).toBe('first')
+      expect(arrow(new KeyboardEvent('keydown', { key: 'End' }))).toBe('last')
+      expect(arrow(new KeyboardEvent('keydown', { key: 'ArrowUp' }))).toBe('up')
+      expect(arrow(new KeyboardEvent('keydown', { key: 'ArrowDown' }))).toBe('down')
+      expect(arrow(new KeyboardEvent('keydown', { key: 'Enter' }))).toBeNull()
+    }
+    finally {
+      wrapper.unmount()
+      rtl.dispose()
+    }
+  })
+
+  it('returns null from arrow() when Ctrl, Alt or Meta is held, while allowing Shift', () => {
+    for (const dir of ['ltr', 'rtl'] as const) {
+      const { arrow } = mountWith(dir)
+      for (const key of ['ArrowRight', 'ArrowLeft', 'Home', 'End', 'ArrowUp', 'ArrowDown']) {
+        expect(arrow(new KeyboardEvent('keydown', { key, ctrlKey: true }))).toBeNull()
+        expect(arrow(new KeyboardEvent('keydown', { key, altKey: true }))).toBeNull()
+        expect(arrow(new KeyboardEvent('keydown', { key, metaKey: true }))).toBeNull()
+      }
+      expect(arrow(new KeyboardEvent('keydown', { key: 'ArrowRight', shiftKey: true })))
+        .toBe(dir === 'rtl' ? 'previous' : 'next')
+    }
+  })
+
+  it('resolves arrow() against nested RtlProvider scopes', async () => {
+    const rtl = createRtl({ dir: 'rtl', syncDocument: false })
+    const scopes: Record<string, ReturnType<typeof useLogicalStyles>> = {}
+
+    const ScopeProbe = defineComponent({
+      props: { name: { type: String, required: true } },
+      setup(props) {
+        scopes[props.name] = useLogicalStyles()
+        return () => h('span', { class: props.name })
+      },
+    })
+
+    const wrapper = mount(
+      defineComponent({
+        setup() {
+          return () => h('div', [
+            h(ScopeProbe, { name: 'page' }),
+            h(RtlProvider, { dir: 'ltr' }, {
+              default: ({ toggleDirection }: { toggleDirection: () => 'rtl' | 'ltr' }) => [
+                h('button', { class: 'flip-scope', onClick: toggleDirection }, 'flip'),
+                h(ScopeProbe, { name: 'ltrIsland' }),
+                h(RtlProvider, { dir: 'rtl' }, () => [
+                  h(ScopeProbe, { name: 'nestedRtl' }),
+                ]),
+              ],
+            }),
+          ])
+        },
+      }),
+      { global: { plugins: [rtl] } },
+    )
+
+    try {
+      const right = () => new KeyboardEvent('keydown', { key: 'ArrowRight' })
+      const left = () => new KeyboardEvent('keydown', { key: 'ArrowLeft' })
+
+      expect(scopes.page!.arrow(right())).toBe('previous')
+      expect(scopes.page!.arrow(left())).toBe('next')
+
+      expect(scopes.ltrIsland!.arrow(right())).toBe('next')
+      expect(scopes.ltrIsland!.arrow(left())).toBe('previous')
+
+      expect(scopes.nestedRtl!.arrow(right())).toBe('previous')
+      expect(scopes.nestedRtl!.arrow(left())).toBe('next')
+
+      await wrapper.find('.flip-scope').trigger('click')
+      expect(scopes.ltrIsland!.arrow(right())).toBe('previous')
+      expect(scopes.page!.arrow(right())).toBe('previous')
+    }
+    finally {
+      wrapper.unmount()
+      rtl.dispose()
+    }
+  })
+
+  it('drives a WAI-ARIA roving-tabindex tab list in RTL, LTR, and nested LTR islands', async () => {
+    const labels = ['Overview', 'Settings', 'Activity'] as const
+
+    const RovingTabList = defineComponent({
+      name: 'RovingTabList',
+      setup() {
+        const active = ref(0)
+        const buttons: (HTMLButtonElement | null)[] = []
+        const { arrow } = useLogicalStyles()
+
+        function onKeydown(event: KeyboardEvent) {
+          const move = arrow(event)
+          let next = active.value
+          if (move === 'next') next = (active.value + 1) % labels.length
+          else if (move === 'previous') next = (active.value - 1 + labels.length) % labels.length
+          else if (move === 'first') next = 0
+          else if (move === 'last') next = labels.length - 1
+          else return
+
+          event.preventDefault()
+          active.value = next
+          buttons[next]?.focus()
+        }
+
+        return () => h('div', [
+          h(
+            'div',
+            { role: 'tablist', onKeydown },
+            labels.map((label, index) =>
+              h(
+                'button',
+                {
+                  type: 'button',
+                  role: 'tab',
+                  'aria-selected': String(index === active.value),
+                  tabindex: index === active.value ? 0 : -1,
+                  ref: (el) => { buttons[index] = el as HTMLButtonElement | null },
+                },
+                label,
+              ),
+            ),
+          ),
+          h('div', { role: 'tabpanel' }, labels[active.value]),
+        ])
+      },
+    })
+
+    const rtl = createRtl({ dir: 'rtl', syncDocument: false })
+    const wrapper = mount(
+      defineComponent({
+        setup() {
+          return () => h('div', [
+            h('section', { class: 'rtl-tabs' }, [h(RovingTabList)]),
+            h(RtlProvider, { dir: 'ltr', class: 'ltr-island-tabs' }, () => [h(RovingTabList)]),
+          ])
+        },
+      }),
+      { global: { plugins: [rtl] }, attachTo: document.body },
+    )
+
+    try {
+      const rtlButtons = wrapper.findAll('.rtl-tabs [role="tab"]')
+      const rtlPanel = wrapper.find('.rtl-tabs [role="tabpanel"]')
+      const stateOf = (tabs: typeof rtlButtons) =>
+        tabs.map(tab => `${tab.attributes('aria-selected')}:${tab.attributes('tabindex')}`)
+
+      expect(stateOf(rtlButtons)).toEqual(['true:0', 'false:-1', 'false:-1'])
+      expect(rtlPanel.text()).toBe('Overview')
+
+      ;(rtlButtons[0]!.element as HTMLButtonElement).focus()
+      expect(document.activeElement).toBe(rtlButtons[0]!.element)
+
+      // In RTL, ArrowLeft advances ('next') and prevents default scrolling.
+      const leftEvent = new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true, cancelable: true })
+      rtlButtons[0]!.element.dispatchEvent(leftEvent)
+      await nextTick()
+      expect(leftEvent.defaultPrevented).toBe(true)
+      expect(stateOf(rtlButtons)).toEqual(['false:-1', 'true:0', 'false:-1'])
+      expect(document.activeElement).toBe(rtlButtons[1]!.element)
+      expect(rtlPanel.text()).toBe('Settings')
+
+      await rtlButtons[1]!.trigger('keydown', { key: 'ArrowLeft' })
+      expect(document.activeElement).toBe(rtlButtons[2]!.element)
+      expect(rtlPanel.text()).toBe('Activity')
+
+      // Wraps from last back to first.
+      await rtlButtons[2]!.trigger('keydown', { key: 'ArrowLeft' })
+      expect(document.activeElement).toBe(rtlButtons[0]!.element)
+
+      // In RTL, ArrowRight moves backwards ('previous'), wrapping from 0 to last.
+      await rtlButtons[0]!.trigger('keydown', { key: 'ArrowRight' })
+      expect(stateOf(rtlButtons)).toEqual(['false:-1', 'false:-1', 'true:0'])
+      expect(document.activeElement).toBe(rtlButtons[2]!.element)
+
+      await rtlButtons[2]!.trigger('keydown', { key: 'ArrowRight' })
+      expect(document.activeElement).toBe(rtlButtons[1]!.element)
+
+      // Home and End always target first and last regardless of direction.
+      await rtlButtons[1]!.trigger('keydown', { key: 'End' })
+      expect(document.activeElement).toBe(rtlButtons[2]!.element)
+      await rtlButtons[2]!.trigger('keydown', { key: 'Home' })
+      expect(document.activeElement).toBe(rtlButtons[0]!.element)
+      expect(stateOf(rtlButtons)).toEqual(['true:0', 'false:-1', 'false:-1'])
+
+      // Modified shortcuts and vertical/non-tab keys are left to the browser.
+      for (const init of [
+        { key: 'ArrowLeft', altKey: true },
+        { key: 'ArrowRight', ctrlKey: true },
+        { key: 'ArrowLeft', metaKey: true },
+        { key: 'ArrowDown' },
+        { key: 'Tab' },
+      ]) {
+        const untouched = new KeyboardEvent('keydown', { ...init, bubbles: true, cancelable: true })
+        rtlButtons[0]!.element.dispatchEvent(untouched)
+        await nextTick()
+        expect(untouched.defaultPrevented).toBe(false)
+        expect(document.activeElement).toBe(rtlButtons[0]!.element)
+        expect(rtlPanel.text()).toBe('Overview')
+      }
+
+      // Inside <RtlProvider dir="ltr"> on the same RTL page, ArrowRight advances and ArrowLeft goes back.
+      const ltrButtons = wrapper.findAll('.ltr-island-tabs [role="tab"]')
+      const ltrPanel = wrapper.find('.ltr-island-tabs [role="tabpanel"]')
+      ;(ltrButtons[0]!.element as HTMLButtonElement).focus()
+
+      await ltrButtons[0]!.trigger('keydown', { key: 'ArrowRight' })
+      expect(stateOf(ltrButtons)).toEqual(['false:-1', 'true:0', 'false:-1'])
+      expect(document.activeElement).toBe(ltrButtons[1]!.element)
+      expect(ltrPanel.text()).toBe('Settings')
+
+      await ltrButtons[1]!.trigger('keydown', { key: 'ArrowLeft' })
+      expect(document.activeElement).toBe(ltrButtons[0]!.element)
+      await ltrButtons[0]!.trigger('keydown', { key: 'ArrowLeft' })
+      expect(document.activeElement).toBe(ltrButtons[2]!.element)
+      await ltrButtons[2]!.trigger('keydown', { key: 'Home' })
+      expect(document.activeElement).toBe(ltrButtons[0]!.element)
+      await ltrButtons[0]!.trigger('keydown', { key: 'End' })
+      expect(document.activeElement).toBe(ltrButtons[2]!.element)
+    }
+    finally {
+      wrapper.unmount()
+      rtl.dispose()
+    }
+  })
+})
+
+describe('logicalArrow', () => {
+  it('is re-exported from the package entry', () => {
+    expect(rootLogicalArrow).toBe(logicalArrow)
+  })
+
+  it('maps horizontal, vertical, and boundary keys in LTR', () => {
+    expect(logicalArrow('ArrowRight', 'ltr')).toBe('next')
+    expect(logicalArrow('ArrowLeft', 'ltr')).toBe('previous')
+    expect(logicalArrow('Home', 'ltr')).toBe('first')
+    expect(logicalArrow('End', 'ltr')).toBe('last')
+    expect(logicalArrow('ArrowUp', 'ltr')).toBe('up')
+    expect(logicalArrow('ArrowDown', 'ltr')).toBe('down')
+  })
+
+  it('swaps ArrowLeft and ArrowRight in RTL while keeping Home/End and vertical arrows', () => {
+    expect(logicalArrow('ArrowRight', 'rtl')).toBe('previous')
+    expect(logicalArrow('ArrowLeft', 'rtl')).toBe('next')
+    expect(logicalArrow('Home', 'rtl')).toBe('first')
+    expect(logicalArrow('End', 'rtl')).toBe('last')
+    expect(logicalArrow('ArrowUp', 'rtl')).toBe('up')
+    expect(logicalArrow('ArrowDown', 'rtl')).toBe('down')
+  })
+
+  it('returns null for non-navigation and Object.prototype keys', () => {
+    for (const dir of ['ltr', 'rtl'] as const) {
+      for (const key of ['Enter', ' ', 'Tab', 'Escape', 'PageUp', 'PageDown', 'Left', 'Right', 'a', '', 'toString', 'constructor', '__proto__']) {
+        expect(logicalArrow(key, dir)).toBeNull()
+      }
+    }
   })
 })

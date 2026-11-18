@@ -1,10 +1,11 @@
 /**
- * Physical <-> logical CSS property mapping.
+ * Physical <-> logical CSS property and keyboard navigation mapping.
  *
  * CSS logical properties (`margin-inline-start`, `inset-inline-end`, ...) solve
  * direction in the stylesheet. They do not help when a value has to be computed
  * in JavaScript - a drag offset, a popover position, a chart label, a style
- * binding built from props - and that is what this module is for.
+ * binding built from props, or an arrow key in a composite widget - and that is
+ * what this module is for.
  */
 import type { Direction } from './types'
 
@@ -316,4 +317,39 @@ export function toPhysicalStyle<T extends StyleObject>(style: T, dir: Direction)
   }
 
   return out
+}
+
+/** Logical navigation step returned by {@link logicalArrow}. */
+export type LogicalArrow = 'next' | 'previous' | 'first' | 'last' | 'up' | 'down'
+
+/**
+ * Map a `KeyboardEvent.key` value to its direction-aware WAI-ARIA navigation step.
+ *
+ * Horizontal composite widgets (tabs, sliders, carousels, menubars) reverse
+ * `ArrowLeft` and `ArrowRight` in RTL while keeping `Home`/`End` as `'first'`/`'last'`
+ * and `ArrowUp`/`ArrowDown` unchanged. Unrelated keys return `null`.
+ *
+ * @example
+ * logicalArrow('ArrowRight', 'ltr') // 'next'
+ * logicalArrow('ArrowRight', 'rtl') // 'previous'
+ * logicalArrow('Home', 'rtl') // 'first'
+ */
+export function logicalArrow(key: string, dir: Direction): LogicalArrow | null {
+  const rtl = dir === 'rtl'
+  switch (key) {
+    case 'ArrowRight':
+      return rtl ? 'previous' : 'next'
+    case 'ArrowLeft':
+      return rtl ? 'next' : 'previous'
+    case 'Home':
+      return 'first'
+    case 'End':
+      return 'last'
+    case 'ArrowUp':
+      return 'up'
+    case 'ArrowDown':
+      return 'down'
+    default:
+      return null
+  }
 }

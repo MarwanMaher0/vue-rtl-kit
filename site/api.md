@@ -72,13 +72,15 @@ splitBidiRuns('آخر تحديث 12-05-2024', 'rtl')
 | `logicalProperty` | `(property: string, options?: LogicalStyleOptions) => string` | Convert one physical property name while preserving casing. |
 | `toLogicalStyle` | `<T extends StyleObject>(style: T, options?: LogicalStyleOptions) => StyleObject` | Convert a physical style object to logical properties. |
 | `toPhysicalStyle` | `<T extends StyleObject>(style: T, dir: Direction) => StyleObject` | Resolve logical properties for a direction. |
+| `logicalArrow` | `(key: string, dir: Direction) => LogicalArrow \| null` | Map an arrow, `Home`, or `End` key to a direction-aware WAI-ARIA navigation step. |
 
 ```ts
-import { logicalProperty, toLogicalStyle, toPhysicalStyle } from 'vue-rtl-kit'
+import { logicalArrow, logicalProperty, toLogicalStyle, toPhysicalStyle } from 'vue-rtl-kit'
 
 logicalProperty('marginLeft') // marginInlineStart
 toLogicalStyle({ textAlign: 'left' }) // { textAlign: 'start' }
 toPhysicalStyle({ marginInlineStart: '8px' }, 'rtl')
+logicalArrow('ArrowRight', 'rtl') // 'previous'
 ```
 
 ## Locale helpers
@@ -238,9 +240,10 @@ interface UseLogicalStylesReturn {
   endSide: ComputedRef<'left' | 'right'>
   sign: ComputedRef<1 | -1>
   toLogical: (style: StyleObject, options?: LogicalStyleOptions) => StyleObject
-  toPhysical: (style: StyleObject) => StyleObject
+  toPhysical: (style: StyleObject, dir?: Direction) => StyleObject
   property: (name: string, options?: LogicalStyleOptions) => string
   mirror: (value: number) => number
+  arrow: (event: KeyboardEvent) => LogicalArrow | null
 }
 ```
 
@@ -290,6 +293,8 @@ interface BidiRun {
 ## Logical style types
 
 ```ts
+type LogicalArrow = 'next' | 'previous' | 'first' | 'last' | 'up' | 'down'
+
 interface LogicalStyleOptions {
   size?: boolean
   values?: boolean

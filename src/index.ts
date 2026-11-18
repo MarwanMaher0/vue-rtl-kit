@@ -48,11 +48,12 @@ export {
 export type { BidiRun } from './bidi'
 
 export {
+  logicalArrow,
   logicalProperty,
   toLogicalStyle,
   toPhysicalStyle,
 } from './logical'
-export type { LogicalStyleOptions, StyleObject } from './logical'
+export type { LogicalArrow, LogicalStyleOptions, StyleObject } from './logical'
 
 export {
   directionOfLocale,

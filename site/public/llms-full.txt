@@ -205,26 +205,28 @@ Sources:
 
 ## Logical styles in JavaScript
 
-Use native CSS logical properties for normal responsive layout. useLogicalStyles() is for direction-dependent values calculated in JavaScript. It resolves the current scope and returns dir, isRtl, startSide, endSide, sign, toLogical, toPhysical, property, and mirror.
+Use native CSS logical properties for normal responsive layout. useLogicalStyles() is for direction-dependent styles and keyboard interactions calculated in JavaScript. It resolves the current scope and returns dir, isRtl, startSide, endSide, sign, toLogical, toPhysical, property, mirror, and arrow.
 
 - toLogical(style, options?): converts physical property names and directional values.
-- toPhysical(style): resolves logical properties using the current scope direction.
+- toPhysical(style, dir?): resolves logical properties using the current scope direction (or an explicit dir override).
 - property(name, options?): converts a single property name while preserving casing.
 - mirror(value): multiplies an offset by sign, giving 1 in LTR and -1 in RTL.
+- arrow(event): maps a KeyboardEvent to 'next' | 'previous' | 'first' | 'last' | 'up' | 'down' | null for the current scope direction (ArrowRight is 'next' in LTR and 'previous' in RTL; Home/End stay 'first'/'last'), returning null when Ctrl, Alt, or Meta is held.
 - size option defaults false and enables width/height mappings when true.
 - values option defaults true, converting values such as textAlign: 'left' to 'start'.
+- shorthands option defaults false and expands 1–4-value physical box shorthands when true.
 
 ```ts
 import { computed } from 'vue'
 import { useLogicalStyles } from 'vue-rtl-kit'
 
-const { mirror, toLogical, toPhysical } = useLogicalStyles()
+const { arrow, mirror, toLogical, toPhysical } = useLogicalStyles()
 const panelStyle = computed(() => toLogical({ marginLeft: '16px', textAlign: 'left' }))
 const transform = computed(() => `translateX(${mirror(24)}px)`)
 const placement = computed(() => toPhysical({ insetInlineStart: '12px' }))
 ```
 
-Standalone exports are logicalProperty(property, options?), toLogicalStyle(style, options?), and toPhysicalStyle(style, dir). Physical conversion is useful for rendering paths such as canvas, SVG, email, or legacy consumers that cannot use logical CSS. StyleObject is Record<string, string | number | undefined>.
+Standalone exports are logicalArrow(key, dir), logicalProperty(property, options?), toLogicalStyle(style, options?), and toPhysicalStyle(style, dir). Physical conversion is useful for rendering paths such as canvas, SVG, email, or legacy consumers that cannot use logical CSS. StyleObject is Record<string, string | number | undefined>, and LogicalArrow is 'next' | 'previous' | 'first' | 'last' | 'up' | 'down'.
 
 Sources:
 - [useLogicalStyles](https://marwanmaher0.github.io/vue-rtl-kit/guide/use-logical-styles)

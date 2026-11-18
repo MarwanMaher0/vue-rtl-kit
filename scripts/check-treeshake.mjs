@@ -21,6 +21,7 @@ const COMPONENT_OR_DIRECTIVE = [
 const CASES = [
   { spec: 'isolateRuns', maxGzip: MAX_GZIP, forbidVue: true },
   { spec: 'toLogicalStyle', maxGzip: MAX_GZIP, forbidVue: true },
+  { spec: 'logicalArrow', maxGzip: MAX_GZIP, forbidVue: true },
   { spec: 'directionOfLocale', maxGzip: MAX_GZIP, forbidVue: true },
   { spec: 'formatNumber', forbidComponents: true },
 ]

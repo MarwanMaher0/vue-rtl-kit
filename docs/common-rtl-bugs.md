@@ -5,8 +5,8 @@ Hebrew (`he`) or Persian (`fa`) — and the smallest fix for each. Every bug bel
 pattern: a minimal broken snippet, why it breaks, a fix in plain CSS/Vue, and then the same fix with
 [vue-rtl-kit](../README.md). The vue-rtl-kit snippets use only APIs exported from `src/`:
 `createRtl`, `useDirection`, `useLogicalStyles`, `useFormat`, `BidiText`, `RtlProvider`, the `v-rtl`
-directive, the string helpers `isolate` / `isolateRuns` / `transliterateDigits`, and the classes in
-`vue-rtl-kit/styles.css`.
+directive, the helpers `isolate` / `isolateRuns` / `transliterateDigits` / `logicalArrow`, and the
+classes in `vue-rtl-kit/styles.css`.
 
 You do not need the library for most of these fixes. Logical CSS properties and `<bdi>` are native.
 The library earns its place where the value is computed in JavaScript, where mixed-direction text has
@@ -1428,6 +1428,210 @@ Two cases the snippet does not cover, to check against your own vendor:
 
 ---
 
+## 10. Arrow-key navigation going backwards in tabs, sliders, carousels and menus
+
+### Broken
+
+```vue
+<script setup lang="ts">
+import { ref } from 'vue'
+
+const tabs = ['نظرة عامة', 'الإعدادات', 'السجل']
+const active = ref(0)
+const tabEls: (HTMLButtonElement | null)[] = []
+
+function onKeydown(event: KeyboardEvent) {
+  let next = active.value
+  if (event.key === 'ArrowRight') next = (active.value + 1) % tabs.length
+  else if (event.key === 'ArrowLeft') next = (active.value - 1 + tabs.length) % tabs.length
+  else if (event.key === 'Home') next = 0
+  else if (event.key === 'End') next = tabs.length - 1
+  else return
+
+  event.preventDefault()
+  active.value = next
+  tabEls[next]?.focus()
+}
+</script>
+
+<template>
+  <div class="tabs" role="tablist" @keydown="onKeydown">
+    <button
+      v-for="(label, index) in tabs"
+      :key="label"
+      :ref="el => { tabEls[index] = el as HTMLButtonElement | null }"
+      type="button"
+      role="tab"
+      :aria-selected="index === active"
+      :tabindex="index === active ? 0 : -1"
+    >
+      {{ label }}
+    </button>
+  </div>
+</template>
+
+<style scoped>
+.tabs { display: flex; gap: 0.5rem; }
+</style>
+```
+
+In RTL, flex layout places **نظرة عامة** (index `0`) on the right and **الإعدادات** (index `1`) to
+its left. When the user presses `ArrowLeft` to move visually to the next tab on the left, focus
+jumps backwards to **السجل** instead; pressing `ArrowRight` advances leftwards. The same inversion
+hits custom horizontal sliders, carousels and menubars — and because `event.ctrlKey` / `altKey` /
+`metaKey` are not checked either, pressing `Alt+ArrowLeft` to go back in browser history switches
+tabs and cancels navigation.
+
+**Why it breaks:** `dir="rtl"` reverses the visual inline axis for flex, grid and text, and native
+`<input type="range">` or text carets flip horizontal arrows on their own, but `KeyboardEvent.key`
+is always physical (`'ArrowLeft'`, `'ArrowRight'`). Under the WAI-ARIA Authoring Practices Guide
+(APG), horizontal composite widgets (tabs, sliders, carousels, menubars, toolbars, radio groups)
+must swap `ArrowLeft` and `ArrowRight` in RTL while keeping `Home` as first/minimum, `End` as
+last/maximum, and `ArrowUp` / `ArrowDown` unchanged.
+
+### Fix — plain Vue
+
+Resolve the direction of the widget's own subtree (not just `<html>`, so an LTR island on an RTL
+page still behaves as LTR), ignore modified shortcuts, and swap only the horizontal arrows:
+
+```vue
+<script setup lang="ts">
+import { ref } from 'vue'
+
+const tabs = ['نظرة عامة', 'الإعدادات', 'السجل']
+const active = ref(0)
+const tabEls: (HTMLButtonElement | null)[] = []
+
+function isRtlSubtree(target: EventTarget | null): boolean {
+  const el = target instanceof Element ? target : null
+  const dirAttr = el?.closest('[dir]')?.getAttribute('dir') ?? document.documentElement.dir
+  return dirAttr === 'rtl'
+}
+
+function onKeydown(event: KeyboardEvent) {
+  if (event.ctrlKey || event.altKey || event.metaKey) return
+
+  const rtl = isRtlSubtree(event.currentTarget)
+  const forwardKey = rtl ? 'ArrowLeft' : 'ArrowRight'
+  const backwardKey = rtl ? 'ArrowRight' : 'ArrowLeft'
+
+  let next = active.value
+  if (event.key === forwardKey) next = (active.value + 1) % tabs.length
+  else if (event.key === backwardKey) next = (active.value - 1 + tabs.length) % tabs.length
+  else if (event.key === 'Home') next = 0
+  else if (event.key === 'End') next = tabs.length - 1
+  else return
+
+  event.preventDefault()
+  active.value = next
+  tabEls[next]?.focus()
+}
+</script>
+
+<template>
+  <div class="tabs" role="tablist" @keydown="onKeydown">
+    <button
+      v-for="(label, index) in tabs"
+      :key="label"
+      :ref="el => { tabEls[index] = el as HTMLButtonElement | null }"
+      type="button"
+      role="tab"
+      :aria-selected="index === active"
+      :tabindex="index === active ? 0 : -1"
+    >
+      {{ label }}
+    </button>
+  </div>
+</template>
+
+<style scoped>
+.tabs { display: flex; gap: 0.5rem; }
+</style>
+```
+
+Leave `Shift` unblocked: widgets that support range selection (`Shift+Arrow`, `Shift+Home`) or
+coarse slider steps read `event.shiftKey` after resolving the direction. And only attach this logic
+to custom ARIA widgets — a native `<input type="range">` with `dir="rtl"` already decreases on
+`ArrowRight` and increases on `ArrowLeft`, so intercepting its keys would invert it twice.
+
+### Fix — vue-rtl-kit
+
+`useLogicalStyles().arrow(event)` maps `KeyboardEvent` to `'next' | 'previous' | 'first' | 'last' | 'up' | 'down' | null`
+using the current scope's direction, and returns `null` whenever `Ctrl`, `Alt` or `Meta` is held:
+
+```vue
+<script setup lang="ts">
+import { ref } from 'vue'
+import { useLogicalStyles } from 'vue-rtl-kit'
+
+const tabs = ['نظرة عامة', 'الإعدادات', 'السجل']
+const active = ref(0)
+const tabEls: (HTMLButtonElement | null)[] = []
+const { arrow } = useLogicalStyles()
+
+function onKeydown(event: KeyboardEvent) {
+  const move = arrow(event)
+  let next = active.value
+  if (move === 'next') next = (active.value + 1) % tabs.length
+  else if (move === 'previous') next = (active.value - 1 + tabs.length) % tabs.length
+  else if (move === 'first') next = 0
+  else if (move === 'last') next = tabs.length - 1
+  else return
+
+  event.preventDefault()
+  active.value = next
+  tabEls[next]?.focus()
+}
+</script>
+
+<template>
+  <div class="tabs" role="tablist" @keydown="onKeydown">
+    <button
+      v-for="(label, index) in tabs"
+      :key="label"
+      :ref="el => { tabEls[index] = el as HTMLButtonElement | null }"
+      type="button"
+      role="tab"
+      :aria-selected="index === active"
+      :tabindex="index === active ? 0 : -1"
+    >
+      {{ label }}
+    </button>
+  </div>
+</template>
+
+<style scoped>
+.tabs { display: flex; gap: 0.5rem; }
+</style>
+```
+
+| Key | In LTR | In RTL |
+| --- | --- | --- |
+| `ArrowRight` | `'next'` | `'previous'` |
+| `ArrowLeft` | `'previous'` | `'next'` |
+| `Home` | `'first'` | `'first'` |
+| `End` | `'last'` | `'last'` |
+| `ArrowUp` | `'up'` | `'up'` |
+| `ArrowDown` | `'down'` | `'down'` |
+| Any other key, or `Ctrl` / `Alt` / `Meta` held | `null` | `null` |
+
+Because `arrow()` reads `useDirection()`, a tab bar or media scrubber rendered inside
+`<RtlProvider dir="ltr">` on an RTL page resolves `ArrowRight` as `'next'` automatically, and
+`event.preventDefault()` stays in your handler so unhandled keys (such as `ArrowDown` in a
+horizontal tab list, or `Tab` leaving the widget) keep their native browser behaviour. Outside
+component setup — in a state machine or plain helper — call the pure `logicalArrow(key, dir)` export
+directly:
+
+```ts
+import { logicalArrow } from 'vue-rtl-kit'
+
+logicalArrow('ArrowRight', 'rtl') // 'previous'
+logicalArrow('ArrowLeft', 'rtl') // 'next'
+logicalArrow('Home', 'rtl') // 'first'
+```
+
+---
+
 ## Checklist
 
 Run through this with `dir` toggled live (the README's playground does exactly that) in at least one
@@ -1449,9 +1653,12 @@ Arabic, one Hebrew and one Persian build before calling an RTL release done:
 - [ ] Every `translateX`, drag delta and vendor `x` prop is multiplied by the direction sign (§8).
 - [ ] Each third-party component uses its own `dir`/`locale` prop if it has one, is otherwise
       scoped/isolated or overridden in logical properties — including its teleported overlays (§9).
+- [ ] Custom tabs, sliders, carousels and horizontal menus swap `ArrowLeft`/`ArrowRight` in RTL,
+      keep `Home`/`End` as first/last, and ignore `Ctrl`/`Alt`/`Meta` shortcuts (§10).
 
 The through-line: direction is a property of the *paragraph and the layout flow*, not of your data.
 Keep strings in logical order, state direction as close to the content as possible (`dir`,
 `<RtlProvider>`, `v-rtl`), express layout in logical properties, isolate foreign runs instead of
-reordering them, and multiply the handful of physical pixel values that remain by the direction
-sign. Do those five things and Arabic, Hebrew and Persian stop being a second, buggier UI.
+reordering them, map horizontal arrow keys to logical steps, and multiply the handful of physical
+pixel values that remain by the direction sign. Do those six things and Arabic, Hebrew and Persian
+stop being a second, buggier UI.

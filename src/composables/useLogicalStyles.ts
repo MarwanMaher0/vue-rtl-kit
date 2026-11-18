@@ -1,7 +1,7 @@
 import type { ComputedRef } from 'vue'
 import { computed } from 'vue'
-import type { LogicalStyleOptions, StyleObject } from '../logical'
-import { logicalProperty, toLogicalStyle, toPhysicalStyle } from '../logical'
+import type { LogicalArrow, LogicalStyleOptions, StyleObject } from '../logical'
+import { logicalArrow, logicalProperty, toLogicalStyle, toPhysicalStyle } from '../logical'
 import type { Direction } from '../types'
 import { useDirection } from './useDirection'
 
@@ -24,17 +24,22 @@ export interface UseLogicalStylesReturn {
   property: (name: string, options?: LogicalStyleOptions) => string
   /** Flip a horizontal offset for the current direction. */
   mirror: (value: number) => number
+  /**
+   * Resolve an arrow, `Home`, or `End` key event against the current scope
+   * direction. Returns `null` for unrelated keys or when Ctrl, Alt, or Meta is held.
+   */
+  arrow: (event: KeyboardEvent) => LogicalArrow | null
 }
 
 /**
- * Direction-aware helpers for styles that have to be computed in JavaScript.
+ * Direction-aware helpers for styles and interactions computed in JavaScript.
  *
  * Anything you can express in a stylesheet should stay there - `margin-inline-start`
  * needs no JavaScript. Reach for this when the value itself is dynamic: a drag
- * delta, a tooltip offset, a transform built from props.
+ * delta, a tooltip offset, a transform built from props, or arrow-key navigation.
  *
  * @example
- * const { toLogical, sign, startSide } = useLogicalStyles()
+ * const { toLogical, sign, arrow } = useLogicalStyles()
  *
  * const style = computed(() => toLogical({ marginLeft: `${indent.value}px` }))
  * const drag = computed(() => `translateX(${offset.value * sign.value}px)`)
@@ -52,5 +57,6 @@ export function useLogicalStyles(): UseLogicalStylesReturn {
     toPhysical: (style, overrideDir = dir.value) => toPhysicalStyle(style, overrideDir),
     property: (name, options) => logicalProperty(name, options),
     mirror: value => (value === 0 ? 0 : value * sign.value),
+    arrow: event => (event.ctrlKey || event.altKey || event.metaKey ? null : logicalArrow(event.key, dir.value)),
   }
 }

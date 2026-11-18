@@ -15,7 +15,7 @@ import DemoSection from './components/DemoSection.vue'
 import ProfileCard from './components/ProfileCard.vue'
 
 const { dir, isRtl, locale, setDirection, setLocale } = useDirection()
-const { sign, startSide, toLogical } = useLogicalStyles()
+const { arrow, sign, startSide, toLogical } = useLogicalStyles()
 const fmt = useFormat()
 
 /** Real strings that break. Each one is a bug somebody has shipped. */
@@ -40,6 +40,30 @@ const locales = [
 
 const numberingSystem = ref<'latn' | 'arab'>('arab')
 const indent = ref(40)
+const tabLabels = {
+  'ar-EG': ['نظرة عامة', 'الإعدادات', 'السجل'],
+  'he-IL': ['סקירה', 'הגדרות', 'יומן'],
+  'en-GB': ['Overview', 'Settings', 'Activity'],
+} as const
+const activeTab = ref(0)
+const lastArrow = ref<string>('—')
+const tabEls: (HTMLButtonElement | null)[] = []
+const currentTabs = computed(() => tabLabels[locale.value as keyof typeof tabLabels] ?? tabLabels['en-GB'])
+
+function onTabKeydown(event: KeyboardEvent) {
+  const move = arrow(event)
+  lastArrow.value = `${event.key} → ${move ?? 'null'}`
+  let next = activeTab.value
+  if (move === 'next') next = (activeTab.value + 1) % currentTabs.value.length
+  else if (move === 'previous') next = (activeTab.value - 1 + currentTabs.value.length) % currentTabs.value.length
+  else if (move === 'first') next = 0
+  else if (move === 'last') next = currentTabs.value.length - 1
+  else return
+
+  event.preventDefault()
+  activeTab.value = next
+  tabEls[next]?.focus()
+}
 
 /** A style that has to be computed in JS - the case logical CSS cannot cover. */
 const computedStyle = computed(() =>
@@ -270,6 +294,26 @@ const activeCopy = computed(() => cardCopy[locale.value as keyof typeof cardCopy
             </div>
             <pre class="code code--sm" v-rtl:ltr><code>sign = {{ sign }}
 transform: {{ dragTransform }}</code></pre>
+          </CompareCard>
+        </div>
+
+        <div class="mt">
+          <CompareCard label="arrow(event) — WAI-ARIA roving tabindex" tone="good">
+            <div class="seg" role="tablist" aria-label="Demo tabs" @keydown="onTabKeydown">
+              <button
+                v-for="(label, index) in currentTabs"
+                :key="index"
+                :ref="el => { tabEls[index] = el as HTMLButtonElement | null }"
+                type="button"
+                role="tab"
+                class="seg__btn"
+                :class="{ 'seg__btn--on': index === activeTab }"
+                :aria-selected="index === activeTab"
+                :tabindex="index === activeTab ? 0 : -1"
+                @click="activeTab = index"
+              >{{ label }}</button>
+            </div>
+            <pre class="code code--sm" v-rtl:ltr><code>dir = '{{ dir }}' | last key: {{ lastArrow }}</code></pre>
           </CompareCard>
         </div>
       </DemoSection>

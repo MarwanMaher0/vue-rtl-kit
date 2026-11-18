@@ -16,6 +16,7 @@ import { createRtl } from '../src/core'
 import { vRtl } from '../src/directives/vRtl'
 import { isClient, isServer } from '../src/env'
 import { LRI, PDI, isolateRuns } from '../src/bidi'
+import { logicalArrow } from '../src/logical'
 
 describe('SSR environment', () => {
   it('reports a server environment', () => {
@@ -89,6 +90,8 @@ describe('SSR environment', () => {
 
   it('isolates text identically on server and client', () => {
     expect(isolateRuns('تم في 12-05-2024', 'rtl')).toBe(`تم في ${LRI}12-05-2024${PDI}`)
+    expect(logicalArrow('ArrowRight', 'rtl')).toBe('previous')
+    expect(logicalArrow('ArrowRight', 'ltr')).toBe('next')
   })
 
   it('switches ltr -> rtl -> ltr across all composables, providers, and directives with no window or document', async () => {

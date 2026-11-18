@@ -1,12 +1,15 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import { logicalArrow, useLogicalStyles } from 'vue-rtl-kit'
 
 const preferred = ref<'rtl' | 'ltr' | 'auto'>('auto')
+const { arrow } = useLogicalStyles()
+const _step: 'next' | 'previous' | 'first' | 'last' | 'up' | 'down' | null = logicalArrow('ArrowRight', 'rtl')
 </script>
 
 <template>
   <RtlProvider dir="ltr" locale="en" tag="section" :isolate="false" v-slot="{ dir, isRtl, setDirection, toggleDirection }">
-    <button type="button" @click="toggleDirection">{{ isRtl ? 'LTR' : 'RTL' }}</button>
+    <button type="button" @click="toggleDirection" @keydown="arrow">{{ isRtl ? 'LTR' : 'RTL' }}</button>
     <button type="button" @click="setDirection('rtl')">{{ dir }}</button>
   </RtlProvider>
   <RtlProvider :tag="null">

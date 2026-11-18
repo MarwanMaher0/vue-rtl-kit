@@ -17,10 +17,11 @@ const require = createRequire(import.meta.url)
 const root = fileURLToPath(new URL('..', import.meta.url))
 
 function check(label, api) {
-  for (const name of ['createRtl', 'splitBidiRuns', 'isolateRuns', 'toLogicalStyle', 'toPhysicalStyle', 'formatNumber', 'directionOfLocale', 'BidiText', 'RtlProvider', 'vRtl']) {
+  for (const name of ['createRtl', 'splitBidiRuns', 'isolateRuns', 'logicalArrow', 'toLogicalStyle', 'toPhysicalStyle', 'formatNumber', 'directionOfLocale', 'BidiText', 'RtlProvider', 'vRtl']) {
     assert.equal(typeof api[name], name === 'BidiText' || name === 'RtlProvider' || name === 'vRtl' ? 'object' : 'function', `${label}: missing export ${name}`)
   }
   assert.equal(api.directionOfLocale('ar-EG'), 'rtl', `${label}: directionOfLocale`)
+  assert.equal(api.logicalArrow('ArrowRight', 'rtl'), 'previous', `${label}: logicalArrow`)
   assert.equal(api.splitBidiRuns('مرحبا abc', 'rtl').map(run => run.text).join(''), 'مرحبا abc', `${label}: splitBidiRuns`)
   assert.deepEqual(api.toLogicalStyle({ marginLeft: '8px' }), { marginInlineStart: '8px' }, `${label}: toLogicalStyle`)
   assert.deepEqual(api.toPhysicalStyle({ paddingInline: '1px 2px' }, 'rtl'), { paddingRight: '1px', paddingLeft: '2px' }, `${label}: toPhysicalStyle`)

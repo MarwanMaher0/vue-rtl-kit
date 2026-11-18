@@ -65,8 +65,9 @@ bare `2024` — which reads the same either way — is left alone.
 - [Common RTL bugs in Vue apps and how to fix them](./docs/common-rtl-bugs.md) — physical CSS
   properties that do not flip, icons that must (and must not) mirror, Latin runs and punctuation
   breaking inside RTL text, mixed-direction form input, numbering systems, the SSR direction flash,
-  transforms going the wrong way, and third-party components that hardcode LTR. Each bug has a
-  minimal broken snippet, a plain CSS/Vue fix, and the vue-rtl-kit version.
+  transforms going the wrong way, third-party components that hardcode LTR, and arrow-key navigation
+  going backwards in tabs, sliders, carousels and menus. Each bug has a minimal broken snippet, a
+  plain CSS/Vue fix, and the vue-rtl-kit version.
 
 ## Install
 
@@ -100,18 +101,19 @@ budgets are set to their measured byte counts plus fixed `+256 B` (`0.25 kB`) ra
 
 | Entry point | Artifact | Raw (current / budget) | Gzip (current / budget) |
 | --- | --- | --- | --- |
-| `vue-rtl-kit` (ESM) | `dist/vue-rtl-kit.js` | 27.08 kB / ≤ 27.33 kB | 9.02 kB / ≤ 9.12 kB |
-| `vue-rtl-kit` (CJS) | `dist/vue-rtl-kit.cjs` | 19.43 kB / ≤ 19.68 kB | 7.42 kB / ≤ 7.52 kB |
+| `vue-rtl-kit` (ESM) | `dist/vue-rtl-kit.js` | 27.55 kB / ≤ 27.80 kB | 9.16 kB / ≤ 9.26 kB |
+| `vue-rtl-kit` (CJS) | `dist/vue-rtl-kit.cjs` | 19.77 kB / ≤ 20.02 kB | 7.54 kB / ≤ 7.64 kB |
 | `vue-rtl-kit/nuxt` | `dist/nuxt/module.js` | 1.95 kB / ≤ 3.00 kB | 0.75 kB / ≤ 1.50 kB |
 | `vue-rtl-kit/nuxt` (runtime plugin) | `dist/nuxt/runtime/plugin.js` | 2.77 kB / ≤ 3.00 kB | 1.02 kB / ≤ 1.20 kB |
 | `vue-rtl-kit/styles.css` | `dist/styles.css` | 7.10 kB / ≤ 8.00 kB | 1.91 kB / ≤ 2.50 kB |
 
-`sideEffects` lists only `*.css`, so a bundler can drop unused helpers. `npm run check:treeshake` bundles each import on its own against `dist/vue-rtl-kit.js` (Rollup, `vue` external, esbuild minify). Vue stays external, so Rollup would otherwise keep a bare `import 'vue'`; the check declares `vue` side-effect free with `treeshake.moduleSideEffects` (the same assumption a consumer bundler makes for an unused Vue import) and fails if `chunk.imports` still includes `vue`. It also fails if `{ isolateRuns }`, `{ toLogicalStyle }` or `{ directionOfLocale }` exceeds 2 kB gzip, or if `{ formatNumber }` still contains component or directive code:
+`sideEffects` lists only `*.css`, so a bundler can drop unused helpers. `npm run check:treeshake` bundles each import on its own against `dist/vue-rtl-kit.js` (Rollup, `vue` external, esbuild minify). Vue stays external, so Rollup would otherwise keep a bare `import 'vue'`; the check declares `vue` side-effect free with `treeshake.moduleSideEffects` (the same assumption a consumer bundler makes for an unused Vue import) and fails if `chunk.imports` still includes `vue`. It also fails if `{ isolateRuns }`, `{ toLogicalStyle }`, `{ logicalArrow }` or `{ directionOfLocale }` exceeds 2 kB gzip, or if `{ formatNumber }` still contains component or directive code:
 
 | Import | Gzip (current / budget) | Must not include |
 | --- | --- | --- |
 | `{ isolateRuns }` | 1.02 kB / ≤ 2.00 kB | `vue` |
 | `{ toLogicalStyle }` | 1.21 kB / ≤ 2.00 kB | `vue` |
+| `{ logicalArrow }` | 0.18 kB / ≤ 2.00 kB | `vue` |
 | `{ directionOfLocale }` | 0.62 kB / ≤ 2.00 kB | `vue` |
 | `{ formatNumber }` | 0.75 kB | components, directives |
 
@@ -223,7 +225,7 @@ Returns an `RtlInstance`: a Vue plugin *and* a store you can drive from outside 
 | --- | --- | --- |
 | `useDirection()` | `DirectionContext` | `dir`, `isRtl`, `isLtr`, `locale`, `startSide`, `endSide`, `sign`, `setDirection()`, `toggleDirection()`, `setLocale()`, `htmlAttrs()`. Resolves to the nearest `<RtlProvider>`, then the app store, then a detached fallback — it never throws. |
 | `useRtl()` | `RtlInstance` | The app-level store, skipping any `<RtlProvider>`. Throws if the plugin is missing. |
-| `useLogicalStyles()` | see below | `toLogical()`, `toPhysical()`, `property()`, `mirror()`, plus `startSide`, `endSide`, `sign`. |
+| `useLogicalStyles()` | see below | `toLogical()`, `toPhysical()`, `property()`, `mirror()`, `arrow()`, plus `startSide`, `endSide`, `sign`. |
 | `useFormat()` | `ComputedRef<BoundFormatters>` | `formatNumber` / `formatCurrency` / `formatDate` bound to the current locale and numbering system. |
 
 ### Components
@@ -285,6 +287,7 @@ toPhysicalStyle({ marginInline: '1px 2px' }, 'rtl')
 | `toLogicalStyle(style, options?)` | Physical → logical. `{ size: true }` also maps `width`/`height`; `{ values: false }` leaves `textAlign: 'left'` alone; `{ shorthands: true }` expands 1–4-value (or numeric) `margin`/`padding`/`inset`/`borderWidth`/`borderStyle`/`borderColor`/`borderRadius` into logical longhands. |
 | `toPhysicalStyle(style, dir)` | Logical → physical, for environments without logical-property support. Expands 1–2-value logical shorthands (`marginInline`, `paddingInline`, `insetInline`, `insetBlock`, `borderInlineWidth/Style/Color`, `scrollMarginInline`, `scrollPaddingInline`, …) to the physical sides for `dir`. |
 | `logicalProperty(name, options?)` | One property name, either casing preserved. |
+| `logicalArrow(key, dir)` | Map `'ArrowRight'` / `'ArrowLeft'` / `'Home'` / `'End'` / `'ArrowUp'` / `'ArrowDown'` to `'next' \| 'previous' \| 'first' \| 'last' \| 'up' \| 'down' \| null` (`ArrowRight` is `'previous'` in `'rtl'`). |
 
 Covers margin, padding, border (width/style/colour), corner radii, inset, scroll margin/padding,
 overflow, and the directional *values* of `text-align`, `float`, `clear`, `caption-side`, `resize`.
