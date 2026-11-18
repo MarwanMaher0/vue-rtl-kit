@@ -7,13 +7,32 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { promisify } from 'node:util'
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import { fetch, setup } from '@nuxt/test-utils'
 
 const run = promisify(execFile)
 const rootDir = fileURLToPath(new URL('..', import.meta.url))
 const fixtureDir = fileURLToPath(new URL('./fixtures/basic', import.meta.url))
 const cookieFixtureDir = fileURLToPath(new URL('./fixtures/cookie', import.meta.url))
+const registerGlobalsFixtureDir = fileURLToPath(new URL('./fixtures/register-globals', import.meta.url))
+const componentsFixtureDir = fileURLToPath(new URL('./fixtures/components', import.meta.url))
+const cssFixtureDir = fileURLToPath(new URL('./fixtures/css', import.meta.url))
+const warningsFixtureDir = fileURLToPath(new URL('./fixtures/warnings', import.meta.url))
+const warningsValidFixtureDir = fileURLToPath(new URL('./fixtures/warnings-valid', import.meta.url))
+const warningsReplacedLocalesFixtureDir = fileURLToPath(new URL('./fixtures/warnings-replaced-locales', import.meta.url))
+const warningsInlineFixtureDir = fileURLToPath(new URL('./fixtures/warnings-inline', import.meta.url))
+
+/** Nuxt builds are the slow part; give them room on cold or loaded CI runners. */
+const FIXTURE_TIMEOUT = 300_000
+// The @nuxt/test-utils `setup()` in the basic fixture registers its own hooks,
+// so raise the file-wide hook budget as well as passing the timeout explicitly.
+vi.setConfig({ hookTimeout: FIXTURE_TIMEOUT })
+
+interface BuiltFixture {
+  server: ChildProcess
+  baseUrl: string
+  logs: () => string
+}
 
 async function modificationTimes(directory: string): Promise<number[]> {
   const entries = await readdir(directory, { withFileTypes: true })
@@ -75,6 +94,67 @@ async function installPackedPackage(targetFixtureDir: string) {
   }
 }
 
+async function startBuiltFixture(directory: string): Promise<BuiltFixture> {
+  await assertFreshBuild()
+  await installPackedPackage(directory)
+  await run(join(rootDir, 'node_modules/.bin/nuxt'), ['build'], { cwd: directory })
+
+  const port = await new Promise<number>((resolvePort, reject) => {
+    const probe = createServer()
+    probe.once('error', reject)
+    probe.listen(0, '127.0.0.1', () => {
+      const address = probe.address()
+      probe.close(() => resolvePort(typeof address === 'object' && address ? address.port : 0))
+    })
+  })
+  const baseUrl = `http://127.0.0.1:${port}`
+  const output: string[] = []
+  const server = spawn(process.execPath, [join(directory, '.output/server/index.mjs')], {
+    cwd: directory,
+    env: { ...process.env, HOST: '127.0.0.1', PORT: String(port) },
+    stdio: ['ignore', 'pipe', 'pipe'],
+  })
+  server.stdout?.on('data', chunk => output.push(String(chunk)))
+  server.stderr?.on('data', chunk => output.push(String(chunk)))
+  const logs = () => output.join('')
+  for (let attempt = 0; attempt < 100; attempt++) {
+    try {
+      const response = await globalThis.fetch(baseUrl)
+      if (response.ok) return { server, baseUrl, logs }
+    }
+    catch { /* server is not up yet */ }
+    await new Promise(resolveDelay => setTimeout(resolveDelay, 200))
+  }
+  server.kill()
+  throw new Error(`Fixture server ${directory} did not start.`)
+}
+
+/** The stylesheet is either linked or inlined into the server-rendered HTML. */
+function hasStylesheet(html: string): boolean {
+  return /<link\b[^>]*\brel="stylesheet"/i.test(html)
+    || html.includes('.rtl-flip')
+    || html.includes('--rtl-space')
+}
+
+async function fetchFixture(baseUrl: string, logs?: () => string): Promise<string> {
+  const response = await globalThis.fetch(`${baseUrl}/`)
+  const html = await response.text()
+  expect(response.status).toBe(200)
+  expect(html).not.toContain('is not defined')
+  if (logs) {
+    await new Promise(resolveDelay => setTimeout(resolveDelay, 250))
+    expect(logs()).not.toContain('[request error]')
+  }
+  return html
+}
+
+async function prepareFixture(directory: string): Promise<string> {
+  await assertFreshBuild()
+  await installPackedPackage(directory)
+  const { stdout, stderr } = await run(join(rootDir, 'node_modules/.bin/nuxt'), ['prepare'], { cwd: directory })
+  return `${stdout}\n${stderr}`
+}
+
 describe('built nuxt module SSR', async () => {
   await assertFreshBuild()
   await installPackedPackage(fixtureDir)
@@ -93,51 +173,27 @@ describe('built nuxt module SSR', async () => {
     expect(html).toContain('rtl|ar|right|-1|-12|1,234')
     expect(html).toContain('<bdi dir="ltr">12-05-2024</bdi>')
     expect(html).toContain('id="scoped-ltr"')
+    // Cross-check for the `css: false` case: the stylesheet is linked or
+    // inlined when (and only when) the module includes it.
+    expect(hasStylesheet(html)).toBe(true)
   })
 })
 
 describe('built nuxt module SSR with cookie persistence', () => {
   // A second @nuxt/test-utils `setup()` in one file clobbers the shared test
   // context, so this fixture is built and served manually instead.
-  let server: ChildProcess | undefined
-  let baseUrl = ''
+  let fixture: BuiltFixture | undefined
 
   beforeAll(async () => {
-    await assertFreshBuild()
-    await installPackedPackage(cookieFixtureDir)
-    await run(join(rootDir, 'node_modules/.bin/nuxt'), ['build'], { cwd: cookieFixtureDir })
-
-    const port = await new Promise<number>((resolvePort, reject) => {
-      const probe = createServer()
-      probe.once('error', reject)
-      probe.listen(0, '127.0.0.1', () => {
-        const address = probe.address()
-        probe.close(() => resolvePort(typeof address === 'object' && address ? address.port : 0))
-      })
-    })
-    baseUrl = `http://127.0.0.1:${port}`
-    server = spawn(process.execPath, [join(cookieFixtureDir, '.output/server/index.mjs')], {
-      cwd: cookieFixtureDir,
-      env: { ...process.env, HOST: '127.0.0.1', PORT: String(port) },
-      stdio: 'ignore',
-    })
-    for (let attempt = 0; attempt < 100; attempt++) {
-      try {
-        const response = await globalThis.fetch(baseUrl)
-        if (response.ok) return
-      }
-      catch { /* server is not up yet */ }
-      await new Promise(resolveDelay => setTimeout(resolveDelay, 200))
-    }
-    throw new Error('Cookie fixture server did not start.')
-  })
+    fixture = await startBuiltFixture(cookieFixtureDir)
+  }, FIXTURE_TIMEOUT)
 
   afterAll(() => {
-    server?.kill()
+    fixture?.server.kill()
   })
 
   const htmlTagOf = async (cookie?: string) => {
-    const response = await globalThis.fetch(`${baseUrl}/`, cookie ? { headers: { cookie } } : undefined)
+    const response = await globalThis.fetch(`${fixture!.baseUrl}/`, cookie ? { headers: { cookie } } : undefined)
     const html = await response.text()
     expect(response.status).toBe(200)
     expect(html).not.toContain('is not defined')
@@ -172,4 +228,92 @@ describe('built nuxt module SSR with cookie persistence', () => {
       expect(htmlTag).toMatch(/\slang="en"(?=\s|>)/)
     }
   })
+
+  it('serves every cookie variant without logging request errors', async () => {
+    await htmlTagOf('fixture-rtl=ar')
+    await new Promise(resolveDelay => setTimeout(resolveDelay, 250))
+    expect(fixture!.logs()).not.toContain('[request error]')
+  })
+})
+
+describe('built nuxt module with registerGlobals: false', () => {
+  let fixture: BuiltFixture | undefined
+
+  beforeAll(async () => {
+    fixture = await startBuiltFixture(registerGlobalsFixtureDir)
+  }, FIXTURE_TIMEOUT)
+
+  afterAll(() => {
+    fixture?.server.kill()
+  })
+
+  it('keeps Nuxt components but does not register v-rtl globally', async () => {
+    const html = await fetchFixture(fixture!.baseUrl, fixture!.logs)
+    expect(html).toContain('<bdi dir="ltr">12-05-2024</bdi>')
+    expect(html).toMatch(/id="rtl-directive"[^>]*>false</)
+  })
+})
+
+describe('built nuxt module with components: false', () => {
+  let fixture: BuiltFixture | undefined
+
+  beforeAll(async () => {
+    fixture = await startBuiltFixture(componentsFixtureDir)
+  }, FIXTURE_TIMEOUT)
+
+  afterAll(() => {
+    fixture?.server.kill()
+  })
+
+  it('still registers the runtime components and directive globally', async () => {
+    const html = await fetchFixture(fixture!.baseUrl, fixture!.logs)
+    expect(html).toMatch(/id="globals"[^>]*>true</)
+    expect(html).toContain('<bdi dir="ltr">12-05-2024</bdi>')
+    const preTag = html.match(/<pre\b[^>]*>/)?.[0]
+    expect(preTag).toBeDefined()
+    expect(preTag).toContain('id="directive"')
+    expect(preTag).toContain('dir="ltr"')
+  })
+})
+
+describe('built nuxt module with css: false', () => {
+  let fixture: BuiltFixture | undefined
+
+  beforeAll(async () => {
+    fixture = await startBuiltFixture(cssFixtureDir)
+  }, FIXTURE_TIMEOUT)
+
+  afterAll(() => {
+    fixture?.server.kill()
+  })
+
+  it('does not put the stylesheet in the HTML', async () => {
+    const html = await fetchFixture(fixture!.baseUrl, fixture!.logs)
+    expect(hasStylesheet(html)).toBe(false)
+    expect(html).not.toContain('vue-rtl-kit/styles.css')
+  })
+})
+
+describe('nuxt module logger warnings', () => {
+  it('warns when defaultLocale is not configured and dir is invalid', async () => {
+    const output = await prepareFixture(warningsFixtureDir)
+    expect(output).toContain('defaultLocale "fr" is not one of the configured locales.')
+    expect(output).toContain('rtl.dir must be "rtl" or "ltr"; received "sideways".')
+  }, 240_000)
+
+  it('does not warn when the defaultLocale language subtag is configured', async () => {
+    const output = await prepareFixture(warningsValidFixtureDir)
+    expect(output).not.toContain('is not one of the configured locales')
+    expect(output).not.toContain('rtl.dir must be')
+  }, 240_000)
+
+  it('warns when replacing locales leaves the module default locale unlisted', async () => {
+    const output = await prepareFixture(warningsReplacedLocalesFixtureDir)
+    expect(output).toContain('defaultLocale "en" (module default) is not one of the configured locales; set rtl.defaultLocale')
+  }, 240_000)
+
+  it('warns for module options passed inline in the modules list', async () => {
+    const output = await prepareFixture(warningsInlineFixtureDir)
+    expect(output).toContain('defaultLocale "fr" is not one of the configured locales.')
+  }, 240_000)
 })

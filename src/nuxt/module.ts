@@ -13,14 +13,18 @@
  *   rtl: { locales: { en: 'ltr', ar: 'rtl' }, defaultLocale: 'ar' },
  * })
  */
-import { addComponent, addImports, addPlugin, createResolver, defineNuxtModule } from '@nuxt/kit'
+import { addComponent, addImports, addPlugin, createResolver, defineNuxtModule, useLogger } from '@nuxt/kit'
 import type { Nuxt } from '@nuxt/schema'
 import type { RtlOptions } from '../types'
 
 export interface ModuleOptions extends RtlOptions {
   /** Auto-import the composables. Default `true`. */
   autoImports?: boolean
-  /** Register `<RtlProvider>` and `<BidiText>` globally. Default `true`. */
+  /**
+   * Register `<RtlProvider>` and `<BidiText>` through Nuxt's component
+   * auto-registration. The runtime store can still register them globally
+   * through `registerGlobals`. Default `true`.
+   */
   components?: boolean
   /** Inject `vue-rtl-kit/styles.css`. Default `true`. */
   css?: boolean
@@ -38,6 +42,8 @@ export interface ModuleOptions extends RtlOptions {
   }
 }
 
+const DEFAULT_LOCALE = 'en'
+
 export default defineNuxtModule<ModuleOptions>({
   meta: {
     name: 'vue-rtl-kit',
@@ -46,13 +52,38 @@ export default defineNuxtModule<ModuleOptions>({
   },
   defaults: {
     locales: { en: 'ltr', ar: 'rtl' },
-    defaultLocale: 'en',
+    defaultLocale: DEFAULT_LOCALE,
     autoImports: true,
     components: true,
     css: true,
   },
   setup(options: ModuleOptions, nuxt: Nuxt) {
     const { resolve } = createResolver(import.meta.url)
+    const logger = useLogger('vue-rtl-kit')
+
+    // `options` already folds inline module options, the `rtl` config key, and
+    // the module defaults together. Comparing the effective default locale
+    // against the effective locale list therefore warns when the user picked
+    // an unknown default, and also when they replaced `locales` without
+    // choosing one (the inherited 'en' is no longer listed). The untouched
+    // defaults keep 'en' in `locales`, so they stay quiet.
+    const localeKeys = Array.isArray(options.locales)
+      ? options.locales
+      : Object.keys(options.locales ?? {})
+    const isConfiguredLocale = (locale: string): boolean => {
+      if (localeKeys.includes(locale)) return true
+      const language = locale.split(/[-_]/)[0]
+      return Boolean(language) && localeKeys.includes(language as string)
+    }
+    if (options.defaultLocale !== undefined && !isConfiguredLocale(options.defaultLocale)) {
+      logger.warn(options.defaultLocale === DEFAULT_LOCALE
+        ? `defaultLocale "${options.defaultLocale}" (module default) is not one of the configured locales; set rtl.defaultLocale.`
+        : `defaultLocale "${options.defaultLocale}" is not one of the configured locales.`)
+    }
+    const dir = options.dir as string | undefined
+    if (dir !== undefined && dir !== 'rtl' && dir !== 'ltr') {
+      logger.warn(`rtl.dir must be "rtl" or "ltr"; received "${dir}".`)
+    }
 
     const cookie = options.cookie
       ? {
