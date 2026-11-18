@@ -29,7 +29,7 @@ const BUDGETS = [
     entry: 'vue-rtl-kit/nuxt',
     exportKey: './nuxt',
     file: 'dist/nuxt/module.js',
-    maxRawBytes: 3 * 1024,
+    maxRawBytes: 3.25 * 1024,
     maxGzipBytes: Math.round(1.5 * 1024),
   },
   {

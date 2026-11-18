@@ -44,7 +44,7 @@ export interface ModuleOptions extends RtlOptions {
 
 const DEFAULT_LOCALE = 'en'
 
-export default defineNuxtModule<ModuleOptions>({
+const rtl = defineNuxtModule<ModuleOptions>({
   meta: {
     name: 'vue-rtl-kit',
     configKey: 'rtl',
@@ -66,7 +66,9 @@ export default defineNuxtModule<ModuleOptions>({
     // against the effective locale list therefore warns when the user picked
     // an unknown default, and also when they replaced `locales` without
     // choosing one (the inherited 'en' is no longer listed). The untouched
-    // defaults keep 'en' in `locales`, so they stay quiet.
+    // defaults keep 'en' in `locales`, so they stay quiet. Telling an explicit
+    // 'en' apart from the inherited default needs the raw config, since the
+    // merged options cannot say where the value came from.
     const localeKeys = Array.isArray(options.locales)
       ? options.locales
       : Object.keys(options.locales ?? {})
@@ -76,7 +78,12 @@ export default defineNuxtModule<ModuleOptions>({
       return Boolean(language) && localeKeys.includes(language as string)
     }
     if (options.defaultLocale !== undefined && !isConfiguredLocale(options.defaultLocale)) {
-      logger.warn(options.defaultLocale === DEFAULT_LOCALE
+      const inherited = options.defaultLocale === DEFAULT_LOCALE
+        && !((nuxt.options as Nuxt['options'] & { rtl?: Partial<ModuleOptions> }).rtl?.defaultLocale != null
+          || nuxt.options.modules.some(i => Array.isArray(i)
+            && (i[0] === rtl || i[0] === 'vue-rtl-kit/nuxt')
+            && i[1]?.defaultLocale != null))
+      logger.warn(inherited
         ? `defaultLocale "${options.defaultLocale}" (module default) is not one of the configured locales; set rtl.defaultLocale.`
         : `defaultLocale "${options.defaultLocale}" is not one of the configured locales.`)
     }
@@ -125,3 +132,5 @@ export default defineNuxtModule<ModuleOptions>({
     addPlugin({ src: resolve('./runtime/plugin'), mode: 'all' })
   },
 })
+
+export default rtl

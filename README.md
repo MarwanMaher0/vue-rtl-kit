@@ -103,7 +103,7 @@ budgets are set to their measured byte counts plus fixed `+256 B` (`0.25 kB`) ra
 | --- | --- | --- | --- |
 | `vue-rtl-kit` (ESM) | `dist/vue-rtl-kit.js` | 27.55 kB / ≤ 27.80 kB | 9.16 kB / ≤ 9.26 kB |
 | `vue-rtl-kit` (CJS) | `dist/vue-rtl-kit.cjs` | 19.77 kB / ≤ 20.02 kB | 7.54 kB / ≤ 7.64 kB |
-| `vue-rtl-kit/nuxt` | `dist/nuxt/module.js` | 2.88 kB / ≤ 3.00 kB | 1.05 kB / ≤ 1.50 kB |
+| `vue-rtl-kit/nuxt` | `dist/nuxt/module.js` | 3.08 kB / ≤ 3.25 kB | 1.12 kB / ≤ 1.50 kB |
 | `vue-rtl-kit/nuxt` (runtime plugin) | `dist/nuxt/runtime/plugin.js` | 2.77 kB / ≤ 3.00 kB | 1.02 kB / ≤ 1.20 kB |
 | `vue-rtl-kit/styles.css` | `dist/styles.css` | 7.10 kB / ≤ 8.00 kB | 1.91 kB / ≤ 2.50 kB |
 

@@ -21,6 +21,9 @@ const warningsFixtureDir = fileURLToPath(new URL('./fixtures/warnings', import.m
 const warningsValidFixtureDir = fileURLToPath(new URL('./fixtures/warnings-valid', import.meta.url))
 const warningsReplacedLocalesFixtureDir = fileURLToPath(new URL('./fixtures/warnings-replaced-locales', import.meta.url))
 const warningsInlineFixtureDir = fileURLToPath(new URL('./fixtures/warnings-inline', import.meta.url))
+const warningsExplicitConfigFixtureDir = fileURLToPath(new URL('./fixtures/warnings-explicit-config', import.meta.url))
+const warningsExplicitInlineFixtureDir = fileURLToPath(new URL('./fixtures/warnings-explicit-inline', import.meta.url))
+const warningsExplicitImportedFixtureDir = fileURLToPath(new URL('./fixtures/warnings-explicit-imported', import.meta.url))
 
 /** Nuxt builds are the slow part; give them room on cold or loaded CI runners. */
 const FIXTURE_TIMEOUT = 300_000
@@ -315,5 +318,23 @@ describe('nuxt module logger warnings', () => {
   it('warns for module options passed inline in the modules list', async () => {
     const output = await prepareFixture(warningsInlineFixtureDir)
     expect(output).toContain('defaultLocale "fr" is not one of the configured locales.')
+  }, 240_000)
+
+  it('uses the plain warning for an explicit default locale in the rtl config', async () => {
+    const output = await prepareFixture(warningsExplicitConfigFixtureDir)
+    expect(output).toContain('defaultLocale "en" is not one of the configured locales.')
+    expect(output).not.toContain('(module default)')
+  }, 240_000)
+
+  it('uses the plain warning for an explicit inline default locale', async () => {
+    const output = await prepareFixture(warningsExplicitInlineFixtureDir)
+    expect(output).toContain('defaultLocale "en" is not one of the configured locales.')
+    expect(output).not.toContain('(module default)')
+  }, 240_000)
+
+  it('uses the plain warning for an explicit default locale on the imported module', async () => {
+    const output = await prepareFixture(warningsExplicitImportedFixtureDir)
+    expect(output).toContain('defaultLocale "en" is not one of the configured locales.')
+    expect(output).not.toContain('(module default)')
   }, 240_000)
 })
