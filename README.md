@@ -100,7 +100,7 @@ CI enforces raw and gzipped size budgets for every published entry point via `np
 | --- | --- | --- | --- |
 | `vue-rtl-kit` (ESM) | `dist/vue-rtl-kit.js` | 26.75 kB / ≤ 26.75 kB | 8.92 kB / ≤ 8.95 kB |
 | `vue-rtl-kit` (CJS) | `dist/vue-rtl-kit.cjs` | 19.18 kB / ≤ 19.50 kB | 7.33 kB / ≤ 7.40 kB |
-| `vue-rtl-kit/nuxt` | `dist/nuxt/module.js` | 1.95 kB / ≤ 3.00 kB | 0.75 kB / ≤ 1.50 kB |
+| `vue-rtl-kit/nuxt` | `dist/nuxt/module.js` | 2.88 kB / ≤ 3.00 kB | 1.05 kB / ≤ 1.50 kB |
 | `vue-rtl-kit/nuxt` (runtime plugin) | `dist/nuxt/runtime/plugin.js` | 2.77 kB / ≤ 3.00 kB | 1.02 kB / ≤ 1.20 kB |
 | `vue-rtl-kit/styles.css` | `dist/styles.css` | 7.10 kB / ≤ 8.00 kB | 1.91 kB / ≤ 2.50 kB |
 
@@ -182,9 +182,13 @@ direction and there is no flash of LTR before hydration.
 | --- | --- | --- |
 | everything from `RtlOptions` | — | see the table below |
 | `autoImports` | `true` | auto-import `useDirection`, `useRtl`, `useLogicalStyles`, `useFormat` |
-| `components` | `true` | register `<RtlProvider>` and `<BidiText>` globally |
+| `components` | `true` | register `<RtlProvider>` and `<BidiText>` through Nuxt's component auto-registration |
 | `css` | `true` | inject `vue-rtl-kit/styles.css` |
 | `cookie` | `false` | persist locale/direction — see below |
+
+`registerGlobals` is forwarded to the runtime store. `components: false` only turns off Nuxt's
+component auto-registration; `createRtl()` still registers `<RtlProvider>`, `<BidiText>`, and `v-rtl`
+globally unless `registerGlobals` is also `false`.
 
 Persistence is opt-in. Set `rtl.cookie` to a cookie name, or to
 `{ name, maxAge, sameSite }` (`maxAge` in seconds; defaults are the name
