@@ -9,7 +9,7 @@
 import { readFile } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
-import { createSSRApp, h } from 'vue'
+import { compile, createSSRApp, h } from 'vue'
 import { renderToString } from 'vue/server-renderer'
 import {
   detectDirection,
@@ -44,9 +44,18 @@ function joinHtmlLines(html: string): string {
     .join('')
 }
 
-/** Server-render a documented Vue template with the direction store installed. */
+/**
+ * Server-render a documented Vue template with the direction store installed.
+ *
+ * The template is compiled up front instead of being left to the server
+ * renderer's on-the-fly compilation. On Vue < 3.5 that path only runs when
+ * `instance.render === NOOP` holds across @vue/runtime-core and
+ * @vue/server-renderer; the CI's `--no-save` Vue 3.3/3.4 install nests a
+ * separate @vue/shared (and so a separate NOOP) under each package, and the
+ * component then renders as an empty `<!---->`.
+ */
 async function renderTemplate(template: string): Promise<string> {
-  const app = createSSRApp({ template })
+  const app = createSSRApp({ render: compile(template) })
   app.use(createRtl({ locales: ['en', 'ar'], defaultLocale: 'ar' }))
   const html = await renderToString(app)
   return html.replace(/<!--\[-->|<!--\]-->/g, '')
