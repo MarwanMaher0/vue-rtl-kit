@@ -206,6 +206,37 @@ jobs:
         run: npm run build
         working-directory: examples/${{ matrix.example }}
 
+      - name: Check server-rendered locale with and without a cookie
+        if: matrix.example == 'nuxt'
+        working-directory: examples/nuxt
+        shell: bash
+        env:
+          HOST: 127.0.0.1
+          PORT: '4173'
+        run: |
+          node .output/server/index.mjs &
+          server_pid=$!
+          trap 'kill "$server_pid" 2>/dev/null || true' EXIT
+          url="http://$HOST:$PORT/"
+
+          for attempt in {1..30}; do
+            if curl -fs --max-time 2 "$url" -o /dev/null; then break; fi
+            if (( attempt == 30 )); then
+              echo 'Nuxt server did not become ready' >&2
+              exit 1
+            fi
+            sleep 1
+          done
+
+          check_html() {
+            local dir=$1 lang=$2
+            shift 2
+            curl -fsS --max-time 10 "$@" "$url" | grep -oE '<html[[:space:]][^>]*>' |
+              grep -F " dir=\"$dir\"" | grep -F " lang=\"$lang\""
+          }
+          check_html rtl ar
+          check_html ltr en --cookie 'rtl-example=en'
+
   docs:
     name: Docs check
     runs-on: ubuntu-latest

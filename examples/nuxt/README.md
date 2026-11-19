@@ -29,7 +29,7 @@ Open the URL printed by Nuxt. The build produces a Nitro Node server in `.output
 
 ## Check server rendering
 
-Open **View Page Source**, not only the browser's Elements panel. The opening HTML element must include `dir="rtl"` and `lang="ar"` (attribute order may vary), for example:
+With no `rtl-example` cookie, open **View Page Source**, not only the browser's Elements panel. The opening HTML element must include `dir="rtl"` and `lang="ar"` (attribute order may vary), for example:
 
 ```html
 <html dir="rtl" lang="ar">
@@ -37,7 +37,9 @@ Open **View Page Source**, not only the browser's Elements panel. The opening HT
 
 Arabic content, isolated `<bdi>` runs and Arabic-Indic formatted figures should already be in the response, before JavaScript runs. The `vue-rtl-kit/nuxt` module installs the universal plugin, stylesheet, components and composables and sets these HTML attributes on the server. There is no client-only plugin or `ClientOnly` wrapper.
 
-Select **English**: text, logical spacing, the arrow, numbers and the document's `dir`/`lang` change together. Select **العربية** to switch back. This starter does not persist the selection: a full reload intentionally resets to Arabic, the configured `defaultLocale`.
+Select **English**: text, logical spacing, the arrow, numbers and the document's `dir`/`lang` change together. The `rtl-example` cookie saves your choice so the server renders the HTML in your selected language on reload.
+
+To check, reload with English selected and open **View Page Source**. The opening `<html>` tag now has `dir="ltr"` and `lang="en"`. Delete the `rtl-example` cookie and reload: Arabic returns as the configured `defaultLocale`.
 
 ## APIs in the example
 

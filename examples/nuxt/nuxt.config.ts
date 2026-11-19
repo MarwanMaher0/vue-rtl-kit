@@ -7,6 +7,7 @@ export default defineNuxtConfig({
   rtl: {
     locales: { ar: 'rtl', en: 'ltr' },
     defaultLocale: 'ar',
+    cookie: 'rtl-example',
     numberingSystem: { ar: 'arab', en: 'latn' },
   },
   app: {

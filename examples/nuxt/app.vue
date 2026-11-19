@@ -26,7 +26,7 @@ const copy = computed(() => locale.value === 'ar'
       currency: 'قيمة الطلب',
       date: 'تاريخ الإصدار',
       override: 'أرقام غربية، بنفس اللغة',
-      footer: 'يبدأ العرض من الخادم بالعربية. إعادة تحميل الصفحة تعيد اللغة الافتراضية.',
+      footer: 'يحفظ ملف تعريف الارتباط rtl-example اللغة التي تختارها. عند إعادة التحميل، يرسل الخادم صفحة HTML بهذه اللغة.',
     }
   : {
       edition: 'A Nuxt 3 field note',
@@ -47,7 +47,7 @@ const copy = computed(() => locale.value === 'ar'
       currency: 'Order total',
       date: 'Issue date',
       override: 'Western digits, same locale',
-      footer: 'Rendered on the server in Arabic. Reloading restores the default locale.',
+      footer: 'The rtl-example cookie saves your language choice. On reload, the server sends the HTML in that language.',
     })
 
 const logicalStyle = computed(() => toLogical({
