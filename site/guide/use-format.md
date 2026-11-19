@@ -65,7 +65,7 @@ const isolated = format.value.formatDate(updatedAt, {
 
 `formatList()` wraps `Intl.ListFormat` and accepts its `type` (`'conjunction'`, `'disjunction'`, `'unit'`) and `style` options. `formatRelativeTime()` wraps `Intl.RelativeTimeFormat` and accepts its `numeric` and `style` options; negative values are in the past. Both use the bound locale and numbering system, so Arabic locales get the Arabic conjunction and Arabic-Indic digits unless `numberingSystem: 'latn'` is configured.
 
-With `isolate` set, `formatList()` wraps every item in a first-strong isolate before joining, so a Latin name cannot swap places with its Arabic neighbours, and then isolates the whole result with the requested direction.
+With `isolate` set, `formatList()` formats the plain items first, so conjunctions that depend on the next item (Spanish `e`/`u`, Hebrew `ו`) stay correct, then wraps every item in the result in a first-strong isolate, so a Latin name cannot swap places with its Arabic neighbours, and then isolates the whole result with the requested direction.
 
 ```ts
 formatList(['Ahmed', 'Sara', 'Omar'], { locale: 'ar' }) // 'Ahmed وSara وOmar'

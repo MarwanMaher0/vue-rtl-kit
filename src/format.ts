@@ -239,9 +239,11 @@ export function formatDate(
 /**
  * Join a list of strings with the locale's conjunction or disjunction.
  *
- * With `isolate` set, every item is wrapped in its own first-strong isolate
- * before joining - so a Latin name cannot swap places with its neighbours in
- * an Arabic list - and the joined result is then isolated as requested.
+ * With `isolate` set, the list is formatted from the plain items (so
+ * conjunctions that depend on the next item, such as Spanish `e`/`u` or
+ * Hebrew `ו`, stay correct), then every item in the result is wrapped in its
+ * own first-strong isolate - so a Latin name cannot swap places with its
+ * neighbours in an Arabic list - and the whole result is isolated as requested.
  *
  * @example
  * formatList(['Ahmed', 'Sara', 'Omar'], { locale: 'ar' }) // 'Ahmed وSara وOmar'
@@ -256,8 +258,15 @@ export function formatList(items: Iterable<string>, options: ListFormatOptions =
     formatter = makeFormatter(locale, numberingSystem, intl, Intl.ListFormat)
     listFormatters.set(key, formatter)
   }
-  const list = Array.from(items, item => (wrap ? isolate(String(item)) : String(item)))
-  return maybeIsolate(formatter.format(list), wrap)
+  const list = Array.from(items, String)
+  if (!wrap) return formatter.format(list)
+  // Format the plain items so locale rules that look at the next item (es y/e,
+  // o/u; he ו) still apply, then isolate only the element parts.
+  const joined = formatter
+    .formatToParts(list)
+    .map(part => (part.type === 'element' ? isolate(part.value) : part.value))
+    .join('')
+  return maybeIsolate(joined, wrap)
 }
 
 /**

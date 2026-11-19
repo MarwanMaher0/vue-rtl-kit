@@ -276,7 +276,19 @@ describe('formatList', () => {
     expect(out.startsWith(FSI)).toBe(true)
     expect(out.endsWith(PDI)).toBe(true)
     for (const name of names) expect(out).toContain(`${FSI}${name}${PDI}`)
-    expect(out).toBe(`${FSI}${new Intl.ListFormat('ar').format(names.map(name => `${FSI}${name}${PDI}`))}${PDI}`)
+    expect(out).toBe(`${FSI}${FSI}Ahmed${PDI} و${FSI}Sara${PDI} و${FSI}Omar${PDI}${PDI}`)
+  })
+
+  it('keeps conjunctions that depend on the next item with isolate: true', () => {
+    expect(formatList(['Juan', 'Ignacio'], { locale: 'es', isolate: true })).toBe(
+      `${FSI}${FSI}Juan${PDI} e ${FSI}Ignacio${PDI}${PDI}`,
+    )
+    expect(formatList(['Ana', 'Olga'], { locale: 'es', type: 'disjunction', isolate: true })).toBe(
+      `${FSI}${FSI}Ana${PDI} u ${FSI}Olga${PDI}${PDI}`,
+    )
+    expect(formatList(['אבי', 'דני'], { locale: 'he', isolate: true })).toBe(
+      `${FSI}${FSI}אבי${PDI} ו${FSI}דני${PDI}${PDI}`,
+    )
   })
 
   it('wraps the whole result in the requested direction and keeps items first-strong', () => {

@@ -101,8 +101,8 @@ budgets are set to their measured byte counts plus fixed `+256 B` (`0.25 kB`) ra
 
 | Entry point | Artifact | Raw (current / budget) | Gzip (current / budget) |
 | --- | --- | --- | --- |
-| `vue-rtl-kit` (ESM) | `dist/vue-rtl-kit.js` | 28.75 kB / ≤ 29.00 kB | 9.38 kB / ≤ 9.48 kB |
-| `vue-rtl-kit` (CJS) | `dist/vue-rtl-kit.cjs` | 20.75 kB / ≤ 21.00 kB | 7.74 kB / ≤ 7.84 kB |
+| `vue-rtl-kit` (ESM) | `dist/vue-rtl-kit.js` | 28.84 kB / ≤ 29.09 kB | 9.41 kB / ≤ 9.51 kB |
+| `vue-rtl-kit` (CJS) | `dist/vue-rtl-kit.cjs` | 20.83 kB / ≤ 21.08 kB | 7.77 kB / ≤ 7.87 kB |
 | `vue-rtl-kit/nuxt` | `dist/nuxt/module.js` | 3.08 kB / ≤ 3.25 kB | 1.12 kB / ≤ 1.50 kB |
 | `vue-rtl-kit/nuxt` (runtime plugin) | `dist/nuxt/runtime/plugin.js` | 2.77 kB / ≤ 3.00 kB | 1.02 kB / ≤ 1.20 kB |
 | `vue-rtl-kit/styles.css` | `dist/styles.css` | 7.10 kB / ≤ 8.00 kB | 1.91 kB / ≤ 2.50 kB |
@@ -331,7 +331,8 @@ you did not format yourself.
 `formatList(items, options)` wraps `Intl.ListFormat` (`type`, `style`) and
 `formatRelativeTime(value, unit, options)` wraps `Intl.RelativeTimeFormat` (`numeric`, `style`);
 both take the same `locale`, `numberingSystem` and `isolate` options as the other formatters. With
-`isolate` set, `formatList` wraps every item in a first-strong isolate before joining — so a Latin
+`isolate` set, `formatList` formats the plain items (so conjunctions such as Spanish `e`/`u` or Hebrew
+`ו` still follow the next item), wraps every item in the result in a first-strong isolate — so a Latin
 name cannot swap places with its Arabic neighbours — and then isolates the whole list as requested.
 `formatRelativeTime` returns `''` for a non-finite value, as `formatDate` does for an invalid date.
 Each formatter kind keeps its own LRU cache of `Intl` instances (32 entries).
