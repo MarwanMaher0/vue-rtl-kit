@@ -10,10 +10,13 @@ const guide = [
   { text: 'useLogicalStyles', link: '/guide/use-logical-styles' },
   { text: 'useFormat', link: '/guide/use-format' },
   { text: 'BidiText', link: '/guide/bidi-text' },
+  { text: 'Text helpers', link: '/guide/text-helpers' },
   { text: 'RtlProvider', link: '/guide/rtl-provider' },
   { text: 'v-rtl directive', link: '/guide/v-rtl' },
   { text: 'CSS utilities', link: '/guide/css-utilities' },
+  { text: 'Browser support', link: '/guide/browser-support' },
   { text: 'Nuxt module', link: '/guide/nuxt-module' },
+  { text: 'SSR without Nuxt', link: '/guide/ssr' },
 ]
 
 const arabicGuide = [
@@ -24,10 +27,13 @@ const arabicGuide = [
   { text: 'useLogicalStyles', link: '/ar/guide/use-logical-styles' },
   { text: 'useFormat', link: '/ar/guide/use-format' },
   { text: 'BidiText', link: '/ar/guide/bidi-text' },
+  { text: 'دوال النص', link: '/ar/guide/text-helpers' },
   { text: 'RtlProvider', link: '/ar/guide/rtl-provider' },
   { text: 'التوجيه v-rtl', link: '/ar/guide/v-rtl' },
   { text: 'أدوات CSS', link: '/ar/guide/css-utilities' },
+  { text: 'دعم المتصفحات', link: '/ar/guide/browser-support' },
   { text: 'وحدة Nuxt', link: '/ar/guide/nuxt-module' },
+  { text: 'SSR بدون Nuxt', link: '/ar/guide/ssr' },
 ]
 
 export default defineConfig({

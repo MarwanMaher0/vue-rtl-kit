@@ -60,6 +60,10 @@ const metadata: Record<string, { en: [string, string], ar: [string, string] }> =
     en: ['BidiText: isolate mixed-direction plain text', 'Use BidiText for simplified plain-text bidi run isolation with bdi elements or Unicode characters; learn its props, strategies, and rich-markup limits.'],
     ar: ['عزل النص العادي مختلط الاتجاهات عبر BidiText', 'استخدم BidiText لعزل مبسط لمقاطع النص العادي بعناصر bdi أو محارف Unicode، وتعرّف على خصائصه واستراتيجياته وحدوده مع الوسوم الغنية.'],
   },
+  'guide/text-helpers': {
+    en: ['Plain-text bidi and locale helpers', 'Use standalone string helpers to isolate text, split bidi runs, detect direction, strip controls, and resolve locale direction.'],
+    ar: ['دوال النص ثنائي الاتجاه واللغة', 'استخدم دوال نص مستقلة لعزل النص وتقسيم مقاطع الاتجاه وكشف الاتجاه وإزالة محارف التحكم واستنتاج اتجاه اللغة.'],
+  },
   'guide/rtl-provider': {
     en: ['RtlProvider: nested direction and locale scopes', 'Create independent RTL or LTR subtrees with RtlProvider, local direction controls, locale inheritance, DOM isolation, and renderless scope options.'],
     ar: ['نطاقات اتجاه ولغة متداخلة عبر RtlProvider', 'أنشئ أجزاء RTL أو LTR مستقلة باستخدام RtlProvider مع تحكم محلي بالاتجاه ووراثة اللغة وعزل DOM وخيار العمل دون عنصر حاوٍ.'],
@@ -72,9 +76,17 @@ const metadata: Record<string, { en: [string, string], ar: [string, string] }> =
     en: ['CSS utilities for logical RTL and LTR layouts', 'Use optional logical spacing, alignment, border, position, bidi, and directional icon utilities without swapping stylesheets when direction changes.'],
     ar: ['أدوات CSS لتخطيطات RTL وLTR المنطقية', 'استخدم أدوات اختيارية للتباعد والمحاذاة والحدود والمواضع المنطقية وعزل النص والأيقونات الاتجاهية دون تبديل ملف CSS عند تغيير الاتجاه.'],
   },
+  'guide/browser-support': {
+    en: ['Browser support and fallbacks', 'Check native browser support for Unicode isolates, logical properties, :dir(), scale, and Intl, plus fallback limits and toPhysicalStyle targets.'],
+    ar: ['دعم المتصفحات والبدائل', 'راجع دعم المتصفحات للعزل والخصائص المنطقية و:dir() وscale وIntl، مع حدود البدائل وأهداف toPhysicalStyle.'],
+  },
   'guide/nuxt-module': {
     en: ['Nuxt module: setup, SSR, and options', 'Integrate vue-rtl-kit with Nuxt 3 or 4, configure SSR dir and lang, composable auto-imports, CSS, and component registration with documented caveats.'],
     ar: ['وحدة Nuxt: الإعداد وخيارات SSR', 'ادمج vue-rtl-kit مع Nuxt 3 أو 4 واضبط سمتَي dir وlang في SSR والاستيراد التلقائي وملف CSS وتسجيل المكوّنات مع توضيح حدود الخيارات.'],
+  },
+  'guide/ssr': {
+    en: ['SSR without Nuxt', 'Build a manual Vue SSR shell with createSSRApp, renderToString, and rtl.htmlAttrs(), and know what stays off the DOM on the server.'],
+    ar: ['SSR بدون Nuxt', 'أنشئ هيكل Vue SSR يدويًا باستخدام createSSRApp وrenderToString وrtl.htmlAttrs()، واعرف ما يبقى بعيدًا عن DOM على الخادم.'],
   },
 }
 

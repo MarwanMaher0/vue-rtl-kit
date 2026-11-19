@@ -22,12 +22,15 @@ BidiText is not a rich-text engine or a complete Unicode bidi algorithm implemen
 - [RtlProvider](https://marwanmaher0.github.io/vue-rtl-kit/guide/rtl-provider): Local direction and locale scopes.
 - [v-rtl](https://marwanmaher0.github.io/vue-rtl-kit/guide/v-rtl): Element direction, optional isolation, SSR, and cleanup.
 - [Nuxt module](https://marwanmaher0.github.io/vue-rtl-kit/guide/nuxt-module): Nuxt 3/4 setup and registration caveats.
+- [SSR without Nuxt](https://marwanmaher0.github.io/vue-rtl-kit/guide/ssr): Manual Vue SSR shells, server-safe rendering, and document attributes.
 
 ## Text, layout, and formatting
 
 - [BidiText](https://marwanmaher0.github.io/vue-rtl-kit/guide/bidi-text): Plain-text run isolation and rich-markup limits.
+- [Text helpers](https://marwanmaher0.github.io/vue-rtl-kit/guide/text-helpers): isolate, isolateRuns, splitBidiRuns, direction detection, and locale resolution.
 - [useLogicalStyles](https://marwanmaher0.github.io/vue-rtl-kit/guide/use-logical-styles): JavaScript style conversion and mirrored offsets.
 - [CSS utilities](https://marwanmaher0.github.io/vue-rtl-kit/guide/css-utilities): Optional logical spacing, positioning, borders, text isolation, and icon helpers.
+- [Browser support](https://marwanmaher0.github.io/vue-rtl-kit/guide/browser-support): Support floors, :dir() and scale fallbacks, and toPhysicalStyle targets.
 - [useFormat](https://marwanmaher0.github.io/vue-rtl-kit/guide/use-format): Scope-aware Intl numbers, currencies, dates, and numbering systems.
 
 ## Arabic documentation
@@ -42,9 +45,12 @@ BidiText is not a rich-text engine or a complete Unicode bidi algorithm implemen
 - [RtlProvider](https://marwanmaher0.github.io/vue-rtl-kit/ar/guide/rtl-provider): نطاقات مستقلة.
 - [v-rtl](https://marwanmaher0.github.io/vue-rtl-kit/ar/guide/v-rtl): اتجاه العنصر والعزل.
 - [وحدة Nuxt](https://marwanmaher0.github.io/vue-rtl-kit/ar/guide/nuxt-module): الإعداد والعرض على الخادم.
+- [SSR بدون Nuxt](https://marwanmaher0.github.io/vue-rtl-kit/ar/guide/ssr): هيكل Vue SSR يدوي وعرض آمن على الخادم وسمات المستند.
 - [BidiText](https://marwanmaher0.github.io/vue-rtl-kit/ar/guide/bidi-text): عزل النص العادي وحدود الوسوم الغنية.
+- [دوال النص](https://marwanmaher0.github.io/vue-rtl-kit/ar/guide/text-helpers): isolate وisolateRuns وsplitBidiRuns وكشف الاتجاه واستنتاج اتجاه اللغة.
 - [useLogicalStyles](https://marwanmaher0.github.io/vue-rtl-kit/ar/guide/use-logical-styles): الأنماط المنطقية في JavaScript.
 - [أدوات CSS](https://marwanmaher0.github.io/vue-rtl-kit/ar/guide/css-utilities): أدوات تخطيط اختيارية.
+- [دعم المتصفحات](https://marwanmaher0.github.io/vue-rtl-kit/ar/guide/browser-support): حدود الدعم وبدائل :dir() وscale وأهداف toPhysicalStyle.
 - [useFormat](https://marwanmaher0.github.io/vue-rtl-kit/ar/guide/use-format): تنسيق حسب اللغة.
 
 ## Source

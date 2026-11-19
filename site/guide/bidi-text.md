@@ -64,4 +64,4 @@ That mode inserts `LRI`/`RLI` and `PDI` characters into the rendered text. Prefe
 <BidiText as="p" text="رقم الطلب #4821-B" />
 ```
 
-For strings that cannot contain elements, use the [isolateRuns API](/api#bidirectional-text) directly.
+For strings that cannot contain elements, use the [isolateRuns API](/api#bidirectional-text) directly or see [Text helpers](/guide/text-helpers) for every string helper.

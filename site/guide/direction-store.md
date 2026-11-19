@@ -53,7 +53,7 @@ const attrs = rtl.htmlAttrs()
 // { dir: 'rtl', lang: 'ar' }
 ```
 
-The Nuxt module performs this document-shell integration automatically.
+The Nuxt module performs this document-shell integration automatically. For a plain Vue server, see [SSR without Nuxt](/guide/ssr).
 
 ## Standalone state
 
