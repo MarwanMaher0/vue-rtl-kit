@@ -41,8 +41,16 @@ isolateRuns('نص عربي خالص', 'rtl') // → 'نص عربي خالص'
 Return the raw runs as `{ text, dir, isolated, hasStrong }[]`. Concatenating `text` reproduces the input exactly, and `isolated` marks the runs that need wrapping.
 
 ```ts
-splitBidiRuns('12-05-2024', 'rtl') // → [{"text":"12-05-2024","dir":"ltr","hasStrong":false,"isolated":true}]
-splitBidiRuns('زر GitHub، ثم عد', 'rtl') // → [{"text":"زر","dir":"rtl","hasStrong":true,"isolated":false},{"text":" ","dir":"rtl","hasStrong":false,"isolated":false},{"text":"GitHub","dir":"ltr","hasStrong":true,"isolated":true},{"text":"، ","dir":"rtl","hasStrong":false,"isolated":false},{"text":"ثم عد","dir":"rtl","hasStrong":true,"isolated":false}]
+splitBidiRuns('12-05-2024', 'rtl') // → [
+//   { text: '12-05-2024', dir: 'ltr', hasStrong: false, isolated: true },
+// ]
+splitBidiRuns('زر GitHub، ثم عد', 'rtl') // → [
+//   { text: 'زر', dir: 'rtl', hasStrong: true, isolated: false },
+//   { text: ' ', dir: 'rtl', hasStrong: false, isolated: false },
+//   { text: 'GitHub', dir: 'ltr', hasStrong: true, isolated: true },
+//   { text: '، ', dir: 'rtl', hasStrong: false, isolated: false },
+//   { text: 'ثم عد', dir: 'rtl', hasStrong: true, isolated: false },
+// ]
 splitBidiRuns('', 'rtl') // → []
 ```
 

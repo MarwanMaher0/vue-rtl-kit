@@ -1,9 +1,10 @@
 // @vitest-environment node
 /**
- * The guide pages are executable documentation. This file runs the SSR shell
- * example from `site/guide/ssr.md` through vue/server-renderer and evaluates
- * every `// →` result in `site/guide/text-helpers.md` against the real
- * functions, so a page cannot drift from the implementation.
+ * The guide pages are executable documentation. This file runs the SSR shell,
+ * v-rtl and BidiText examples from `site/guide/ssr.md` through
+ * vue/server-renderer and compares the documented server HTML with the real
+ * render, and evaluates every `// →` result in `site/guide/text-helpers.md`
+ * against the real functions, so a page cannot drift from the implementation.
  */
 import { readFile } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
@@ -29,8 +30,26 @@ function readSite(path: string): Promise<string> {
   return readFile(fileURLToPath(new URL(`../site/${path}`, import.meta.url)), 'utf8')
 }
 
-function fencedBlocks(markdown: string): string[] {
-  return [...markdown.matchAll(/```[^\n]*\n([\s\S]*?)```/g)].map(match => match[1]!)
+function fencedBlocks(markdown: string, language?: string): string[] {
+  return [...markdown.matchAll(/```([^\n]*)\n([\s\S]*?)```/g)]
+    .filter(match => language === undefined || match[1]!.trim() === language)
+    .map(match => match[2]!)
+}
+
+/** Collapse a documented HTML block to one line, as renderToString emits it. */
+function joinHtmlLines(html: string): string {
+  return html
+    .split('\n')
+    .map(line => line.trim())
+    .join('')
+}
+
+/** Server-render a documented Vue template with the direction store installed. */
+async function renderTemplate(template: string): Promise<string> {
+  const app = createSSRApp({ template })
+  app.use(createRtl({ locales: ['en', 'ar'], defaultLocale: 'ar' }))
+  const html = await renderToString(app)
+  return html.replace(/<!--\[-->|<!--\]-->/g, '')
 }
 
 function headingLevels(markdown: string): number[] {
@@ -52,9 +71,17 @@ interface DocumentedResult {
 
 function documentedResults(markdown: string): DocumentedResult[] {
   const results: DocumentedResult[] = []
-  for (const line of markdown.split('\n')) {
-    const match = /^(.+?)\s+\/\/\s+→\s+(.+)$/.exec(line.trim())
-    if (match) results.push({ expression: match[1]!.trim(), expected: match[2]!.trim() })
+  const lines = markdown.split('\n')
+  for (let index = 0; index < lines.length; index++) {
+    const match = /^(.+?)\s+\/\/\s+→\s+(.+)$/.exec(lines[index]!.trim())
+    if (!match) continue
+    let expected = match[2]!.trim()
+    // A long result continues on the following `//` comment lines.
+    while (index + 1 < lines.length && /^\/\/(?!\s+→)/.test(lines[index + 1]!.trim())) {
+      index++
+      expected += ` ${lines[index]!.trim().replace(/^\/\/\s*/, '')}`
+    }
+    results.push({ expression: match[1]!.trim(), expected })
   }
   return results
 }
@@ -80,6 +107,27 @@ describe('site guide examples', () => {
     expect(typeof html).toBe('string')
     expect(html).toContain('<html dir="rtl" lang="ar">')
     expect(html).toContain('<main dir="rtl">مرحبا بالعالم</main>')
+
+    const documented = fencedBlocks(section(markdown, 'Manual Vue SSR shell'), 'html')[0]!
+    expect(html).toContain(documented.trimEnd())
+  })
+
+  it('renders the v-rtl example to its documented server HTML', async () => {
+    const markdown = await readSite('guide/ssr.md')
+    const examples = section(markdown, 'v-rtl getSSRProps')
+    const template = fencedBlocks(examples, 'vue')[0]!.replace(/<\/?template>/g, '')
+    const documented = fencedBlocks(examples, 'html')[0]!
+
+    expect(await renderTemplate(template)).toBe(joinHtmlLines(documented))
+  })
+
+  it('renders the BidiText example to its documented server HTML', async () => {
+    const markdown = await readSite('guide/ssr.md')
+    const examples = section(markdown, 'Isolates in server HTML')
+    const template = fencedBlocks(examples, 'vue')[0]!
+    const documented = fencedBlocks(examples, 'html')[0]!
+
+    expect(await renderTemplate(template)).toBe(joinHtmlLines(documented))
   })
 
   it('matches every documented text-helper result', async () => {
