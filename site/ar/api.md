@@ -181,8 +181,12 @@ interface RtlOptions {
   htmlClass?: boolean | { rtl: string, ltr: string }
   numberingSystem?: NumberingSystem | Record<string, NumberingSystem>
   registerGlobals?: boolean
+  persist?: false | 'localStorage' | 'cookie'
+  persistKey?: string
 }
 ```
+
+يحفظ `persist` (افتراضيًا `false`) اللغة في المتصفح عند كل استدعاء لـ`setLocale()` ويستعيدها عند إنشاء `createRtl()` التالي، تحت مفتاح التخزين `persistKey` (افتراضيًا `'rtl-locale'`). ولا تُستعاد إلا لغة مهيّأة — ومع عدم تحديد `locales`، أي وسم يقبله `Intl.getCanonicalLocales` — ويبقى `dir` المثبّت مثبّتًا. تُتجاهل أخطاء التخزين، ولا يعمل شيء وقت الاستيراد أو على الخادم، ويوقف `dispose()` الكتابة. يستخدم وضع ملف تعريف الارتباط `path=/` و`SameSite=Lax` و`max-age` لمدة سنة واسمًا وقيمة مرمّزين. وتستبعد وحدة Nuxt كلا الخيارين وتحفظ عبر خيار `cookie` الخاص بها بدلًا منهما.
 
 ### ResolvedRtlOptions
 

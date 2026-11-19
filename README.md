@@ -101,8 +101,8 @@ budgets are set to their measured byte counts plus fixed `+256 B` (`0.25 kB`) ra
 
 | Entry point | Artifact | Raw (current / budget) | Gzip (current / budget) |
 | --- | --- | --- | --- |
-| `vue-rtl-kit` (ESM) | `dist/vue-rtl-kit.js` | 28.84 kB / ≤ 29.09 kB | 9.41 kB / ≤ 9.51 kB |
-| `vue-rtl-kit` (CJS) | `dist/vue-rtl-kit.cjs` | 20.83 kB / ≤ 21.08 kB | 7.77 kB / ≤ 7.87 kB |
+| `vue-rtl-kit` (ESM) | `dist/vue-rtl-kit.js` | 30.13 kB / ≤ 30.38 kB | 9.81 kB / ≤ 9.91 kB |
+| `vue-rtl-kit` (CJS) | `dist/vue-rtl-kit.cjs` | 21.82 kB / ≤ 22.07 kB | 8.14 kB / ≤ 8.24 kB |
 | `vue-rtl-kit/nuxt` | `dist/nuxt/module.js` | 3.08 kB / ≤ 3.25 kB | 1.12 kB / ≤ 1.50 kB |
 | `vue-rtl-kit/nuxt` (runtime plugin) | `dist/nuxt/runtime/plugin.js` | 2.77 kB / ≤ 3.00 kB | 1.02 kB / ≤ 1.20 kB |
 | `vue-rtl-kit/styles.css` | `dist/styles.css` | 7.10 kB / ≤ 8.00 kB | 1.91 kB / ≤ 2.50 kB |
@@ -184,7 +184,7 @@ direction and there is no flash of LTR before hydration.
 
 | Module option | Default | Notes |
 | --- | --- | --- |
-| everything from `RtlOptions` | — | see the table below |
+| everything from `RtlOptions` except `persist` / `persistKey` | — | see the table below; Nuxt persists through `cookie` |
 | `autoImports` | `true` | auto-import `useDirection`, `useRtl`, `useLogicalStyles`, `useFormat` |
 | `components` | `true` | register `<RtlProvider>` and `<BidiText>` through Nuxt's component auto-registration |
 | `css` | `true` | inject `vue-rtl-kit/styles.css` |
@@ -219,9 +219,21 @@ called. Cookie values that are not a configured locale, `'rtl'`/`'ltr'`, or a
 | `htmlClass` | `boolean \| { rtl, ltr }` | `false` | Also toggle `rtl` / `ltr` class names on `<html>`. |
 | `numberingSystem` | `NumberingSystem \| Record<string, NumberingSystem>` | — | Default digits for the formatters — `'latn'`, `'arab'`, … |
 | `registerGlobals` | `boolean` | `true` | Register the components and the directive globally. |
+| `persist` | `false \| 'localStorage' \| 'cookie'` | `false` | Save the locale in the browser and restore it on the next `createRtl()`. Browser-only; see below. |
+| `persistKey` | `string` | `'rtl-locale'` | Storage key used by `persist` — the localStorage item name or cookie name. |
 
 Returns an `RtlInstance`: a Vue plugin *and* a store you can drive from outside the component tree
 (a router guard, a settings action, an SSR shell).
+
+Persistence is opt-in. With `persist: 'localStorage'` or `persist: 'cookie'`, every `setLocale()`
+writes the locale under `persistKey`, and a new `createRtl()` starts from the stored value — but
+only when it is a configured locale (a tag in `locales`, or one whose language subtag is listed;
+with no `locales`, any tag `Intl.getCanonicalLocales` accepts). Unknown values fall back to
+`defaultLocale`, a pinned `dir` option stays pinned, and storage errors are silently ignored.
+Nothing is read or written on the server or at import time, and `dispose()` stops the writes.
+The cookie is written with `path=/`, `SameSite=Lax`, a one-year `max-age`, and an encoded value.
+In Nuxt, use the module's SSR-aware `cookie` option instead — `persist` and `persistKey` are
+excluded from `ModuleOptions`.
 
 ### Composables
 

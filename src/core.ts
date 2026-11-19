@@ -9,7 +9,8 @@ import { vRtl } from './directives/vRtl'
 import { isClient } from './env'
 import { directionScopeKey, rtlInstanceKey } from './keys'
 import { directionOfLocale, normaliseLocales, resolveDirection } from './locale'
-import type { DirectionContext, ResolvedRtlOptions, RtlInstance, RtlOptions } from './types'
+import { readPersistedLocale, writePersistedLocale } from './persist'
+import type { DirectionContext, LocaleMap, ResolvedRtlOptions, RtlInstance, RtlOptions } from './types'
 
 function hasDom(): boolean {
   return isClient
@@ -33,7 +34,27 @@ function resolveOptions(options: RtlOptions): ResolvedRtlOptions {
     htmlClass: options.htmlClass ?? false,
     numberingSystem: options.numberingSystem,
     registerGlobals: options.registerGlobals ?? true,
+    persist: options.persist ?? false,
+    persistKey: options.persistKey ?? 'rtl-locale',
   }
+}
+
+/**
+ * A stored locale is only restored when it is configured: an exact tag or a
+ * configured language subtag (`ar-EG` matches an `ar` entry). With no
+ * `locales`, the tag must merely be one `Intl.getCanonicalLocales` accepts.
+ */
+function isRestorableLocale(locale: string, locales: LocaleMap): boolean {
+  const tags = Object.keys(locales)
+  if (!tags.length) {
+    try {
+      return Intl.getCanonicalLocales(locale).length > 0
+    }
+    catch {
+      return false
+    }
+  }
+  return tags.includes(locale) || tags.includes(locale.split(/[-_]/)[0]!)
 }
 
 /**
@@ -47,6 +68,11 @@ function resolveOptions(options: RtlOptions): ResolvedRtlOptions {
  * SSR it touches no DOM at all: render `rtl.htmlAttrs()` into your shell (or
  * let the Nuxt module do it) and the first paint is already correct, with no
  * direction flash on hydration.
+ *
+ * With `persist: 'localStorage'` or `persist: 'cookie'` the locale is also
+ * saved on every `setLocale()` and restored the next time a store is created.
+ * Persistence is browser-only and best-effort: storage errors are ignored,
+ * and `dispose()` stops the writes.
  *
  * @example
  * import { createApp } from 'vue'
@@ -62,11 +88,26 @@ function resolveOptions(options: RtlOptions): ResolvedRtlOptions {
 export function createRtl(options: RtlOptions = {}): RtlInstance {
   const resolved = resolveOptions(options)
 
+  // Browser-only, opt-in restore. A pinned `dir` option stays pinned: only the
+  // locale is restored, never the direction, when `dir` was supplied.
+  const stored = resolved.persist && hasDom()
+    ? readPersistedLocale(resolved.persist, resolved.persistKey)
+    : undefined
+  const initialLocale = stored !== undefined && isRestorableLocale(stored, resolved.locales)
+    ? stored
+    : resolved.defaultLocale
+  const pinned = options.dir !== undefined
+  const initialDir = pinned
+    ? resolved.dir
+    : Object.keys(resolved.locales).length
+      ? resolveDirection(initialLocale, resolved.locales)
+      : directionOfLocale(initialLocale)
+
   const state = createDirectionState({
-    dir: resolved.dir,
-    locale: resolved.defaultLocale,
+    dir: initialDir,
+    locale: initialLocale,
     locales: resolved.locales,
-    pinned: options.dir !== undefined,
+    pinned,
   })
 
   let scope: EffectScope | undefined
@@ -79,24 +120,32 @@ export function createRtl(options: RtlOptions = {}): RtlInstance {
   }
 
   const startSync = (): void => {
-    if (scope || !resolved.syncDocument || !hasDom()) return
+    if (scope || !hasDom() || (!resolved.syncDocument && !resolved.persist)) return
+    const persist = resolved.persist
     scope = effectScope(true)
     scope.run(() => {
-      watch(
-        [state.dir, state.locale],
-        ([nextDir, nextLocale]) => {
-          if (!hasDom()) return
-          const root = document.documentElement
-          root.setAttribute('dir', nextDir)
-          root.setAttribute('lang', nextLocale)
-          if (resolved.htmlClass) {
-            const names = resolved.htmlClass === true ? { rtl: 'rtl', ltr: 'ltr' } : resolved.htmlClass
-            root.classList.toggle(names.rtl, nextDir === 'rtl')
-            root.classList.toggle(names.ltr, nextDir === 'ltr')
-          }
-        },
-        { immediate: true, flush: 'post' },
-      )
+      if (resolved.syncDocument) {
+        watch(
+          [state.dir, state.locale],
+          ([nextDir, nextLocale]) => {
+            if (!hasDom()) return
+            const root = document.documentElement
+            root.setAttribute('dir', nextDir)
+            root.setAttribute('lang', nextLocale)
+            if (resolved.htmlClass) {
+              const names = resolved.htmlClass === true ? { rtl: 'rtl', ltr: 'ltr' } : resolved.htmlClass
+              root.classList.toggle(names.rtl, nextDir === 'rtl')
+              root.classList.toggle(names.ltr, nextDir === 'ltr')
+            }
+          },
+          { immediate: true, flush: 'post' },
+        )
+      }
+      if (persist) {
+        // Lives in the same scope as the document watcher, so dispose() (or
+        // the last app unmounting) stops persistence writes too.
+        watch(state.locale, next => writePersistedLocale(persist, resolved.persistKey, next), { flush: 'sync' })
+      }
     })
   }
 

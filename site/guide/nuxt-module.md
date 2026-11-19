@@ -14,7 +14,7 @@ export default defineNuxtConfig({
 })
 ```
 
-The configuration key is `rtl`. `ModuleOptions` extends `RtlOptions` with Nuxt-specific registration controls.
+The configuration key is `rtl`. `ModuleOptions` extends `RtlOptions` with Nuxt-specific registration controls, but excludes `persist` and `persistKey`: in Nuxt, persistence goes through the SSR-aware `cookie` option below, so the saved direction is already in the server-rendered HTML rather than restored only in the browser.
 
 ## ModuleOptions
 

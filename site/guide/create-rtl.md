@@ -32,6 +32,8 @@ createApp(App).use(rtl).mount('#app')
 | `htmlClass` | `boolean \| { rtl: string, ltr: string }` | `false` | Toggle `rtl` and `ltr` classes, or the provided class names, on `<html>`. |
 | `numberingSystem` | `NumberingSystem \| Record<string, NumberingSystem>` | `undefined` | Default numbering system for `useFormat()`, globally or per locale. |
 | `registerGlobals` | `boolean` | `true` | Register `RtlProvider`, `BidiText`, and `v-rtl` when installed. |
+| `persist` | `false \| 'localStorage' \| 'cookie'` | `false` | Save the locale in the browser and restore it on the next `createRtl()`. Browser-only; see [Persistence](#persistence). |
+| `persistKey` | `string` | `'rtl-locale'` | Storage key used by `persist`: the localStorage item name or the cookie name. |
 
 ## Locale forms
 
@@ -121,9 +123,29 @@ import { BidiText, vRtl } from 'vue-rtl-kit'
 
 The global types are declared unconditionally, so they cannot see this option. With `registerGlobals: false`, a template that uses `<BidiText>`, `<RtlProvider>`, or `v-rtl` without importing it still type-checks, but Vue cannot resolve it at runtime — keep the local imports.
 
+## Persistence
+
+Persistence is opt-in and browser-only. Set `persist` to `'localStorage'` or `'cookie'` to save the locale on every `setLocale()` and restore it the next time `createRtl()` runs:
+
+```ts
+const rtl = createRtl({
+  locales: { en: 'ltr', ar: 'rtl' },
+  defaultLocale: 'en',
+  persist: 'localStorage',
+  persistKey: 'rtl-locale',
+})
+```
+
+- A stored value is restored only when it is a configured locale: a tag listed in `locales`, or one whose language subtag is listed (`ar-EG` matches an `ar` entry). With no `locales`, any tag `Intl.getCanonicalLocales` accepts is restored. Anything else falls back to `defaultLocale`.
+- A pinned `dir` option stays pinned: the stored locale is restored, but the direction remains the one you supplied.
+- Storage access never throws: private browsing, blocked cookies, and quota errors are silently ignored.
+- Nothing is read or written at import time or on the server. During SSR, render `htmlAttrs()` as usual; in Nuxt, use the module's SSR-aware `cookie` option instead — `persist` and `persistKey` are excluded from `ModuleOptions`.
+- The cookie is written with `path=/`, `SameSite=Lax`, a one-year `max-age`, and an encoded name and value. `persistKey` (default `'rtl-locale'`) is the localStorage item name or the cookie name.
+- `dispose()` stops the persistence watcher along with the document watcher.
+
 ## Cleanup
 
-`dispose()` stops the document watcher. It is mainly useful for isolated tests or an app that is being torn down; it does not uninstall Vue provides or global components.
+`dispose()` stops the document and persistence watchers. It is mainly useful for isolated tests or an app that is being torn down; it does not uninstall Vue provides or global components.
 
 ```ts
 rtl.dispose()

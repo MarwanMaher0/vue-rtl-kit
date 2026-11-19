@@ -61,6 +61,22 @@ export interface RtlOptions {
   numberingSystem?: NumberingSystem | Record<string, NumberingSystem>
   /** Register `<RtlProvider>`, `<BidiText>` and `v-rtl` globally. Default `true`. */
   registerGlobals?: boolean
+  /**
+   * Persist the locale in the browser and restore it the next time the store
+   * is created. `'localStorage'` uses `window.localStorage`, `'cookie'` a
+   * `path=/; SameSite=Lax` cookie that lasts one year. Default `false` (off).
+   *
+   * Browser-only: nothing is read or written during SSR, and a stored value
+   * is only restored when it is a configured locale (with no `locales`, only
+   * when `Intl.getCanonicalLocales` accepts it). Storage errors are ignored.
+   * The Nuxt module persists through its own `cookie` option instead.
+   */
+  persist?: false | 'localStorage' | 'cookie'
+  /**
+   * Storage key used by `persist`: the localStorage item name or the cookie
+   * name. Default `'rtl-locale'`.
+   */
+  persistKey?: string
 }
 
 /** Options after defaults have been applied. */
@@ -108,6 +124,6 @@ export interface RtlInstance extends DirectionContext {
   readonly options: ResolvedRtlOptions
   /** Vue plugin entry point. */
   install: (app: App) => void
-  /** Stop the document-sync watcher. Mostly useful in tests. */
+  /** Stop the document-sync and persistence watchers. Mostly useful in tests. */
   dispose: () => void
 }

@@ -32,6 +32,8 @@ createApp(App).use(rtl).mount('#app')
 | `htmlClass` | `boolean \| { rtl: string, ltr: string }` | `false` | يبدّل الصنفين `rtl` و`ltr`، أو أسماء الأصناف المقدّمة، على `<html>`. |
 | `numberingSystem` | `NumberingSystem \| Record<string, NumberingSystem>` | `undefined` | نظام الأرقام الافتراضي لـ`useFormat()`، على مستوى عام أو لكل لغة. |
 | `registerGlobals` | `boolean` | `true` | يسجّل `RtlProvider` و`BidiText` و`v-rtl` عند التثبيت. |
+| `persist` | `false \| 'localStorage' \| 'cookie'` | `false` | يحفظ اللغة في المتصفح ويستعيدها عند إنشاء `createRtl()` التالي. في المتصفح فقط؛ انظر قسم الحفظ أدناه. |
+| `persistKey` | `string` | `'rtl-locale'` | مفتاح التخزين الذي يستخدمه `persist`: اسم عنصر localStorage أو اسم ملف تعريف الارتباط. |
 
 ## صيغ اللغات
 
@@ -121,9 +123,29 @@ import { BidiText, vRtl } from 'vue-rtl-kit'
 
 تُعرَّف الأنواع العامة دون شرط، فلا يمكنها أن تتبع هذا الخيار. مع `registerGlobals: false` يبقى القالب الذي يستخدم `<BidiText>` أو `<RtlProvider>` أو `v-rtl` دون استيراد سليمًا من ناحية الأنواع، لكن Vue لا يستطيع إيجاد العنصر وقت التشغيل؛ لذا أبقِ الاستيراد المحلي.
 
+## الحفظ
+
+الحفظ اختياري ويعمل في المتصفح فقط. اضبط `persist` على `'localStorage'` أو `'cookie'` لحفظ اللغة عند كل استدعاء لـ`setLocale()` واستعادتها في المرة التالية التي تعمل فيها `createRtl()`:
+
+```ts
+const rtl = createRtl({
+  locales: { en: 'ltr', ar: 'rtl' },
+  defaultLocale: 'en',
+  persist: 'localStorage',
+  persistKey: 'rtl-locale',
+})
+```
+
+- لا تُستعاد القيمة المحفوظة إلا إذا كانت لغة مهيّأة: وسمًا مدرجًا في `locales`، أو وسمًا جزؤه اللغوي مدرج فيها (تطابق `ar-EG` مدخل `ar` مثلًا). ومع عدم تحديد `locales`، يُستعاد أي وسم يقبله `Intl.getCanonicalLocales`. وما عدا ذلك يعود إلى `defaultLocale`.
+- يبقى خيار `dir` المثبّت مثبّتًا: تُستعاد اللغة المحفوظة، لكن الاتجاه يبقى ما حدّدته أنت.
+- لا يرمي الوصول إلى التخزين استثناءات أبدًا: تُتجاهل أخطاء التصفح الخاص وملفات تعريف الارتباط المحجوبة وحدود التخزين بصمت.
+- لا يُقرأ شيء ولا يُكتب وقت الاستيراد أو على الخادم. أثناء العرض على الخادم، اعرض `htmlAttrs()` كالمعتاد؛ وفي Nuxt استخدم خيار `cookie` في الوحدة، الذي يدعم العرض على الخادم، بدلًا من ذلك — فـ`persist` و`persistKey` مستبعدان من `ModuleOptions`.
+- يُكتب ملف تعريف الارتباط بالسمات `path=/` و`SameSite=Lax` و`max-age` لمدة سنة، وباسم وقيمة مرمّزين. و`persistKey` (افتراضيًا `'rtl-locale'`) هو اسم عنصر localStorage أو اسم ملف تعريف الارتباط.
+- يوقف `dispose()` مراقب الحفظ مع مراقب المستند.
+
 ## التنظيف
 
-يوقف `dispose()` مراقب المستند. وهو مفيد أساسًا في الاختبارات المعزولة أو عند إزالة تطبيق؛ ولا يلغي Vue provides أو المكوّنات العامة.
+يوقف `dispose()` مراقبَي المستند والحفظ. وهو مفيد أساسًا في الاختبارات المعزولة أو عند إزالة تطبيق؛ ولا يلغي Vue provides أو المكوّنات العامة.
 
 ```ts
 rtl.dispose()

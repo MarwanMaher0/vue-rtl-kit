@@ -17,7 +17,12 @@ import { addComponent, addImports, addPlugin, createResolver, defineNuxtModule, 
 import type { Nuxt } from '@nuxt/schema'
 import type { RtlOptions } from '../types'
 
-export interface ModuleOptions extends RtlOptions {
+/**
+ * Nuxt module options. `persist` and `persistKey` from `RtlOptions` are
+ * excluded: in Nuxt, persistence goes through the SSR-aware `cookie` option
+ * below, so the server-rendered HTML already carries the saved direction.
+ */
+export interface ModuleOptions extends Omit<RtlOptions, 'persist' | 'persistKey'> {
   /** Auto-import the composables. Default `true`. */
   autoImports?: boolean
   /**

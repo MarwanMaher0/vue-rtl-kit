@@ -14,7 +14,7 @@ export default defineNuxtConfig({
 })
 ```
 
-مفتاح الإعداد هو `rtl`. يرث `ModuleOptions` من `RtlOptions` ويضيف عناصر تحكم في التسجيل خاصة بـ Nuxt.
+مفتاح الإعداد هو `rtl`. يرث `ModuleOptions` من `RtlOptions` ويضيف عناصر تحكم في التسجيل خاصة بـ Nuxt، لكنه يستبعد `persist` و`persistKey`: في Nuxt يتم الحفظ عبر خيار `cookie` أدناه الذي يدعم العرض على الخادم، فيكون الاتجاه المحفوظ موجودًا في HTML المعروض على الخادم بدلًا من استعادته في المتصفح فقط.
 
 ## ModuleOptions
 

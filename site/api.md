@@ -181,8 +181,12 @@ interface RtlOptions {
   htmlClass?: boolean | { rtl: string, ltr: string }
   numberingSystem?: NumberingSystem | Record<string, NumberingSystem>
   registerGlobals?: boolean
+  persist?: false | 'localStorage' | 'cookie'
+  persistKey?: string
 }
 ```
+
+`persist` (default `false`) saves the locale in the browser on every `setLocale()` and restores it on the next `createRtl()`, under the `persistKey` storage key (default `'rtl-locale'`). Only a configured locale is restored — with no `locales`, any tag `Intl.getCanonicalLocales` accepts — and a pinned `dir` stays pinned. Storage errors are ignored, nothing runs at import time or on the server, and `dispose()` stops the writes. The cookie mode uses `path=/`, `SameSite=Lax`, a one-year `max-age`, and an encoded name and value. The Nuxt module excludes both options and persists through its own `cookie` option instead.
 
 ### ResolvedRtlOptions
 
