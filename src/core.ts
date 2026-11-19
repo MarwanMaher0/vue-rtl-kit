@@ -40,21 +40,23 @@ function resolveOptions(options: RtlOptions): ResolvedRtlOptions {
 }
 
 /**
- * A stored locale is only restored when it is configured: an exact tag or a
- * configured language subtag (`ar-EG` matches an `ar` entry). With no
- * `locales`, the tag must merely be one `Intl.getCanonicalLocales` accepts.
+ * The locale to restore from storage, or `undefined` when it is not usable.
+ * A configured locale is an exact tag or a configured language subtag
+ * (`ar-EG` matches an `ar` entry) and is restored as stored. With no
+ * `locales`, the tag must be one `Intl.getCanonicalLocales` accepts and is
+ * restored in its canonical spelling (`AR-eg` becomes `ar-EG`).
  */
-function isRestorableLocale(locale: string, locales: LocaleMap): boolean {
+function restorableLocale(locale: string, locales: LocaleMap): string | undefined {
   const tags = Object.keys(locales)
   if (!tags.length) {
     try {
-      return Intl.getCanonicalLocales(locale).length > 0
+      return Intl.getCanonicalLocales(locale)[0]
     }
     catch {
-      return false
+      return undefined
     }
   }
-  return tags.includes(locale) || tags.includes(locale.split(/[-_]/)[0]!)
+  return tags.includes(locale) || tags.includes(locale.split(/[-_]/)[0]!) ? locale : undefined
 }
 
 /**
@@ -93,9 +95,8 @@ export function createRtl(options: RtlOptions = {}): RtlInstance {
   const stored = resolved.persist && hasDom()
     ? readPersistedLocale(resolved.persist, resolved.persistKey)
     : undefined
-  const initialLocale = stored !== undefined && isRestorableLocale(stored, resolved.locales)
-    ? stored
-    : resolved.defaultLocale
+  const initialLocale = (stored !== undefined && restorableLocale(stored, resolved.locales))
+    || resolved.defaultLocale
   const pinned = options.dir !== undefined
   const initialDir = pinned
     ? resolved.dir

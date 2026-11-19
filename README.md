@@ -228,7 +228,7 @@ Returns an `RtlInstance`: a Vue plugin *and* a store you can drive from outside 
 Persistence is opt-in. With `persist: 'localStorage'` or `persist: 'cookie'`, every `setLocale()`
 writes the locale under `persistKey`, and a new `createRtl()` starts from the stored value — but
 only when it is a configured locale (a tag in `locales`, or one whose language subtag is listed;
-with no `locales`, any tag `Intl.getCanonicalLocales` accepts). Unknown values fall back to
+with no `locales`, any tag `Intl.getCanonicalLocales` accepts, in its canonical spelling). Unknown values fall back to
 `defaultLocale`, a pinned `dir` option stays pinned, and storage errors are silently ignored.
 Nothing is read or written on the server or at import time, and `dispose()` stops the writes.
 The cookie is written with `path=/`, `SameSite=Lax`, a one-year `max-age`, and an encoded value.

@@ -136,7 +136,7 @@ const rtl = createRtl({
 })
 ```
 
-- A stored value is restored only when it is a configured locale: a tag listed in `locales`, or one whose language subtag is listed (`ar-EG` matches an `ar` entry). With no `locales`, any tag `Intl.getCanonicalLocales` accepts is restored. Anything else falls back to `defaultLocale`.
+- A stored value is restored only when it is a configured locale: a tag listed in `locales`, or one whose language subtag is listed (`ar-EG` matches an `ar` entry). With no `locales`, any tag `Intl.getCanonicalLocales` accepts is restored, in its canonical spelling (`AR-eg` becomes `ar-EG`). Anything else falls back to `defaultLocale`.
 - A pinned `dir` option stays pinned: the stored locale is restored, but the direction remains the one you supplied.
 - Storage access never throws: private browsing, blocked cookies, and quota errors are silently ignored.
 - Nothing is read or written at import time or on the server. During SSR, render `htmlAttrs()` as usual; in Nuxt, use the module's SSR-aware `cookie` option instead — `persist` and `persistKey` are excluded from `ModuleOptions`.

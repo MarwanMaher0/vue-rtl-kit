@@ -85,6 +85,15 @@ describe('locale persistence', () => {
     fallback.dispose()
   })
 
+  it('with no locales, restores the canonical spelling of the stored tag', () => {
+    localStorage.setItem('rtl-locale', 'AR-eg')
+    const rtl = createRtl({ persist: 'localStorage' })
+    expect(rtl.locale.value).toBe('ar-EG')
+    expect(rtl.dir.value).toBe('rtl')
+    expect(document.documentElement.getAttribute('lang')).toBe('ar-EG')
+    rtl.dispose()
+  })
+
   it('writes the locale on every setLocale in localStorage mode', () => {
     const rtl = createRtl({ locales: ['en', 'ar'], persist: 'localStorage' })
     expect(localStorage.getItem('rtl-locale')).toBeNull()
