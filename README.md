@@ -288,7 +288,7 @@ toPhysicalStyle({ marginInline: '1px 2px' }, 'rtl')
 
 | Function | Description |
 | --- | --- |
-| `toLogicalStyle(style, options?)` | Physical → logical. `{ size: true }` also maps `width`/`height`; `{ values: false }` leaves `textAlign: 'left'` alone; `{ shorthands: true }` expands 1–4-value (or numeric) `margin`/`padding`/`inset`/`borderWidth`/`borderStyle`/`borderColor`/`borderRadius` into logical longhands. |
+| `toLogicalStyle(style, options?)` | Physical → logical. `{ size: true }` also maps `width`/`height` and `contain-intrinsic-width`/`height`; `{ values: false }` leaves `textAlign: 'left'` alone; `{ shorthands: true }` expands 1–4-value (or numeric) `margin`/`padding`/`inset`/`borderWidth`/`borderStyle`/`borderColor`/`borderRadius` into logical longhands. |
 | `toPhysicalStyle(style, dir)` | Logical → physical, for environments without logical-property support. Expands 1–2-value logical shorthands (`marginInline`, `paddingInline`, `insetInline`, `insetBlock`, `borderInlineWidth/Style/Color`, `scrollMarginInline`, `scrollPaddingInline`, …) to the physical sides for `dir`. |
 | `logicalProperty(name, options?)` | One property name, either casing preserved. |
 | `logicalArrow(key, dir)` | Map `'ArrowRight'` / `'ArrowLeft'` / `'Home'` / `'End'` / `'ArrowUp'` / `'ArrowDown'` to `'next' \| 'previous' \| 'first' \| 'last' \| 'up' \| 'down' \| null` (`ArrowRight` is `'previous'` in `'rtl'`). |

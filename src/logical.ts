@@ -190,7 +190,11 @@ function toPhysicalProperty(camel: string, rtl: boolean): string {
 }
 
 export interface LogicalStyleOptions {
-  /** Also map `width`/`height` to `inlineSize`/`blockSize`. Default `false`. */
+  /**
+   * Also map `width`/`height` to `inlineSize`/`blockSize` and
+   * `containIntrinsicWidth`/`containIntrinsicHeight` to
+   * `containIntrinsicInlineSize`/`containIntrinsicBlockSize`. Default `false`.
+   */
   size?: boolean
   /** Map directional values such as `textAlign: 'left'`. Default `true`. */
   values?: boolean
