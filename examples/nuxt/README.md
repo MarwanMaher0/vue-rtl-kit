@@ -37,7 +37,7 @@ With no `rtl-example` cookie, open **View Page Source**, not only the browser's 
 
 Arabic content, isolated `<bdi>` runs and Arabic-Indic formatted figures should already be in the response, before JavaScript runs. The `vue-rtl-kit/nuxt` module installs the universal plugin, stylesheet, components and composables and sets these HTML attributes on the server. There is no client-only plugin or `ClientOnly` wrapper.
 
-Select **English**: text, logical spacing, the arrow, numbers and the document's `dir`/`lang` change together. The `rtl-example` cookie saves your choice so the server renders the HTML in your selected language on reload.
+Select **English**: text, logical spacing, the arrow, numbers and the document's `dir`/`lang` change together. Select **العربية** to switch back. The `rtl-example` cookie saves your choice so the server renders the HTML in your selected language on reload.
 
 To check, reload with English selected and open **View Page Source**. The opening `<html>` tag now has `dir="ltr"` and `lang="en"`. Delete the `rtl-example` cookie and reload: Arabic returns as the configured `defaultLocale`.
 
