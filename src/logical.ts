@@ -53,6 +53,8 @@ const FLOW_RELATIVE: Readonly<Record<string, string>> = {
   scrollPaddingBottom: 'scrollPaddingBlockEnd',
   overflowX: 'overflowInline',
   overflowY: 'overflowBlock',
+  overscrollBehaviorX: 'overscrollBehaviorInline',
+  overscrollBehaviorY: 'overscrollBehaviorBlock',
 }
 
 /**
@@ -66,17 +68,23 @@ const SIZE_RELATIVE: Readonly<Record<string, string>> = {
   minHeight: 'minBlockSize',
   maxWidth: 'maxInlineSize',
   maxHeight: 'maxBlockSize',
+  containIntrinsicWidth: 'containIntrinsicInlineSize',
+  containIntrinsicHeight: 'containIntrinsicBlockSize',
 }
 
 const LOGICAL_TO_PHYSICAL_STATIC: Readonly<Record<string, string>> = {
   overflowInline: 'overflowX',
   overflowBlock: 'overflowY',
+  overscrollBehaviorInline: 'overscrollBehaviorX',
+  overscrollBehaviorBlock: 'overscrollBehaviorY',
   inlineSize: 'width',
   blockSize: 'height',
   minInlineSize: 'minWidth',
   minBlockSize: 'minHeight',
   maxInlineSize: 'maxWidth',
   maxBlockSize: 'maxHeight',
+  containIntrinsicInlineSize: 'containIntrinsicWidth',
+  containIntrinsicBlockSize: 'containIntrinsicHeight',
 }
 
 /** Property values that are themselves directional. */

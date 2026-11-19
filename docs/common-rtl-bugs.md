@@ -178,11 +178,13 @@ const badgeStyle = computed(() => toLogical({
 ```
 
 `toLogical` also maps `borderLeft` → `borderInlineStart`, `right` → `insetInlineEnd`, the scroll
-margin/padding properties and the directional values of `float`, `clear`, `caption-side` and
-`resize`; pass `{ size: true }` if you also want `width`/`height` mapped to
-`inlineSize`/`blockSize`. If the value never leaves the stylesheet, skip the JavaScript entirely:
-`vue-rtl-kit/styles.css` (already imported in the setup above) ships the same idea as utility
-classes — `ms-4`, `pe-3`, `ps-3`, `text-start`, `start-0`, `border-s`, `rounded-s`, and friends.
+margin/padding, `overflowX`/`Y` and `overscrollBehaviorX`/`Y` properties, and the directional values
+of `float`, `clear`, `caption-side` and `resize`; pass `{ size: true }` if you also want
+`width`/`height` and `containIntrinsicWidth`/`Height` mapped to `inlineSize`/`blockSize` and
+`containIntrinsicInlineSize`/`containIntrinsicBlockSize`. If the value never leaves the stylesheet,
+skip the JavaScript entirely: `vue-rtl-kit/styles.css` (already imported in the setup above) ships
+the same idea as utility classes — `ms-4`, `pe-3`, `ps-3`, `text-start`, `start-0`, `border-s`,
+`rounded-s`, and friends.
 
 ---
 

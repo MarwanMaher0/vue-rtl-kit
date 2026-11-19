@@ -40,6 +40,25 @@ describe('logicalProperty', () => {
   it('leaves unknown properties alone', () => {
     expect(logicalProperty('color')).toBe('color')
   })
+
+  it('maps overscroll-behavior properties in camelCase and kebab-case', () => {
+    expect(logicalProperty('overscrollBehaviorX')).toBe('overscrollBehaviorInline')
+    expect(logicalProperty('overscrollBehaviorY')).toBe('overscrollBehaviorBlock')
+    expect(logicalProperty('overscroll-behavior-x')).toBe('overscroll-behavior-inline')
+    expect(logicalProperty('overscroll-behavior-y')).toBe('overscroll-behavior-block')
+  })
+
+  it('maps contain-intrinsic size properties only with { size: true } in camelCase and kebab-case', () => {
+    expect(logicalProperty('containIntrinsicWidth')).toBe('containIntrinsicWidth')
+    expect(logicalProperty('containIntrinsicHeight')).toBe('containIntrinsicHeight')
+    expect(logicalProperty('contain-intrinsic-width')).toBe('contain-intrinsic-width')
+    expect(logicalProperty('contain-intrinsic-height')).toBe('contain-intrinsic-height')
+
+    expect(logicalProperty('containIntrinsicWidth', { size: true })).toBe('containIntrinsicInlineSize')
+    expect(logicalProperty('containIntrinsicHeight', { size: true })).toBe('containIntrinsicBlockSize')
+    expect(logicalProperty('contain-intrinsic-width', { size: true })).toBe('contain-intrinsic-inline-size')
+    expect(logicalProperty('contain-intrinsic-height', { size: true })).toBe('contain-intrinsic-block-size')
+  })
 })
 
 describe('toLogicalStyle', () => {
@@ -214,6 +233,47 @@ describe('toLogicalStyle', () => {
       insetInlineEnd: '0',
       insetBlockEnd: 'env(safe-area-inset-top)',
       insetInlineStart: '0',
+    })
+  })
+
+  it('maps overscroll-behavior properties in camelCase and kebab-case', () => {
+    expect(toLogicalStyle({
+      overscrollBehaviorX: 'contain',
+      overscrollBehaviorY: 'none',
+    })).toEqual({
+      overscrollBehaviorInline: 'contain',
+      overscrollBehaviorBlock: 'none',
+    })
+
+    expect(toLogicalStyle({
+      'overscroll-behavior-x': 'contain',
+      'overscroll-behavior-y': 'none',
+    })).toEqual({
+      'overscroll-behavior-inline': 'contain',
+      'overscroll-behavior-block': 'none',
+    })
+  })
+
+  it('maps contain-intrinsic size properties only with { size: true } in camelCase and kebab-case', () => {
+    const camel = {
+      containIntrinsicWidth: '300px',
+      containIntrinsicHeight: 'auto 200px',
+    }
+    const kebab = {
+      'contain-intrinsic-width': '300px',
+      'contain-intrinsic-height': 'auto 200px',
+    }
+
+    expect(toLogicalStyle(camel)).toEqual(camel)
+    expect(toLogicalStyle(kebab)).toEqual(kebab)
+
+    expect(toLogicalStyle(camel, { size: true })).toEqual({
+      containIntrinsicInlineSize: '300px',
+      containIntrinsicBlockSize: 'auto 200px',
+    })
+    expect(toLogicalStyle(kebab, { size: true })).toEqual({
+      'contain-intrinsic-inline-size': '300px',
+      'contain-intrinsic-block-size': 'auto 200px',
     })
   })
 })
@@ -497,6 +557,40 @@ describe('toPhysicalStyle', () => {
     }
     for (const dir of ['ltr', 'rtl'] as const) {
       expect(toPhysicalStyle(logical, dir)).toEqual(toPhysicalStyle(longhands, dir))
+    }
+  })
+
+  it('resolves overscroll-behavior and contain-intrinsic properties back to physical in ltr and rtl', () => {
+    const physicalCamel = {
+      overscrollBehaviorX: 'contain',
+      overscrollBehaviorY: 'none',
+      containIntrinsicWidth: '300px',
+      containIntrinsicHeight: 'auto 200px',
+    }
+    const logicalCamel = {
+      overscrollBehaviorInline: 'contain',
+      overscrollBehaviorBlock: 'none',
+      containIntrinsicInlineSize: '300px',
+      containIntrinsicBlockSize: 'auto 200px',
+    }
+    const physicalKebab = {
+      'overscroll-behavior-x': 'contain',
+      'overscroll-behavior-y': 'none',
+      'contain-intrinsic-width': '300px',
+      'contain-intrinsic-height': 'auto 200px',
+    }
+    const logicalKebab = {
+      'overscroll-behavior-inline': 'contain',
+      'overscroll-behavior-block': 'none',
+      'contain-intrinsic-inline-size': '300px',
+      'contain-intrinsic-block-size': 'auto 200px',
+    }
+
+    for (const dir of ['ltr', 'rtl'] as const) {
+      expect(toPhysicalStyle(logicalCamel, dir)).toEqual(physicalCamel)
+      expect(toPhysicalStyle(logicalKebab, dir)).toEqual(physicalKebab)
+      expect(toPhysicalStyle(toLogicalStyle(physicalCamel, { size: true }), dir)).toEqual(physicalCamel)
+      expect(toPhysicalStyle(toLogicalStyle(physicalKebab, { size: true }), dir)).toEqual(physicalKebab)
     }
   })
 })

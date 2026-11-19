@@ -101,8 +101,8 @@ budgets are set to their measured byte counts plus fixed `+256 B` (`0.25 kB`) ra
 
 | Entry point | Artifact | Raw (current / budget) | Gzip (current / budget) |
 | --- | --- | --- | --- |
-| `vue-rtl-kit` (ESM) | `dist/vue-rtl-kit.js` | 27.55 kB / ≤ 27.80 kB | 9.16 kB / ≤ 9.26 kB |
-| `vue-rtl-kit` (CJS) | `dist/vue-rtl-kit.cjs` | 19.77 kB / ≤ 20.02 kB | 7.54 kB / ≤ 7.64 kB |
+| `vue-rtl-kit` (ESM) | `dist/vue-rtl-kit.js` | 27.96 kB / ≤ 28.21 kB | 9.23 kB / ≤ 9.33 kB |
+| `vue-rtl-kit` (CJS) | `dist/vue-rtl-kit.cjs` | 20.15 kB / ≤ 20.40 kB | 7.62 kB / ≤ 7.72 kB |
 | `vue-rtl-kit/nuxt` | `dist/nuxt/module.js` | 3.08 kB / ≤ 3.25 kB | 1.12 kB / ≤ 1.50 kB |
 | `vue-rtl-kit/nuxt` (runtime plugin) | `dist/nuxt/runtime/plugin.js` | 2.77 kB / ≤ 3.00 kB | 1.02 kB / ≤ 1.20 kB |
 | `vue-rtl-kit/styles.css` | `dist/styles.css` | 7.10 kB / ≤ 8.00 kB | 1.91 kB / ≤ 2.50 kB |
@@ -112,7 +112,7 @@ budgets are set to their measured byte counts plus fixed `+256 B` (`0.25 kB`) ra
 | Import | Gzip (current / budget) | Must not include |
 | --- | --- | --- |
 | `{ isolateRuns }` | 1.02 kB / ≤ 2.00 kB | `vue` |
-| `{ toLogicalStyle }` | 1.21 kB / ≤ 2.00 kB | `vue` |
+| `{ toLogicalStyle }` | 1.25 kB / ≤ 2.00 kB | `vue` |
 | `{ logicalArrow }` | 0.18 kB / ≤ 2.00 kB | `vue` |
 | `{ directionOfLocale }` | 0.62 kB / ≤ 2.00 kB | `vue` |
 | `{ formatNumber }` | 0.75 kB | components, directives |
@@ -294,7 +294,8 @@ toPhysicalStyle({ marginInline: '1px 2px' }, 'rtl')
 | `logicalArrow(key, dir)` | Map `'ArrowRight'` / `'ArrowLeft'` / `'Home'` / `'End'` / `'ArrowUp'` / `'ArrowDown'` to `'next' \| 'previous' \| 'first' \| 'last' \| 'up' \| 'down' \| null` (`ArrowRight` is `'previous'` in `'rtl'`). |
 
 Covers margin, padding, border (width/style/colour), corner radii, inset, scroll margin/padding,
-overflow, and the directional *values* of `text-align`, `float`, `clear`, `caption-side`, `resize`.
+overflow, `overscroll-behavior`, size and `contain-intrinsic-width`/`height` (with `{ size: true }`),
+and the directional *values* of `text-align`, `float`, `clear`, `caption-side`, `resize`.
 Values containing `var()`, `calc()`, `!important` or a top-level `border-radius` `/` slash are
 left untouched rather than mis-parsed. Other functions such as `rgb()`, `hsl()` and `env()` are
 kept intact and split only at top-level whitespace.
