@@ -16,7 +16,7 @@ import type { Direction } from 'vue-rtl-kit'
 | `useDirection` | `() => DirectionContext` | الحصول على أقرب نطاق، أو المخزن الجذري، أو القيمة الاحتياطية المنفصلة. |
 | `useRtl` | `() => RtlInstance` | الحصول على المخزن الجذري؛ ويُطلق خطأً عند عدم وجود الإضافة. |
 | `useLogicalStyles` | `() => UseLogicalStylesReturn` | أدوات مساعدة للأنماط المنطقية المرتبطة بالاتجاه. |
-| `useFormat` | `() => ComputedRef<BoundFormatters>` | أدوات تنسيق الأرقام والعملات والتواريخ المرتبطة باللغة. |
+| `useFormat` | `() => ComputedRef<BoundFormatters>` | أدوات تنسيق الأرقام والعملات والتواريخ والقوائم والأزمنة النسبية المرتبطة باللغة. |
 
 راجع [createRtl](/ar/guide/create-rtl) و[useDirection](/ar/guide/use-direction) و[useLogicalStyles](/ar/guide/use-logical-styles) و[useFormat](/ar/guide/use-format) للاطلاع على أمثلة.
 
@@ -123,14 +123,24 @@ resolveDirection('ar-EG', { ar: 'rtl' }) // rtl
 | `formatNumber` | `(value: number, options?: NumberFormatOptions) => string` | التنسيق باستخدام `Intl.NumberFormat`. |
 | `formatCurrency` | `(value: number, currency: string, options?: NumberFormatOptions) => string` | تنسيق مبلغ بعملة وفق ISO 4217. |
 | `formatDate` | `(value: Date \| number \| string, options?: DateFormatOptions) => string` | التنسيق باستخدام `Intl.DateTimeFormat`. |
+| `formatList` | `(items: Iterable<string>, options?: ListFormatOptions) => string` | ضم العناصر باستخدام `Intl.ListFormat`؛ ويعزل `isolate` كل عنصر ثم النتيجة كاملة. |
+| `formatRelativeTime` | `(value: number, unit: Intl.RelativeTimeFormatUnit, options?: RelativeTimeFormatOptions) => string` | التنسيق باستخدام `Intl.RelativeTimeFormat`؛ ويعيد `''` للقيم غير المنتهية. |
 | `transliterateDigits` | `(text: string, to: 'latn' \| 'arab' \| 'arabext') => string` | تحويل الأرقام فقط في سلسلة نصية موجودة. |
 | `withNumberingSystem` | `(locale: string, numberingSystem?: NumberingSystem) => string` | إضافة امتداد اللغة `-u-nu-` في Unicode. |
 
 ```ts
-import { formatCurrency, formatNumber, transliterateDigits } from 'vue-rtl-kit'
+import {
+  formatCurrency,
+  formatList,
+  formatNumber,
+  formatRelativeTime,
+  transliterateDigits,
+} from 'vue-rtl-kit'
 
 formatNumber(1234.5, { locale: 'ar-EG', numberingSystem: 'latn' })
 formatCurrency(2500, 'EGP', { locale: 'ar-EG', isolate: true })
+formatList(['Ahmed', 'Sara', 'Omar'], { locale: 'ar', isolate: true })
+formatRelativeTime(-3, 'day', { locale: 'ar-EG', numberingSystem: 'latn' })
 transliterateDigits('طلب رقم 4821', 'arab')
 ```
 
@@ -263,6 +273,12 @@ interface BoundFormatters {
     value: Date | number | string,
     options?: DateFormatOptions,
   ) => string
+  formatList: (items: Iterable<string>, options?: ListFormatOptions) => string
+  formatRelativeTime: (
+    value: number,
+    unit: Intl.RelativeTimeFormatUnit,
+    options?: RelativeTimeFormatOptions,
+  ) => string
 }
 ```
 
@@ -277,6 +293,8 @@ interface FormatOptionsBase {
 
 type NumberFormatOptions = FormatOptionsBase & Intl.NumberFormatOptions
 type DateFormatOptions = FormatOptionsBase & Intl.DateTimeFormatOptions
+type ListFormatOptions = FormatOptionsBase & Intl.ListFormatOptions
+type RelativeTimeFormatOptions = FormatOptionsBase & Intl.RelativeTimeFormatOptions
 ```
 
 ## نوع النص ثنائي الاتجاه

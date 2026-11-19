@@ -16,7 +16,7 @@ import type { Direction } from 'vue-rtl-kit'
 | `useDirection` | `() => DirectionContext` | Resolve the nearest scope, root store, or detached fallback. |
 | `useRtl` | `() => RtlInstance` | Resolve the root store; throws when the plugin is absent. |
 | `useLogicalStyles` | `() => UseLogicalStylesReturn` | Direction-bound logical style helpers. |
-| `useFormat` | `() => ComputedRef<BoundFormatters>` | Locale-bound number, currency, and date formatters. |
+| `useFormat` | `() => ComputedRef<BoundFormatters>` | Locale-bound number, currency, date, list, and relative-time formatters. |
 
 See [createRtl](/guide/create-rtl), [useDirection](/guide/use-direction), [useLogicalStyles](/guide/use-logical-styles), and [useFormat](/guide/use-format) for examples.
 
@@ -123,14 +123,24 @@ resolveDirection('ar-EG', { ar: 'rtl' }) // rtl
 | `formatNumber` | `(value: number, options?: NumberFormatOptions) => string` | Format with `Intl.NumberFormat`. |
 | `formatCurrency` | `(value: number, currency: string, options?: NumberFormatOptions) => string` | Format an ISO 4217 currency amount. |
 | `formatDate` | `(value: Date \| number \| string, options?: DateFormatOptions) => string` | Format with `Intl.DateTimeFormat`. |
+| `formatList` | `(items: Iterable<string>, options?: ListFormatOptions) => string` | Join items with `Intl.ListFormat`; `isolate` wraps each item and the result. |
+| `formatRelativeTime` | `(value: number, unit: Intl.RelativeTimeFormatUnit, options?: RelativeTimeFormatOptions) => string` | Format with `Intl.RelativeTimeFormat`; returns `''` for a non-finite value. |
 | `transliterateDigits` | `(text: string, to: 'latn' \| 'arab' \| 'arabext') => string` | Convert only digits in an existing string. |
 | `withNumberingSystem` | `(locale: string, numberingSystem?: NumberingSystem) => string` | Add a Unicode `-u-nu-` locale extension. |
 
 ```ts
-import { formatCurrency, formatNumber, transliterateDigits } from 'vue-rtl-kit'
+import {
+  formatCurrency,
+  formatList,
+  formatNumber,
+  formatRelativeTime,
+  transliterateDigits,
+} from 'vue-rtl-kit'
 
 formatNumber(1234.5, { locale: 'ar-EG', numberingSystem: 'latn' })
 formatCurrency(2500, 'EGP', { locale: 'ar-EG', isolate: true })
+formatList(['Ahmed', 'Sara', 'Omar'], { locale: 'ar', isolate: true })
+formatRelativeTime(-3, 'day', { locale: 'ar-EG', numberingSystem: 'latn' })
 transliterateDigits('طلب رقم 4821', 'arab')
 ```
 
@@ -263,6 +273,12 @@ interface BoundFormatters {
     value: Date | number | string,
     options?: DateFormatOptions,
   ) => string
+  formatList: (items: Iterable<string>, options?: ListFormatOptions) => string
+  formatRelativeTime: (
+    value: number,
+    unit: Intl.RelativeTimeFormatUnit,
+    options?: RelativeTimeFormatOptions,
+  ) => string
 }
 ```
 
@@ -277,6 +293,8 @@ interface FormatOptionsBase {
 
 type NumberFormatOptions = FormatOptionsBase & Intl.NumberFormatOptions
 type DateFormatOptions = FormatOptionsBase & Intl.DateTimeFormatOptions
+type ListFormatOptions = FormatOptionsBase & Intl.ListFormatOptions
+type RelativeTimeFormatOptions = FormatOptionsBase & Intl.RelativeTimeFormatOptions
 ```
 
 ## Bidirectional text type

@@ -66,7 +66,9 @@ export {
 export {
   formatCurrency,
   formatDate,
+  formatList,
   formatNumber,
+  formatRelativeTime,
   transliterateDigits,
   withNumberingSystem,
 } from './format'
@@ -74,7 +76,9 @@ export type {
   BoundFormatters,
   DateFormatOptions,
   FormatOptionsBase,
+  ListFormatOptions,
   NumberFormatOptions,
+  RelativeTimeFormatOptions,
 } from './format'
 
 export { isClient, isServer } from './env'

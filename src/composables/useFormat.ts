@@ -1,13 +1,20 @@
 import type { ComputedRef } from 'vue'
 import { computed, hasInjectionContext, inject } from 'vue'
-import type { BoundFormatters, DateFormatOptions, NumberFormatOptions } from '../format'
-import { formatCurrency, formatDate, formatNumber } from '../format'
+import type {
+  BoundFormatters,
+  DateFormatOptions,
+  ListFormatOptions,
+  NumberFormatOptions,
+  RelativeTimeFormatOptions,
+} from '../format'
+import { formatCurrency, formatDate, formatList, formatNumber, formatRelativeTime } from '../format'
 import { rtlInstanceKey } from '../keys'
 import type { NumberingSystem } from '../types'
 import { useDirection } from './useDirection'
 
 /**
- * `formatNumber` / `formatDate` / `formatCurrency`, pre-bound to the current
+ * `formatNumber` / `formatDate` / `formatCurrency` / `formatList` /
+ * `formatRelativeTime`, pre-bound to the current
  * locale and to the numbering system configured in `createRtl()`.
  *
  * Saves threading `locale` through every call site, and means switching the app
@@ -41,6 +48,13 @@ export function useFormat(): ComputedRef<BoundFormatters> {
         formatCurrency(value, currency, { ...defaults, ...options }),
       formatDate: (value: Date | number | string, options: DateFormatOptions = {}) =>
         formatDate(value, { ...defaults, ...options }),
+      formatList: (items: Iterable<string>, options: ListFormatOptions = {}) =>
+        formatList(items, { ...defaults, ...options }),
+      formatRelativeTime: (
+        value: number,
+        unit: Intl.RelativeTimeFormatUnit,
+        options: RelativeTimeFormatOptions = {},
+      ) => formatRelativeTime(value, unit, { ...defaults, ...options }),
     }
   })
 }

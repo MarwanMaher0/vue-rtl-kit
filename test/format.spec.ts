@@ -5,7 +5,9 @@ import {
   FORMATTER_CACHE_LIMIT,
   formatCurrency,
   formatDate,
+  formatList,
   formatNumber,
+  formatRelativeTime,
   formatterCacheStats,
   resetFormatterCaches,
   transliterateDigits,
@@ -14,7 +16,7 @@ import {
 import { useFormat } from '../src/composables/useFormat'
 import { createRtl } from '../src/core'
 import { RtlProvider } from '../src/components/RtlProvider'
-import { LRI, PDI } from '../src/bidi'
+import { FSI, LRI, PDI, RLI } from '../src/bidi'
 
 const ARABIC_INDIC = /[٠-٩]/
 
@@ -245,6 +247,104 @@ describe('formatDate', () => {
   })
 })
 
+describe('formatList', () => {
+  const names = ['Ahmed', 'Sara', 'Omar']
+
+  it('uses the Arabic conjunction and separator', () => {
+    const out = formatList(names, { locale: 'ar' })
+    expect(out).toBe(new Intl.ListFormat('ar').format(names))
+    expect(out).toContain(' وSara')
+    expect(out).toContain(' وOmar')
+    expect(out).not.toContain(',')
+    expect(out).not.toContain(' and ')
+  })
+
+  it('defaults to English and forwards Intl options', () => {
+    expect(formatList(names)).toBe('Ahmed, Sara, and Omar')
+    expect(formatList(['PDF', 'CSV'], { locale: 'en', type: 'disjunction' })).toBe('PDF or CSV')
+    expect(formatList(['a', 'b'], { locale: 'en', style: 'narrow', type: 'unit' })).toBe('a b')
+  })
+
+  it('accepts any iterable and an empty list', () => {
+    expect(formatList(new Set(['a', 'b']), { locale: 'en' })).toBe('a and b')
+    expect(formatList([], { locale: 'en' })).toBe('')
+    expect(formatList([], { locale: 'en', isolate: true })).toBe('')
+  })
+
+  it('isolates every item and then the whole result with isolate: true', () => {
+    const out = formatList(names, { locale: 'ar', isolate: true })
+    expect(out.startsWith(FSI)).toBe(true)
+    expect(out.endsWith(PDI)).toBe(true)
+    for (const name of names) expect(out).toContain(`${FSI}${name}${PDI}`)
+    expect(out).toBe(`${FSI}${new Intl.ListFormat('ar').format(names.map(name => `${FSI}${name}${PDI}`))}${PDI}`)
+  })
+
+  it('wraps the whole result in the requested direction and keeps items first-strong', () => {
+    const out = formatList(['Ahmed Ali', 'سارة'], { locale: 'ar', isolate: 'rtl' })
+    expect(out.startsWith(RLI)).toBe(true)
+    expect(out.endsWith(PDI)).toBe(true)
+    expect(out).toContain(`${FSI}Ahmed Ali${PDI}`)
+    expect(out).toContain(`${FSI}سارة${PDI}`)
+  })
+
+  it('leaves items untouched without isolate', () => {
+    const out = formatList(names, { locale: 'ar', isolate: false })
+    expect(out).not.toMatch(/[\u2066-\u2069]/)
+  })
+
+  it('falls back from invalid locale tags', () => {
+    expect(formatList(names, { locale: 'ar_EG' })).toBe(formatList(names, { locale: 'ar-EG' }))
+    expect(formatList(names, { locale: 'ar--EG' })).toBe(formatList(names, { locale: 'ar' }))
+    expect(formatList(names, { locale: '123-en' })).toBe(formatList(names, { locale: 'en' }))
+  })
+})
+
+describe('formatRelativeTime', () => {
+  it('uses Arabic-Indic digits for ar-EG by default', () => {
+    const out = formatRelativeTime(-3, 'day', { locale: 'ar-EG' })
+    expect(ARABIC_INDIC.test(out)).toBe(true)
+    expect(out).toContain('٣')
+    expect(out).not.toContain('3')
+  })
+
+  it('switches to Western digits with numberingSystem latn', () => {
+    const out = formatRelativeTime(-3, 'day', { locale: 'ar-EG', numberingSystem: 'latn' })
+    expect(ARABIC_INDIC.test(out)).toBe(false)
+    expect(out).toContain('3')
+    expect(out.replace('3', '٣')).toBe(formatRelativeTime(-3, 'day', { locale: 'ar-EG' }))
+  })
+
+  it('defaults to English and forwards Intl options', () => {
+    expect(formatRelativeTime(-3, 'day')).toBe('3 days ago')
+    expect(formatRelativeTime(2, 'hour', { locale: 'en' })).toBe('in 2 hours')
+    expect(formatRelativeTime(1, 'day', { locale: 'en', numeric: 'auto' })).toBe('tomorrow')
+    expect(formatRelativeTime(-1, 'day', { locale: 'en', numeric: 'auto' })).toBe('yesterday')
+  })
+
+  it('can isolate the result', () => {
+    const auto = formatRelativeTime(-3, 'day', { locale: 'ar-EG', isolate: true })
+    expect(auto).toBe(`${FSI}${formatRelativeTime(-3, 'day', { locale: 'ar-EG' })}${PDI}`)
+    const ltr = formatRelativeTime(5, 'minute', { locale: 'en', isolate: 'ltr' })
+    expect(ltr).toBe(`${LRI}in 5 minutes${PDI}`)
+  })
+
+  it.each([NaN, Infinity, -Infinity])('returns an empty string for non-finite value %s', (value) => {
+    expect(formatRelativeTime(value, 'day', { locale: 'ar-EG' })).toBe('')
+    expect(formatRelativeTime(value, 'day', { locale: 'ar-EG', isolate: true })).toBe('')
+  })
+
+  it('falls back to latn for an invalid numbering system and from invalid locale tags', () => {
+    expect(formatRelativeTime(-3, 'day', { locale: 'ar-EG', numberingSystem: 'invalid' }))
+      .toBe(formatRelativeTime(-3, 'day', { locale: 'ar-EG', numberingSystem: 'latn' }))
+    expect(formatRelativeTime(-3, 'day', { locale: 'ar_EG' })).toBe(formatRelativeTime(-3, 'day', { locale: 'ar-EG' }))
+    expect(formatRelativeTime(-3, 'day', { locale: '123-en' })).toBe('3 days ago')
+  })
+
+  it('keeps throwing for an invalid unit', () => {
+    expect(() => formatRelativeTime(1, 'fortnight' as Intl.RelativeTimeFormatUnit)).toThrow(RangeError)
+  })
+})
+
 describe('transliterateDigits', () => {
   it('converts to Arabic-Indic and back', () => {
     expect(transliterateDigits('طلب 4821', 'arab')).toBe('طلب ٤٨٢١')
@@ -288,6 +388,42 @@ describe('useFormat', () => {
     expect(formatters.value.formatDate('not a date')).toBe('')
     expect(formatters.value.formatDate('2024-05-12T00:00:00Z', { timeZone: 'UTC' }))
       .toBe(formatDate('2024-05-12T00:00:00Z', { locale: fallbackLocale, numberingSystem: fallbackNumberingSystem, timeZone: 'UTC' }))
+    rtl.dispose()
+  })
+
+  it('binds formatList and formatRelativeTime to the current locale', async () => {
+    const { rtl, formatters } = setup({ locales: ['en', 'ar-EG'], defaultLocale: 'en' })
+    const names = ['Ahmed', 'Sara', 'Omar']
+    expect(formatters.value.formatList(names)).toBe('Ahmed, Sara, and Omar')
+    expect(formatters.value.formatRelativeTime(-3, 'day')).toBe('3 days ago')
+
+    rtl.setLocale('ar-EG')
+    await nextTick()
+    expect(formatters.value.formatList(names)).toBe(formatList(names, { locale: 'ar-EG' }))
+    expect(formatters.value.formatList(names)).toContain(' وOmar')
+    expect(formatters.value.formatRelativeTime(-3, 'day')).toBe(formatRelativeTime(-3, 'day', { locale: 'ar-EG' }))
+    expect(ARABIC_INDIC.test(formatters.value.formatRelativeTime(-3, 'day'))).toBe(true)
+
+    expect(formatters.value.formatRelativeTime(-3, 'day', { locale: 'en' })).toBe('3 days ago')
+    expect(formatters.value.formatList(names, { isolate: true }).startsWith(FSI)).toBe(true)
+    expect(formatters.value.formatRelativeTime(NaN, 'day')).toBe('')
+
+    rtl.setLocale('en')
+    await nextTick()
+    expect(formatters.value.formatRelativeTime(-3, 'day')).toBe('3 days ago')
+    rtl.dispose()
+  })
+
+  it('applies the configured numbering system to formatRelativeTime', () => {
+    const { rtl, formatters } = setup({
+      locales: ['ar-EG'],
+      defaultLocale: 'ar-EG',
+      numberingSystem: { ar: 'latn' },
+    })
+    expect(formatters.value.formatRelativeTime(-3, 'day'))
+      .toBe(formatRelativeTime(-3, 'day', { locale: 'ar-EG', numberingSystem: 'latn' }))
+    expect(ARABIC_INDIC.test(formatters.value.formatRelativeTime(-3, 'day'))).toBe(false)
+    expect(ARABIC_INDIC.test(formatters.value.formatRelativeTime(-3, 'day', { numberingSystem: 'arab' }))).toBe(true)
     rtl.dispose()
   })
 
@@ -414,6 +550,15 @@ describe('useFormat', () => {
 })
 
 describe('formatter caches', () => {
+  // Intl.ListFormat and Intl.RelativeTimeFormat must be called with `new`, so
+  // spy through a plain constructor function that forwards to the original.
+  const spyOnConstructor = <K extends 'ListFormat' | 'RelativeTimeFormat'>(name: K) => {
+    const Original = Intl[name] as unknown as new (...args: unknown[]) => object
+    return vi.spyOn(Intl, name).mockImplementation(function (...args: unknown[]) {
+      return new Original(...args)
+    } as never)
+  }
+
   it('bounds the Intl.NumberFormat cache to a small fixed LRU and evicts the least recently used entry', () => {
     resetFormatterCaches()
     const ctor = vi.spyOn(Intl, 'NumberFormat')
@@ -461,6 +606,57 @@ describe('formatter caches', () => {
     expect(ctor).toHaveBeenCalledTimes(1)
     expect(formatterCacheStats().date).toBe(FORMATTER_CACHE_LIMIT)
     ctor.mockRestore()
+  })
+
+  it('bounds the Intl.ListFormat cache the same way', () => {
+    resetFormatterCaches()
+    const ctor = spyOnConstructor('ListFormat')
+    const keys = Array.from({ length: FORMATTER_CACHE_LIMIT * 3 }, (_, i) => `en-x-list${i}`)
+    for (const locale of keys) formatList(['a', 'b'], { locale })
+    expect(formatterCacheStats().list).toBe(FORMATTER_CACHE_LIMIT)
+    expect(ctor).toHaveBeenCalledTimes(keys.length)
+
+    ctor.mockClear()
+    formatList(['a', 'b'], { locale: keys.at(-1)! })
+    expect(ctor).not.toHaveBeenCalled()
+    formatList(['a', 'b'], { locale: keys[0]! })
+    expect(ctor).toHaveBeenCalledTimes(1)
+    expect(formatterCacheStats().list).toBe(FORMATTER_CACHE_LIMIT)
+    ctor.mockRestore()
+  })
+
+  it('bounds the Intl.RelativeTimeFormat cache the same way', () => {
+    resetFormatterCaches()
+    const ctor = spyOnConstructor('RelativeTimeFormat')
+    formatRelativeTime(1, 'day', { locale: 'en' })
+    formatRelativeTime(2, 'hour', { locale: 'en' })
+    expect(ctor).toHaveBeenCalledTimes(1)
+    expect(formatterCacheStats().relativeTime).toBe(1)
+
+    ctor.mockClear()
+    const keys = Array.from({ length: FORMATTER_CACHE_LIMIT * 3 }, (_, i) => `en-x-rel${i}`)
+    for (const locale of keys) formatRelativeTime(1, 'day', { locale })
+    expect(formatterCacheStats().relativeTime).toBe(FORMATTER_CACHE_LIMIT)
+    expect(ctor).toHaveBeenCalledTimes(keys.length)
+
+    ctor.mockClear()
+    formatRelativeTime(1, 'day', { locale: keys.at(-1)! })
+    expect(ctor).not.toHaveBeenCalled()
+    formatRelativeTime(1, 'day', { locale: keys[0]! })
+    expect(ctor).toHaveBeenCalledTimes(1)
+    expect(formatterCacheStats().relativeTime).toBe(FORMATTER_CACHE_LIMIT)
+    ctor.mockRestore()
+  })
+
+  it('keeps each kind in its own cache and resets them all', () => {
+    resetFormatterCaches()
+    formatNumber(1, { locale: 'en' })
+    formatDate(0, { locale: 'en' })
+    formatList(['a'], { locale: 'en' })
+    formatRelativeTime(1, 'day', { locale: 'en' })
+    expect(formatterCacheStats()).toEqual({ number: 1, date: 1, list: 1, relativeTime: 1, limit: FORMATTER_CACHE_LIMIT })
+    resetFormatterCaches()
+    expect(formatterCacheStats()).toEqual({ number: 0, date: 0, list: 0, relativeTime: 0, limit: FORMATTER_CACHE_LIMIT })
   })
 
   it('refreshes recency on hit so a hot formatter survives churn', () => {

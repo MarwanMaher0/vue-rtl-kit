@@ -25,6 +25,8 @@ export interface FormatOptionsBase {
 
 export type NumberFormatOptions = FormatOptionsBase & Intl.NumberFormatOptions
 export type DateFormatOptions = FormatOptionsBase & Intl.DateTimeFormatOptions
+export type ListFormatOptions = FormatOptionsBase & Intl.ListFormatOptions
+export type RelativeTimeFormatOptions = FormatOptionsBase & Intl.RelativeTimeFormatOptions
 
 let supportedNumberingSystems: Set<string> | null | undefined
 
@@ -60,14 +62,11 @@ export function withNumberingSystem(locale: string, numberingSystem?: NumberingS
   return tag.replace(/(?=-x-)|$/i, `${/-u-/i.test(base) ? '-nu-' : '-u-nu-'}${resolved}`)
 }
 
-function makeFormatter<F>(
+function makeFormatter<F, O>(
   locale: string,
   numberingSystem: NumberingSystem | undefined,
-  options: Intl.NumberFormatOptions & Intl.DateTimeFormatOptions,
-  Formatter: new (
-    locale: string,
-    options: Intl.NumberFormatOptions & Intl.DateTimeFormatOptions,
-  ) => F,
+  options: O,
+  Formatter: new (locale: string, options: O) => F,
 ): F {
   const base = locale.replace(/_/g, '-')
   for (const candidate of [base, base.split('-')[0]!]) {
@@ -126,10 +125,24 @@ class LruCache<V> {
 
 const numberFormatters = /*#__PURE__*/ new LruCache<Intl.NumberFormat>(FORMATTER_CACHE_LIMIT)
 const dateFormatters = /*#__PURE__*/ new LruCache<Intl.DateTimeFormat>(FORMATTER_CACHE_LIMIT)
+const listFormatters = /*#__PURE__*/ new LruCache<Intl.ListFormat>(FORMATTER_CACHE_LIMIT)
+const relativeTimeFormatters = /*#__PURE__*/ new LruCache<Intl.RelativeTimeFormat>(FORMATTER_CACHE_LIMIT)
 
 /** Inspect the formatter caches. Test helper; not part of the public contract. */
-export function formatterCacheStats(): { number: number, date: number, limit: number } {
-  return { number: numberFormatters.size, date: dateFormatters.size, limit: FORMATTER_CACHE_LIMIT }
+export function formatterCacheStats(): {
+  number: number
+  date: number
+  list: number
+  relativeTime: number
+  limit: number
+} {
+  return {
+    number: numberFormatters.size,
+    date: dateFormatters.size,
+    list: listFormatters.size,
+    relativeTime: relativeTimeFormatters.size,
+    limit: FORMATTER_CACHE_LIMIT,
+  }
 }
 
 /**
@@ -139,6 +152,8 @@ export function formatterCacheStats(): { number: number, date: number, limit: nu
 export function resetFormatterCaches(): void {
   numberFormatters.clear()
   dateFormatters.clear()
+  listFormatters.clear()
+  relativeTimeFormatters.clear()
   supportedNumberingSystems = undefined
 }
 
@@ -222,6 +237,62 @@ export function formatDate(
 }
 
 /**
+ * Join a list of strings with the locale's conjunction or disjunction.
+ *
+ * With `isolate` set, every item is wrapped in its own first-strong isolate
+ * before joining - so a Latin name cannot swap places with its neighbours in
+ * an Arabic list - and the joined result is then isolated as requested.
+ *
+ * @example
+ * formatList(['Ahmed', 'Sara', 'Omar'], { locale: 'ar' }) // 'Ahmed وSara وOmar'
+ * formatList(['PDF', 'CSV'], { locale: 'en', type: 'disjunction' }) // 'PDF or CSV'
+ */
+export function formatList(items: Iterable<string>, options: ListFormatOptions = {}): string {
+  const { locale = 'en', numberingSystem, wrap, intl } = split(options)
+  const tag = withNumberingSystem(locale, numberingSystem)
+  const key = cacheKey(tag, intl)
+  let formatter = listFormatters.get(key)
+  if (!formatter) {
+    formatter = makeFormatter(locale, numberingSystem, intl, Intl.ListFormat)
+    listFormatters.set(key, formatter)
+  }
+  const list = Array.from(items, item => (wrap ? isolate(String(item)) : String(item)))
+  return maybeIsolate(formatter.format(list), wrap)
+}
+
+/**
+ * Format a relative time such as "in 3 days" or "2 hours ago".
+ *
+ * Negative values are in the past, positive values in the future. A
+ * non-finite value (`NaN`, `Infinity`) returns an empty string, like an
+ * invalid date in `formatDate()`.
+ *
+ * @param value - the amount of `unit`s from now
+ * @param unit - `'second'`, `'minute'`, `'hour'`, `'day'`, `'week'`, `'month'`, `'quarter'` or `'year'`
+ *
+ * @example
+ * formatRelativeTime(-3, 'day', { locale: 'ar-EG' }) // 'قبل ٣ أيام'
+ * formatRelativeTime(-3, 'day', { locale: 'ar-EG', numberingSystem: 'latn' }) // 'قبل 3 أيام'
+ * formatRelativeTime(1, 'day', { locale: 'en', numeric: 'auto' }) // 'tomorrow'
+ */
+export function formatRelativeTime(
+  value: number,
+  unit: Intl.RelativeTimeFormatUnit,
+  options: RelativeTimeFormatOptions = {},
+): string {
+  if (!Number.isFinite(value)) return ''
+  const { locale = 'en', numberingSystem, wrap, intl } = split(options)
+  const tag = withNumberingSystem(locale, numberingSystem)
+  const key = cacheKey(tag, intl)
+  let formatter = relativeTimeFormatters.get(key)
+  if (!formatter) {
+    formatter = makeFormatter(locale, numberingSystem, intl, Intl.RelativeTimeFormat)
+    relativeTimeFormatters.set(key, formatter)
+  }
+  return maybeIsolate(formatter.format(value, unit), wrap)
+}
+
+/**
  * Convert the digits in a string between numbering systems without touching
  * anything else.
  *
@@ -250,4 +321,10 @@ export interface BoundFormatters {
   formatNumber: (value: number, options?: NumberFormatOptions) => string
   formatCurrency: (value: number, currency: string, options?: NumberFormatOptions) => string
   formatDate: (value: Date | number | string, options?: DateFormatOptions) => string
+  formatList: (items: Iterable<string>, options?: ListFormatOptions) => string
+  formatRelativeTime: (
+    value: number,
+    unit: Intl.RelativeTimeFormatUnit,
+    options?: RelativeTimeFormatOptions,
+  ) => string
 }

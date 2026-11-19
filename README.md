@@ -101,8 +101,8 @@ budgets are set to their measured byte counts plus fixed `+256 B` (`0.25 kB`) ra
 
 | Entry point | Artifact | Raw (current / budget) | Gzip (current / budget) |
 | --- | --- | --- | --- |
-| `vue-rtl-kit` (ESM) | `dist/vue-rtl-kit.js` | 27.96 kB / ≤ 28.21 kB | 9.23 kB / ≤ 9.33 kB |
-| `vue-rtl-kit` (CJS) | `dist/vue-rtl-kit.cjs` | 20.15 kB / ≤ 20.40 kB | 7.62 kB / ≤ 7.72 kB |
+| `vue-rtl-kit` (ESM) | `dist/vue-rtl-kit.js` | 28.75 kB / ≤ 29.00 kB | 9.38 kB / ≤ 9.48 kB |
+| `vue-rtl-kit` (CJS) | `dist/vue-rtl-kit.cjs` | 20.75 kB / ≤ 21.00 kB | 7.74 kB / ≤ 7.84 kB |
 | `vue-rtl-kit/nuxt` | `dist/nuxt/module.js` | 3.08 kB / ≤ 3.25 kB | 1.12 kB / ≤ 1.50 kB |
 | `vue-rtl-kit/nuxt` (runtime plugin) | `dist/nuxt/runtime/plugin.js` | 2.77 kB / ≤ 3.00 kB | 1.02 kB / ≤ 1.20 kB |
 | `vue-rtl-kit/styles.css` | `dist/styles.css` | 7.10 kB / ≤ 8.00 kB | 1.91 kB / ≤ 2.50 kB |
@@ -230,7 +230,7 @@ Returns an `RtlInstance`: a Vue plugin *and* a store you can drive from outside 
 | `useDirection()` | `DirectionContext` | `dir`, `isRtl`, `isLtr`, `locale`, `startSide`, `endSide`, `sign`, `setDirection()`, `toggleDirection()`, `setLocale()`, `htmlAttrs()`. Resolves to the nearest `<RtlProvider>`, then the app store, then a detached fallback — it never throws. |
 | `useRtl()` | `RtlInstance` | The app-level store, skipping any `<RtlProvider>`. Throws if the plugin is missing. |
 | `useLogicalStyles()` | see below | `toLogical()`, `toPhysical()`, `property()`, `mirror()`, `arrow()`, plus `startSide`, `endSide`, `sign`. |
-| `useFormat()` | `ComputedRef<BoundFormatters>` | `formatNumber` / `formatCurrency` / `formatDate` bound to the current locale and numbering system. |
+| `useFormat()` | `ComputedRef<BoundFormatters>` | `formatNumber` / `formatCurrency` / `formatDate` / `formatList` / `formatRelativeTime` bound to the current locale and numbering system; they follow `setLocale()` and the `numberingSystem` configured in `createRtl()`. |
 
 ### Components
 
@@ -303,12 +303,22 @@ kept intact and split only at top-level whitespace.
 ### Formatting
 
 ```ts
-import { formatCurrency, formatDate, formatNumber } from 'vue-rtl-kit'
+import {
+  formatCurrency,
+  formatDate,
+  formatList,
+  formatNumber,
+  formatRelativeTime,
+} from 'vue-rtl-kit'
 
 formatNumber(1234.5, { locale: 'ar-EG' })                            // '١٬٢٣٤٫٥'
 formatNumber(1234.5, { locale: 'ar-EG', numberingSystem: 'latn' })   // '1,234.5'
 formatCurrency(2500, 'EGP', { locale: 'ar-EG' })
 formatDate(date, { locale: 'ar-SA', calendar: 'islamic-umalqura', dateStyle: 'long' })
+formatList(['Ahmed', 'Sara', 'Omar'], { locale: 'ar' })              // 'Ahmed وSara وOmar'
+formatList(['PDF', 'CSV'], { locale: 'en', type: 'disjunction' })    // 'PDF or CSV'
+formatRelativeTime(-3, 'day', { locale: 'ar-EG' })                   // 'قبل ٣ أيام'
+formatRelativeTime(-3, 'day', { locale: 'ar-EG', numberingSystem: 'latn' }) // 'قبل 3 أيام'
 ```
 
 Thin wrappers over `Intl` that add two things RTL products keep needing: an explicit numbering
@@ -317,6 +327,14 @@ digits for figures, IDs and versions; unrecognized `numberingSystem` values safe
 `'latn'`), and `isolate: true` to wrap the result before it is spliced
 into a sentence. `transliterateDigits(text, 'arab' | 'latn' | 'arabext')` converts digits in text
 you did not format yourself.
+
+`formatList(items, options)` wraps `Intl.ListFormat` (`type`, `style`) and
+`formatRelativeTime(value, unit, options)` wraps `Intl.RelativeTimeFormat` (`numeric`, `style`);
+both take the same `locale`, `numberingSystem` and `isolate` options as the other formatters. With
+`isolate` set, `formatList` wraps every item in a first-strong isolate before joining — so a Latin
+name cannot swap places with its Arabic neighbours — and then isolates the whole list as requested.
+`formatRelativeTime` returns `''` for a non-finite value, as `formatDate` does for an invalid date.
+Each formatter kind keeps its own LRU cache of `Intl` instances (32 entries).
 
 ### Locale helpers
 

@@ -261,7 +261,7 @@ Sources:
 
 ## Locale-aware formatting
 
-useFormat(): ComputedRef<BoundFormatters> binds number, currency, and date formatters to the current scope's locale and direction, applying the root instance's configured numberingSystem. In templates, use format.formatNumber(...); in script, use format.value.formatNumber(...).
+useFormat(): ComputedRef<BoundFormatters> binds number, currency, date, list, and relative-time formatters to the current scope's locale and direction, applying the root instance's configured numberingSystem. The bound formatters follow setLocale(). In templates, use format.formatNumber(...); in script, use format.value.formatNumber(...).
 
 ```ts
 import { useFormat } from 'vue-rtl-kit'
@@ -274,18 +274,22 @@ const date = format.value.formatDate('2024-05-12', {
   dateStyle: 'long',
   isolate: 'ltr',
 })
+const reviewers = format.value.formatList(['Ahmed', 'Sara', 'Omar'], { isolate: true })
+const edited = format.value.formatRelativeTime(-3, 'day')
 ```
 
-Per-call options override bound locale and numbering system. NumberFormatOptions and DateFormatOptions extend Intl options with locale, numberingSystem, and isolate. isolate can be boolean, rtl, ltr, or auto; true uses first-strong detection. This is formatting, not message translation.
+Per-call options override bound locale and numbering system. NumberFormatOptions, DateFormatOptions, ListFormatOptions, and RelativeTimeFormatOptions extend the matching Intl options with locale, numberingSystem, and isolate. isolate can be boolean, rtl, ltr, or auto; true uses first-strong detection. This is formatting, not message translation.
 
 Standalone functions:
 - formatNumber(value, options?): Intl.NumberFormat.
 - formatCurrency(value, currency, options?): ISO 4217 currency formatting.
-- formatDate(value, options?): Intl.DateTimeFormat; accepts Date, number, or string.
+- formatDate(value, options?): Intl.DateTimeFormat; accepts Date, number, or string; returns an empty string for an invalid date.
+- formatList(items, options?): Intl.ListFormat with type ('conjunction', 'disjunction', 'unit') and style. formatList(['Ahmed', 'Sara', 'Omar'], { locale: 'ar' }) gives 'Ahmed وSara وOmar'. With isolate set, every item is wrapped in a first-strong isolate and then the whole result is isolated.
+- formatRelativeTime(value, unit, options?): Intl.RelativeTimeFormat with numeric and style; negative values are in the past. formatRelativeTime(-3, 'day', { locale: 'ar-EG' }) gives 'قبل ٣ أيام', and numberingSystem: 'latn' gives 'قبل 3 أيام'. A non-finite value returns an empty string.
 - transliterateDigits(text, 'latn' | 'arab' | 'arabext'): converts only digits in an existing string.
 - withNumberingSystem(locale, numberingSystem?): adds a Unicode -u-nu- locale extension.
 
-NumberingSystem accepts latn, arab, arabext, hanidec, deva, beng, or another runtime-supported string; unrecognized or empty values safely fall back to latn. Actual Intl behavior depends on the runtime's locale support.
+NumberingSystem accepts latn, arab, arabext, hanidec, deva, beng, or another runtime-supported string; unrecognized or empty values safely fall back to latn. Actual Intl behavior depends on the runtime's locale support. Each formatter kind (number, date, list, relative time) keeps its own bounded LRU cache of 32 Intl instances.
 
 Sources:
 - [useFormat](https://marwanmaher0.github.io/vue-rtl-kit/guide/use-format)
@@ -332,7 +336,7 @@ Core types:
 - RtlOptions configures createRtl; ResolvedRtlOptions represents resolved root options.
 - DirectionContext describes reactive state and actions; RtlInstance adds root/plugin behavior.
 - DirectionState omits isRoot; DirectionStateOptions requires dir and locale and optionally locales and pinned.
-- BoundFormatters exposes locale, dir, formatNumber, formatCurrency, and formatDate.
+- BoundFormatters exposes locale, dir, formatNumber, formatCurrency, formatDate, formatList, and formatRelativeTime.
 - BidiRun contains text, dir, isolated, and hasStrong.
 - LogicalStyleOptions contains optional size, values, and shorthands flags.
 - RtlDirectiveValue accepts DirectionOrAuto, boolean, undefined, null, or { dir?, isolate? }.
@@ -347,6 +351,6 @@ vue-rtl-kit تدير اتجاه الواجهة وتنسيق القيم، ولا 
 
 يتبع اتجاه الجذر اللغة حتى يُثبّت عبر dir الأولي أو setDirection() أو toggleDirection(). بعد التثبيت، تغيّر setLocale() اللغة فقط. تقرأ useDirection() أقرب نطاق، أما useRtl() فتصل إلى الجذر المثبّت وترمي خطأ إن لم تكن الإضافة مثبتة. ينشئ RtlProvider نطاقًا محليًا؛ وعند غياب العنصر الحاوي يجب وضع سمات الاتجاه على الأبناء.
 
-BidiText أداة مبسطة لعزل مقاطع النص العادي، وليس محرّكًا للنص الغني ولا تنفيذًا كاملًا لخوارزمية Unicode ثنائية الاتجاه. لا يعالج الوسوم الغنية داخل الخانة؛ استخدم text لعزل النص العادي. يظل المتصفح مسؤولًا عن التخطيط النهائي. تتكيف أدوات CSS المنطقية مع أقرب dir، وتنسّق useFormat الأرقام والعملات والتواريخ عبر Intl.
+BidiText أداة مبسطة لعزل مقاطع النص العادي، وليس محرّكًا للنص الغني ولا تنفيذًا كاملًا لخوارزمية Unicode ثنائية الاتجاه. لا يعالج الوسوم الغنية داخل الخانة؛ استخدم text لعزل النص العادي. يظل المتصفح مسؤولًا عن التخطيط النهائي. تتكيف أدوات CSS المنطقية مع أقرب dir، وتنسّق useFormat الأرقام والعملات والتواريخ والقوائم والأزمنة النسبية عبر Intl.
 
 تدعم وحدة Nuxt سمات dir وlang في العرض على الخادم. تعطيل components يوقف تسجيل Nuxt وقت البناء فقط؛ اضبط registerGlobals: false أيضًا لإيقاف التسجيل العام من إضافة التشغيل. راجع الدليل العربي لكل واجهة قبل افتراض سلوك غير موثق.
