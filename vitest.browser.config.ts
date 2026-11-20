@@ -3,13 +3,7 @@ import { defineConfig } from 'vitest/config'
 
 export default defineConfig({
   plugins: [vue()],
-  resolve: {
-    alias: {
-      vue: 'vue/dist/vue.esm-bundler.js',
-    },
-  },
   test: {
-    globals: true,
     include: ['test/browser/**/*.browser.ts'],
     browser: {
       enabled: true,

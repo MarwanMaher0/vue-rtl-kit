@@ -3,6 +3,7 @@ import { h } from 'vue'
 import { mount } from '@vue/test-utils'
 import { BidiText, createRtl, isolate, isolateRuns, stripBidiControls } from '../../src'
 import '../../src/styles/logical.css'
+import { attachHost, removeHosts } from './hosts'
 
 const BIDI_CONTROL_CHAR = /[\u200E\u200F\u061C\u202A-\u202E\u2066-\u2069]/u
 
@@ -57,18 +58,18 @@ function horizontalOverlap(a: DOMRect, b: { left: number, right: number }): numb
   return Math.max(0, Math.min(a.right, b.right) - Math.max(a.left, b.left))
 }
 
+interface SentenceParts {
+  prefixChars: CharMeasurement[]
+  runChars: CharMeasurement[]
+  suffixChars: CharMeasurement[]
+}
+
 /**
- * Assert that `run` inside `prefix + ' ' + run + ' ' + suffix` is laid out as a
- * single contiguous left-to-right block (per-character Range rects advancing
- * strictly left to right with no gaps) and does not overlap either Arabic
- * neighbour (`prefix` stays to the right, `suffix` stays to the left).
+ * Measure `root` and split its visible characters into the `prefix`, `run`
+ * and `suffix` of `prefix + ' ' + run + ' ' + suffix`, asserting that the
+ * rendered logical text is exactly that sentence.
  */
-function assertContiguousLatinRun(
-  root: Element,
-  prefix: string,
-  run: string,
-  suffix: string,
-): void {
+function measureSentence(root: Element, prefix: string, run: string, suffix: string): SentenceParts {
   const expectedPlain = `${prefix} ${run} ${suffix}`
   const chars = measureVisibleCharacters(root)
   expect(chars.map(c => c.char).join('')).toBe(stripBidiControls(expectedPlain))
@@ -82,6 +83,50 @@ function assertContiguousLatinRun(
   expect(prefixChars.map(c => c.char).join('')).toBe(prefix)
   expect(runChars.map(c => c.char).join('')).toBe(run)
   expect(suffixChars.map(c => c.char).join('')).toBe(suffix)
+
+  return { prefixChars, runChars, suffixChars }
+}
+
+/**
+ * Logically adjacent characters of the Latin run that are drawn right to
+ * left (the later character starts left of the earlier one).
+ */
+function outOfOrderPairs(runChars: CharMeasurement[]): string[] {
+  const pairs: string[] = []
+  for (let i = 0; i < runChars.length - 1; i++) {
+    const curr = runChars[i]!
+    const next = runChars[i + 1]!
+    if (next.rect.left < curr.rect.left)
+      pairs.push(`${curr.char}${next.char}`)
+  }
+  return pairs
+}
+
+/**
+ * Control-case assertion: the sentence renders with the expected logical
+ * text, but the Latin run is visibly reordered, i.e. at least one pair of
+ * logically adjacent run characters is drawn right to left. This is the
+ * specific failure `assertContiguousLatinRun` exists to catch.
+ */
+function expectLatinRunReordered(root: Element, prefix: string, run: string, suffix: string): void {
+  const { runChars } = measureSentence(root, prefix, run, suffix)
+  expect(outOfOrderPairs(runChars)).not.toEqual([])
+}
+
+/**
+ * Assert that `run` inside `prefix + ' ' + run + ' ' + suffix` is laid out as a
+ * single contiguous left-to-right block (per-character Range rects advancing
+ * strictly left to right with no gaps) and does not overlap either Arabic
+ * neighbour (`prefix` stays to the right, `suffix` stays to the left).
+ */
+function assertContiguousLatinRun(
+  root: Element,
+  prefix: string,
+  run: string,
+  suffix: string,
+): void {
+  const { prefixChars, runChars, suffixChars } = measureSentence(root, prefix, run, suffix)
+  expect(outOfOrderPairs(runChars)).toEqual([])
 
   const epsilon = 0.75
 
@@ -123,13 +168,13 @@ function createLineHost(): HTMLElement {
   const host = document.createElement('div')
   host.setAttribute('dir', 'rtl')
   host.style.cssText = 'white-space: pre; font-family: monospace, sans-serif; font-size: 20px; line-height: 1.5;'
-  document.body.appendChild(host)
+  attachHost(host)
   return host
 }
 
 describe('BidiText and isolate per-character Range contiguity in real Chromium', () => {
   afterEach(() => {
-    document.body.innerHTML = ''
+    removeHosts()
     document.documentElement.removeAttribute('dir')
     document.documentElement.removeAttribute('lang')
   })
@@ -208,7 +253,7 @@ describe('BidiText and isolate per-character Range contiguity in real Chromium',
       try {
         assertContiguousLatinRun(host.querySelector('.bidi-el')!, prefix, run, suffix)
         assertContiguousLatinRun(host.querySelector('.isolated-str')!, prefix, run, suffix)
-        expect(() => assertContiguousLatinRun(host.querySelector('.raw-control')!, prefix, run, suffix)).toThrow()
+        expectLatinRunReordered(host.querySelector('.raw-control')!, prefix, run, suffix)
       }
       finally {
         wrapper.unmount()
@@ -235,8 +280,8 @@ describe('BidiText and isolate per-character Range contiguity in real Chromium',
       for (const selector of ['.plain-rtl', '.disabled-bidi']) {
         const el = host.querySelector(selector)!
 
-        // The exact same contiguity assertion throws when isolation is omitted.
-        expect(() => assertContiguousLatinRun(el, PREFIX_AR, LATIN_RUN, SUFFIX_AR)).toThrow()
+        // Same logical text, but the run is drawn out of left-to-right order without isolation.
+        expectLatinRunReordered(el, PREFIX_AR, LATIN_RUN, SUFFIX_AR)
 
         const chars = measureVisibleCharacters(el)
         const runStart = PREFIX_AR.length + 1

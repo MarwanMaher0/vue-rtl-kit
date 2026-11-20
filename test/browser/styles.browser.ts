@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import type { Direction } from '../../src'
 import { oppositeDirection } from '../../src'
 import '../../src/styles/logical.css'
+import { attachHost, removeHosts } from './hosts'
 
 const DIRECTIONS: readonly Direction[] = ['ltr', 'rtl']
 
@@ -39,7 +40,7 @@ function renderFixture(page: Direction, island: Direction, inner: Direction): HT
   const host = document.createElement('div')
   host.innerHTML = renderLevel('page', page)
     + `<div dir="${island}">${renderLevel('island', island)}<div dir="${inner}">${renderLevel('inner', inner)}</div></div>`
-  document.body.appendChild(host)
+  attachHost(host)
   return host
 }
 
@@ -79,7 +80,7 @@ function assertUtilitiesAtLevel(root: ParentNode, levelName: LevelName, expected
 
 describe('styles/logical.css utilities in real Chromium', () => {
   afterEach(() => {
-    document.body.innerHTML = ''
+    removeHosts()
     document.documentElement.removeAttribute('dir')
   })
 
@@ -102,7 +103,7 @@ describe('styles/logical.css utilities in real Chromium', () => {
   it('defaults pages with no dir attribute to :dir(ltr) even when fixture text is Arabic', () => {
     const host = document.createElement('div')
     host.innerHTML = '<span class="ltr-only">مرحبا</span><span class="rtl-only">مرحبا</span>'
-    document.body.appendChild(host)
+    attachHost(host)
 
     expect(window.getComputedStyle(host.querySelector('.ltr-only')!).display).toBe('inline')
     expect(window.getComputedStyle(host.querySelector('.rtl-only')!).display).toBe('none')
@@ -113,7 +114,7 @@ describe('styles/logical.css utilities in real Chromium', () => {
     const wrapper = document.createElement('div')
     wrapper.style.direction = 'ltr'
     wrapper.innerHTML = '<div class="rtl-scroll-x">Hello world</div>'
-    document.body.appendChild(wrapper)
+    attachHost(wrapper)
 
     const scroll = wrapper.querySelector('.rtl-scroll-x') as HTMLElement
     expect(window.getComputedStyle(scroll).direction).toBe('rtl')

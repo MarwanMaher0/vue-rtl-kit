@@ -1,9 +1,12 @@
 import { afterEach, describe, expect, it } from 'vitest'
-import { defineComponent, h, nextTick, reactive, ref } from 'vue'
+import type { VNode } from 'vue'
+import { defineComponent, h, nextTick, reactive, ref, withDirectives } from 'vue'
 import { mount } from '@vue/test-utils'
 import type { Direction } from '../../src'
+import type { RtlDirectiveValue } from '../../src/directives/vRtl'
 import { RtlProvider, createRtl, useDirection, vRtl } from '../../src'
 import '../../src/styles/logical.css'
+import { attachHost, removeHosts } from './hosts'
 
 function computedDir(el: Element): string {
   return window.getComputedStyle(el).direction
@@ -13,17 +16,27 @@ function computedBidi(el: Element): string {
   return window.getComputedStyle(el).unicodeBidi
 }
 
+/** Render-function form of `v-rtl[:arg][.modifiers]="value"`. */
+function withRtl(
+  vnode: VNode,
+  value?: RtlDirectiveValue,
+  arg?: string,
+  modifiers: Partial<Record<string, boolean>> = {},
+): VNode {
+  return withDirectives(vnode, [[vRtl, value, arg, modifiers]])
+}
+
 describe('v-rtl and nested RtlProvider computed direction in real Chromium', () => {
   afterEach(() => {
-    document.body.innerHTML = ''
+    removeHosts()
     document.documentElement.removeAttribute('dir')
     document.documentElement.removeAttribute('lang')
   })
 
-  it('gives the expected computed direction and unicode-bidi for v-rtl template bindings, including dir="auto"', async () => {
+  it('gives the expected computed direction and unicode-bidi for v-rtl bindings, including dir="auto"', async () => {
     document.documentElement.setAttribute('dir', 'rtl')
     const host = document.createElement('div')
-    document.body.appendChild(host)
+    attachHost(host)
 
     const dynamicDir = ref<Direction>('ltr')
     const showRestorable = ref(true)
@@ -34,26 +47,22 @@ describe('v-rtl and nested RtlProvider computed direction in real Chromium', () 
 
     const wrapper = mount(
       defineComponent({
-        setup: () => ({ dynamicDir, showRestorable, reactiveBox }),
-        template: `
-          <div>
-            <div class="ltr-parent" dir="ltr">
-              <p class="dir-default" v-rtl>Hello world</p>
-              <p v-if="showRestorable" class="dir-restorable" dir="rtl" v-rtl:ltr>Hello world</p>
-            </div>
-            <pre class="dir-arg-ltr" v-rtl:ltr>مرحبا بالعالم</pre>
-            <span class="dir-mod-ltr-isolate" v-rtl.ltr.isolate>مرحبا</span>
-            <p class="dir-auto-ar" v-rtl.auto>مرحبا world</p>
-            <p class="dir-auto-en" v-rtl.auto>Hello مرحبا</p>
-            <div class="dir-ref" v-rtl="dynamicDir">مرحبا</div>
-            <div class="dir-reactive-obj" v-rtl="reactiveBox">مرحبا</div>
-          </div>
-        `,
+        setup: () => () => h('div', [
+          h('div', { class: 'ltr-parent', dir: 'ltr' }, [
+            withRtl(h('p', { class: 'dir-default' }, 'Hello world')),
+            showRestorable.value
+              ? withRtl(h('p', { class: 'dir-restorable', dir: 'rtl' }, 'Hello world'), undefined, 'ltr')
+              : null,
+          ]),
+          withRtl(h('pre', { class: 'dir-arg-ltr' }, 'مرحبا بالعالم'), undefined, 'ltr'),
+          withRtl(h('span', { class: 'dir-mod-ltr-isolate' }, 'مرحبا'), undefined, undefined, { ltr: true, isolate: true }),
+          withRtl(h('p', { class: 'dir-auto-ar' }, 'مرحبا world'), undefined, undefined, { auto: true }),
+          withRtl(h('p', { class: 'dir-auto-en' }, 'Hello مرحبا'), undefined, undefined, { auto: true }),
+          withRtl(h('div', { class: 'dir-ref' }, 'مرحبا'), dynamicDir.value),
+          withRtl(h('div', { class: 'dir-reactive-obj' }, 'مرحبا'), reactiveBox),
+        ]),
       }),
-      {
-        global: { directives: { rtl: vRtl } },
-        attachTo: host,
-      },
+      { attachTo: host },
     )
 
     try {
@@ -114,29 +123,28 @@ describe('v-rtl and nested RtlProvider computed direction in real Chromium', () 
     })
 
     const host = document.createElement('div')
-    document.body.appendChild(host)
+    attachHost(host)
 
     const wrapper = mount(
       defineComponent({
-        components: { RtlProvider, ScopeLeaf },
-        template: `
-          <div>
-            <ScopeLeaf id="leaf-root" text="Root English text on Arabic page" />
-            <RtlProvider id="scope-l1" dir="ltr" v-slot="{ toggleDirection }">
-              <button id="toggle-l1" type="button" @click="toggleDirection()">toggle</button>
-              <ScopeLeaf id="leaf-l1" text="نص عربي داخل جزيرة LTR" />
-              <RtlProvider id="scope-l2-follow">
-                <ScopeLeaf id="leaf-l2-follow" text="مرحبا" />
-              </RtlProvider>
-              <RtlProvider id="scope-l2-he" locale="he">
-                <ScopeLeaf id="leaf-l2-he" text="English inside Hebrew scope" />
-                <RtlProvider id="scope-l3-fr" locale="fr">
-                  <ScopeLeaf id="leaf-l3-fr" text="مرحبا داخل نطاق فرنسي" />
-                </RtlProvider>
-              </RtlProvider>
-            </RtlProvider>
-          </div>
-        `,
+        setup: () => () => h('div', [
+          h(ScopeLeaf, { id: 'leaf-root', text: 'Root English text on Arabic page' }),
+          h(RtlProvider, { id: 'scope-l1', dir: 'ltr' }, {
+            default: ({ toggleDirection }: { toggleDirection: () => Direction }) => [
+              h('button', { id: 'toggle-l1', type: 'button', onClick: () => toggleDirection() }, 'toggle'),
+              h(ScopeLeaf, { id: 'leaf-l1', text: 'نص عربي داخل جزيرة LTR' }),
+              h(RtlProvider, { id: 'scope-l2-follow' }, () => [
+                h(ScopeLeaf, { id: 'leaf-l2-follow', text: 'مرحبا' }),
+              ]),
+              h(RtlProvider, { id: 'scope-l2-he', locale: 'he' }, () => [
+                h(ScopeLeaf, { id: 'leaf-l2-he', text: 'English inside Hebrew scope' }),
+                h(RtlProvider, { id: 'scope-l3-fr', locale: 'fr' }, () => [
+                  h(ScopeLeaf, { id: 'leaf-l3-fr', text: 'مرحبا داخل نطاق فرنسي' }),
+                ]),
+              ]),
+            ],
+          }),
+        ]),
       }),
       {
         global: { plugins: [rtl] },

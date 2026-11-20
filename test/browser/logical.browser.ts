@@ -4,6 +4,7 @@ import { mount } from '@vue/test-utils'
 import type { Direction } from '../../src'
 import { RtlProvider, createRtl, toLogicalStyle, useLogicalStyles } from '../../src'
 import '../../src/styles/logical.css'
+import { attachHost, removeHosts } from './hosts'
 
 interface BoxOffsets {
   left: number
@@ -74,7 +75,7 @@ function expectMirroredRadii(ltr: CornerRadii, rtl: CornerRadii): void {
 
 describe('toLogicalStyle and useLogicalStyles layout mirroring in real Chromium', () => {
   afterEach(() => {
-    document.body.innerHTML = ''
+    removeHosts()
     document.documentElement.removeAttribute('dir')
     document.documentElement.removeAttribute('lang')
   })
@@ -117,7 +118,7 @@ describe('toLogicalStyle and useLogicalStyles layout mirroring in real Chromium'
     const measureInDirection = (dir: Direction) => {
       const host = document.createElement('div')
       host.setAttribute('dir', dir)
-      document.body.appendChild(host)
+      attachHost(host)
 
       const wrapper = mount(
         defineComponent({
@@ -265,7 +266,7 @@ describe('toLogicalStyle and useLogicalStyles layout mirroring in real Chromium'
     })
 
     const host = document.createElement('div')
-    document.body.appendChild(host)
+    attachHost(host)
 
     const wrapper = mount(
       defineComponent({
