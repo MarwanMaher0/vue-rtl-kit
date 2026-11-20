@@ -6,6 +6,8 @@ const { dir, isRtl, locale, setLocale } = useDirection()
 const format = useFormat()
 const { toLogical, mirror } = useLogicalStyles()
 
+const reviewers = ['سارة', 'Alex', 'عمر']
+
 const copy = computed(() => isRtl.value
   ? {
       title: 'لغتان. تجربة واحدة.',
@@ -18,6 +20,8 @@ const copy = computed(() => isRtl.value
       total: 'الإجمالي',
       items: 'عدد العناصر',
       date: 'تاريخ الطلب',
+      reviewers: 'المراجعون',
+      updated: 'آخر تحديث',
     }
   : {
       title: 'Two languages. One experience.',
@@ -30,6 +34,8 @@ const copy = computed(() => isRtl.value
       total: 'Total',
       items: 'Item count',
       date: 'Order date',
+      reviewers: 'Reviewers',
+      updated: 'Updated',
     })
 
 const noteStyle = computed(() => toLogical({
@@ -89,6 +95,14 @@ const arrowStyle = computed(() => ({
         <div>
           <dt>{{ copy.date }}</dt>
           <dd><bdi>{{ format.formatDate('2024-05-12T00:00:00Z', { dateStyle: 'long', timeZone: 'UTC' }) }}</bdi></dd>
+        </div>
+        <div>
+          <dt>{{ copy.reviewers }}</dt>
+          <dd><bdi>{{ format.formatList(reviewers, { isolate: true }) }}</bdi></dd>
+        </div>
+        <div>
+          <dt>{{ copy.updated }}</dt>
+          <dd><bdi>{{ format.formatRelativeTime(-3, 'day') }}</bdi></dd>
         </div>
       </dl>
     </section>

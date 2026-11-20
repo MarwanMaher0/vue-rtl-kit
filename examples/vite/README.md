@@ -44,6 +44,10 @@ duplicate ref/plugin types when the repository locks a different Vue patch versi
 - `useFormat()` follows the selected locale. `numberingSystem: { ar: 'arab', en:
   'latn' }` explicitly requests Arabic-Indic digits (`١٢٣٤`) in Arabic and Western
   digits (`1234`) in English. The date uses a fixed timestamp and UTC.
+- `formatList()` joins three mixed Arabic and Latin names with the locale's
+  conjunction and `{ isolate: true }` so each name keeps its own direction.
+  `formatRelativeTime(-3, 'day')` formats a fixed three-day offset using the
+  active locale and numbering system.
 
 This is a client-rendered Vue app. For server-rendered `<html dir>` and `<html
 lang>` before hydration, see the [Nuxt starter](../nuxt/README.md).

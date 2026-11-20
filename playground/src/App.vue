@@ -39,6 +39,7 @@ const locales = [
 ]
 
 const numberingSystem = ref<'latn' | 'arab'>('arab')
+const listSample = ['سارة', 'Alex', 'عمر']
 const indent = ref(40)
 const tabLabels = {
   'ar-EG': ['نظرة عامة', 'الإعدادات', 'السجل'],
@@ -363,6 +364,18 @@ transform: {{ dragTransform }}</code></pre>
             <tr>
               <td class="mono">formatDate(…, islamic-umalqura)</td>
               <td><BidiText :text="fmt.formatDate(new Date(2024, 4, 12), { numberingSystem, calendar: 'islamic-umalqura', dateStyle: 'long' })" /></td>
+            </tr>
+            <tr>
+              <td class="mono">formatList(['سارة', 'Alex', 'عمر'])</td>
+              <td>{{ fmt.formatList(listSample, { numberingSystem }) }}</td>
+            </tr>
+            <tr>
+              <td class="mono">formatList(…, { isolate: true })</td>
+              <td>{{ fmt.formatList(listSample, { numberingSystem, isolate: true }) }}</td>
+            </tr>
+            <tr>
+              <td class="mono">formatRelativeTime(-3, 'day')</td>
+              <td><BidiText :text="fmt.formatRelativeTime(-3, 'day', { numberingSystem })" /></td>
             </tr>
           </tbody>
         </table>
