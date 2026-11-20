@@ -101,8 +101,8 @@ budgets are set to their measured byte counts plus fixed `+256 B` (`0.25 kB`) ra
 
 | Entry point | Artifact | Raw (current / budget) | Gzip (current / budget) |
 | --- | --- | --- | --- |
-| `vue-rtl-kit` (ESM) | `dist/vue-rtl-kit.js` | 30.13 kB / ≤ 30.38 kB | 9.81 kB / ≤ 9.91 kB |
-| `vue-rtl-kit` (CJS) | `dist/vue-rtl-kit.cjs` | 21.82 kB / ≤ 22.07 kB | 8.14 kB / ≤ 8.24 kB |
+| `vue-rtl-kit` (ESM) | `dist/vue-rtl-kit.js` | 31.57 kB / ≤ 31.82 kB | 10.31 kB / ≤ 10.41 kB |
+| `vue-rtl-kit` (CJS) | `dist/vue-rtl-kit.cjs` | 22.89 kB / ≤ 23.14 kB | 8.60 kB / ≤ 8.70 kB |
 | `vue-rtl-kit/nuxt` | `dist/nuxt/module.js` | 3.08 kB / ≤ 3.25 kB | 1.12 kB / ≤ 1.50 kB |
 | `vue-rtl-kit/nuxt` (runtime plugin) | `dist/nuxt/runtime/plugin.js` | 2.77 kB / ≤ 3.00 kB | 1.02 kB / ≤ 1.20 kB |
 | `vue-rtl-kit/styles.css` | `dist/styles.css` | 7.10 kB / ≤ 8.00 kB | 1.91 kB / ≤ 2.50 kB |
@@ -242,7 +242,7 @@ excluded from `ModuleOptions`.
 | `useDirection()` | `DirectionContext` | `dir`, `isRtl`, `isLtr`, `locale`, `startSide`, `endSide`, `sign`, `setDirection()`, `toggleDirection()`, `setLocale()`, `htmlAttrs()`. Resolves to the nearest `<RtlProvider>`, then the app store, then a detached fallback — it never throws. |
 | `useRtl()` | `RtlInstance` | The app-level store, skipping any `<RtlProvider>`. Throws if the plugin is missing. |
 | `useLogicalStyles()` | see below | `toLogical()`, `toPhysical()`, `property()`, `mirror()`, `arrow()`, plus `startSide`, `endSide`, `sign`. |
-| `useFormat()` | `ComputedRef<BoundFormatters>` | `formatNumber` / `formatCurrency` / `formatDate` / `formatList` / `formatRelativeTime` bound to the current locale and numbering system; they follow `setLocale()` and the `numberingSystem` configured in `createRtl()`. |
+| `useFormat()` | `ComputedRef<BoundFormatters>` | `formatNumber` / `formatCurrency` / `formatDate` / `formatList` / `formatRelativeTime` / `parseNumber` bound to the current locale and numbering system; they follow `setLocale()` and the `numberingSystem` configured in `createRtl()`. |
 
 ### Components
 
@@ -321,6 +321,7 @@ import {
   formatList,
   formatNumber,
   formatRelativeTime,
+  parseNumber,
 } from 'vue-rtl-kit'
 
 formatNumber(1234.5, { locale: 'ar-EG' })                            // '١٬٢٣٤٫٥'
@@ -331,6 +332,9 @@ formatList(['Ahmed', 'Sara', 'Omar'], { locale: 'ar' })              // 'Ahmed �
 formatList(['PDF', 'CSV'], { locale: 'en', type: 'disjunction' })    // 'PDF or CSV'
 formatRelativeTime(-3, 'day', { locale: 'ar-EG' })                   // 'قبل ٣ أيام'
 formatRelativeTime(-3, 'day', { locale: 'ar-EG', numberingSystem: 'latn' }) // 'قبل 3 أيام'
+parseNumber('١٬٢٣٤٫٥', { locale: 'ar-EG' })                          // 1234.5
+parseNumber('1.234,5', { locale: 'de' })                             // 1234.5
+parseNumber('12abc')                                                 // NaN
 ```
 
 Thin wrappers over `Intl` that add two things RTL products keep needing: an explicit numbering
@@ -348,6 +352,33 @@ both take the same `locale`, `numberingSystem` and `isolate` options as the othe
 name cannot swap places with its Arabic neighbours — and then isolates the whole list as requested.
 `formatRelativeTime` returns `''` for a non-finite value, as `formatDate` does for an invalid date.
 Each formatter kind keeps its own LRU cache of `Intl` instances (32 entries).
+
+`parseNumber(text, options)` is the inverse of `formatNumber` for form input: `Number()` returns
+`NaN` for what `formatNumber` writes in `ar-EG`, `fa-IR`, `he`, `de` or `fr`. It takes `locale`
+(default `'en'`) and `numberingSystem`, returns `NaN` for empty or invalid text, and never throws.
+
+- The group separator, decimal separator and minus sign are read from `Intl.NumberFormat`
+  `formatToParts()` for the locale and numbering system and cached per locale tag (32 entries) —
+  there is no separator table. Parse with the `locale` and `numberingSystem` you format with;
+  `useFormat().value.parseNumber` is already bound to both.
+- Western, Arabic-Indic and Persian digits are read in every locale, along with the locale's own.
+- U+061C, U+200E, U+200F, the isolates U+2066–U+2069, NBSP, U+202F and spaces are ignored, so
+  `isolate: true` output and space-grouped numbers parse. Embeddings and overrides are not.
+- A leading `-`, U+2212 or `+` is a sign; a trailing `%` or `٪` (U+066A) divides by 100.
+- Group separators are accepted only between digits of the integer part. Group sizes are not
+  checked, so `en-IN` `12,34,567.89` parses — and `1.5` is `15` in `de`, where `.` groups.
+  Where the locale groups with a space (`fr`, `sv`), a space between two digits is that group
+  separator: `1 234,5` parses and `1,2 3` is `NaN`.
+- Letters, currency symbols, exponents, a separator the locale does not use, a second decimal
+  separator or a separator on its own give `NaN`. So does `1,234.5` in `ar-EG`, which separates
+  with `٬` and `٫`: pass `numberingSystem: 'latn'` to read Western-style separators there.
+
+```ts
+parseNumber(formatNumber(-1234567.89, { locale: 'fa-IR', isolate: true }), { locale: 'fa-IR' }) // -1234567.89
+parseNumber('12,34,567.89', { locale: 'en-IN' })                     // 1234567.89
+parseNumber('١٢٫٥٪', { locale: 'ar-EG' })                            // 0.125
+parseNumber('1,234.5', { locale: 'ar-EG', numberingSystem: 'latn' }) // 1234.5
+```
 
 ### Locale helpers
 

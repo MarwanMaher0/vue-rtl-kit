@@ -16,7 +16,7 @@ import type { Direction } from 'vue-rtl-kit'
 | `useDirection` | `() => DirectionContext` | Resolve the nearest scope, root store, or detached fallback. |
 | `useRtl` | `() => RtlInstance` | Resolve the root store; throws when the plugin is absent. |
 | `useLogicalStyles` | `() => UseLogicalStylesReturn` | Direction-bound logical style helpers. |
-| `useFormat` | `() => ComputedRef<BoundFormatters>` | Locale-bound number, currency, date, list, and relative-time formatters. |
+| `useFormat` | `() => ComputedRef<BoundFormatters>` | Locale-bound number, currency, date, list, and relative-time formatters, plus `parseNumber`. |
 
 See [createRtl](/guide/create-rtl), [useDirection](/guide/use-direction), [useLogicalStyles](/guide/use-logical-styles), and [useFormat](/guide/use-format) for examples.
 
@@ -125,6 +125,7 @@ resolveDirection('ar-EG', { ar: 'rtl' }) // rtl
 | `formatDate` | `(value: Date \| number \| string, options?: DateFormatOptions) => string` | Format with `Intl.DateTimeFormat`. |
 | `formatList` | `(items: Iterable<string>, options?: ListFormatOptions) => string` | Join items with `Intl.ListFormat`; `isolate` wraps each item and the result. |
 | `formatRelativeTime` | `(value: number, unit: Intl.RelativeTimeFormatUnit, options?: RelativeTimeFormatOptions) => string` | Format with `Intl.RelativeTimeFormat`; returns `''` for a non-finite value. |
+| `parseNumber` | `(text: string, options?: ParseNumberOptions) => number` | Inverse of `formatNumber`: read a number written with the locale's digits and separators. Returns `NaN` for empty or invalid text; never throws. |
 | `transliterateDigits` | `(text: string, to: 'latn' \| 'arab' \| 'arabext') => string` | Convert only digits in an existing string. |
 | `withNumberingSystem` | `(locale: string, numberingSystem?: NumberingSystem) => string` | Add a Unicode `-u-nu-` locale extension. |
 
@@ -134,6 +135,7 @@ import {
   formatList,
   formatNumber,
   formatRelativeTime,
+  parseNumber,
   transliterateDigits,
 } from 'vue-rtl-kit'
 
@@ -141,8 +143,12 @@ formatNumber(1234.5, { locale: 'ar-EG', numberingSystem: 'latn' })
 formatCurrency(2500, 'EGP', { locale: 'ar-EG', isolate: true })
 formatList(['Ahmed', 'Sara', 'Omar'], { locale: 'ar', isolate: true })
 formatRelativeTime(-3, 'day', { locale: 'ar-EG', numberingSystem: 'latn' })
+parseNumber('١٬٢٣٤٫٥', { locale: 'ar-EG' }) // 1234.5
+parseNumber('12abc') // NaN
 transliterateDigits('طلب رقم 4821', 'arab')
 ```
+
+`parseNumber` reads its group separator, decimal separator, and minus sign from `Intl.NumberFormat` `formatToParts()` for `locale` and `numberingSystem` (default `'en'`), cached per locale tag. It accepts Western, Arabic-Indic, and Persian digits, ignores bidi marks, isolates, and spaces, accepts `-` or U+2212 as minus and a leading `+`, and divides by 100 for a trailing `%` or `٪`. Group separators are accepted only between digits of the integer part. See [Parsing numbers](/guide/use-format#parsing-numbers) for the full rules.
 
 ## Environment
 
@@ -283,6 +289,7 @@ interface BoundFormatters {
     unit: Intl.RelativeTimeFormatUnit,
     options?: RelativeTimeFormatOptions,
   ) => string
+  parseNumber: (text: string, options?: ParseNumberOptions) => number
 }
 ```
 
@@ -299,6 +306,11 @@ type NumberFormatOptions = FormatOptionsBase & Intl.NumberFormatOptions
 type DateFormatOptions = FormatOptionsBase & Intl.DateTimeFormatOptions
 type ListFormatOptions = FormatOptionsBase & Intl.ListFormatOptions
 type RelativeTimeFormatOptions = FormatOptionsBase & Intl.RelativeTimeFormatOptions
+
+interface ParseNumberOptions {
+  locale?: string
+  numberingSystem?: NumberingSystem
+}
 ```
 
 ## Bidirectional text type

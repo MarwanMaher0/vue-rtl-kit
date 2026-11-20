@@ -5,16 +5,24 @@ import type {
   DateFormatOptions,
   ListFormatOptions,
   NumberFormatOptions,
+  ParseNumberOptions,
   RelativeTimeFormatOptions,
 } from '../format'
-import { formatCurrency, formatDate, formatList, formatNumber, formatRelativeTime } from '../format'
+import {
+  formatCurrency,
+  formatDate,
+  formatList,
+  formatNumber,
+  formatRelativeTime,
+  parseNumber,
+} from '../format'
 import { rtlInstanceKey } from '../keys'
 import type { NumberingSystem } from '../types'
 import { useDirection } from './useDirection'
 
 /**
  * `formatNumber` / `formatDate` / `formatCurrency` / `formatList` /
- * `formatRelativeTime`, pre-bound to the current
+ * `formatRelativeTime` / `parseNumber`, pre-bound to the current
  * locale and to the numbering system configured in `createRtl()`.
  *
  * Saves threading `locale` through every call site, and means switching the app
@@ -55,6 +63,8 @@ export function useFormat(): ComputedRef<BoundFormatters> {
         unit: Intl.RelativeTimeFormatUnit,
         options: RelativeTimeFormatOptions = {},
       ) => formatRelativeTime(value, unit, { ...defaults, ...options }),
+      parseNumber: (text: string, options: ParseNumberOptions = {}) =>
+        parseNumber(text, { ...defaults, ...options }),
     }
   })
 }

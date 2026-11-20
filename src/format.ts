@@ -28,6 +28,14 @@ export type DateFormatOptions = FormatOptionsBase & Intl.DateTimeFormatOptions
 export type ListFormatOptions = FormatOptionsBase & Intl.ListFormatOptions
 export type RelativeTimeFormatOptions = FormatOptionsBase & Intl.RelativeTimeFormatOptions
 
+/** Options for {@link parseNumber}. */
+export interface ParseNumberOptions {
+  /** BCP-47 locale tag the text is written in. Defaults to `'en'`. */
+  locale?: string
+  /** Numbering system the text was formatted with, as passed to `formatNumber()`. */
+  numberingSystem?: NumberingSystem
+}
+
 let supportedNumberingSystems: Set<string> | null | undefined
 
 function resolveNumberingSystem(numberingSystem: NumberingSystem | undefined): string | undefined {
@@ -128,6 +136,20 @@ const dateFormatters = /*#__PURE__*/ new LruCache<Intl.DateTimeFormat>(FORMATTER
 const listFormatters = /*#__PURE__*/ new LruCache<Intl.ListFormat>(FORMATTER_CACHE_LIMIT)
 const relativeTimeFormatters = /*#__PURE__*/ new LruCache<Intl.RelativeTimeFormat>(FORMATTER_CACHE_LIMIT)
 
+/** What `parseNumber()` needs to know about a locale and numbering system. */
+interface NumberSymbols {
+  /**
+   * The numbering system's digits from 9 down to 0. Empty for Western,
+   * Arabic-Indic and Persian digits, which `transliterateDigits()` reads.
+   */
+  digits: string[]
+  group: string
+  decimal: string
+  minusSign: string
+}
+
+const numberSymbols = /*#__PURE__*/ new LruCache<NumberSymbols>(FORMATTER_CACHE_LIMIT)
+
 /** Inspect the formatter caches. Test helper; not part of the public contract. */
 export function formatterCacheStats(): {
   number: number
@@ -146,14 +168,16 @@ export function formatterCacheStats(): {
 }
 
 /**
- * Empty the formatter caches and clear the cached `Intl.supportedValuesOf`
- * result. Test helper; not part of the public contract.
+ * Empty the formatter caches, the separators cached for `parseNumber()`, and
+ * the cached `Intl.supportedValuesOf` result. Test helper; not part of the
+ * public contract.
  */
 export function resetFormatterCaches(): void {
   numberFormatters.clear()
   dateFormatters.clear()
   listFormatters.clear()
   relativeTimeFormatters.clear()
+  numberSymbols.clear()
   supportedNumberingSystems = undefined
 }
 
@@ -321,6 +345,104 @@ export function transliterateDigits(text: string, to: 'latn' | 'arab' | 'arabext
   })
 }
 
+/**
+ * Invisible characters `parseNumber()` drops before reading a number: the
+ * bidi marks and isolates that `Intl` and `isolate` add (ALM, LRM, RLM,
+ * LRI/RLI/FSI/PDI). Embeddings and overrides are deliberately not in the
+ * list - an override can show `12` for a string that reads `21`.
+ */
+const MARKS_IN_NUMBERS = /[\u061C\u200E\u200F\u2066-\u2069]/g
+
+/**
+ * The spaces `Intl` puts in a number: space, NBSP and narrow NBSP. French and
+ * Swedish group with one, and many locales put one before the percent sign.
+ */
+const SPACES_IN_NUMBERS = /[\u00A0\u202F ]/g
+
+/** Sign, grouped integer digits, fraction, percent - after separators are mapped to ASCII. */
+const CANONICAL_NUMBER = /^[+-]?(?=\.?\d)(?:\d+(?:,\d+)*)?(?:\.\d*)?%?$/
+
+/**
+ * Read the group separator, decimal separator, minus sign and digits a
+ * locale formats with out of `formatToParts`, once per locale tag.
+ */
+function numberSymbolsFor(locale: string, numberingSystem: NumberingSystem | undefined): NumberSymbols {
+  const key = withNumberingSystem(locale, numberingSystem)
+  let symbols = numberSymbols.get(key)
+  if (!symbols) {
+    symbols = { digits: [], group: '', decimal: '', minusSign: '' }
+    let integer = ''
+    // One sample carries every digit, group separators, a decimal separator and a minus sign.
+    const parts = makeFormatter(locale, numberingSystem, {}, Intl.NumberFormat).formatToParts(-9876543210.5)
+    for (const { type, value } of parts) {
+      // Some engines keep the bidi mark inside the sign. Whichever space a locale groups with reads as ' '.
+      const symbol = value.replace(MARKS_IN_NUMBERS, '').replace(SPACES_IN_NUMBERS, ' ')
+      if (type === 'integer') integer += transliterateDigits(symbol, 'latn')
+      else if (type === 'group' || type === 'decimal' || type === 'minusSign') symbols[type] = symbol
+    }
+    // Bengali, Devanagari and the like: ten digits of their own, none of them 0-9.
+    const digits = Array.from(integer)
+    if (digits.length === 10 && !/\d/.test(integer)) symbols.digits = digits
+    numberSymbols.set(key, symbols)
+  }
+  return symbols
+}
+
+/**
+ * Parse a number written the way `formatNumber()` writes it for a locale -
+ * the inverse that `Number()` cannot be, since it returns `NaN` for
+ * `'١٬٢٣٤٫٥'`, `'1.234,5'` or `'1 234,5'`.
+ *
+ * The group separator, decimal separator and minus sign come from
+ * `Intl.NumberFormat` for the locale and numbering system, so pass the same
+ * `locale` and `numberingSystem` you format with. Western, Arabic-Indic and
+ * Persian digits are read in every locale, next to the locale's own digits.
+ * Bidi marks, isolates and spaces are ignored; `-` and U+2212 are both a
+ * minus sign, a leading `+` is allowed, and a trailing `%` or `٪` divides the
+ * result by 100. Group separators are only accepted between digits of the
+ * integer part, and group sizes are not checked, so `12,34,567` parses. Where
+ * the locale groups with a space, as French does, a space between two digits
+ * is that group separator, so `1,2 3` is not a number there.
+ *
+ * Returns `NaN` - and never throws - for empty text and for anything that is
+ * not a plain number: letters, currency symbols, exponents, a separator from
+ * another locale, a second decimal separator, a separator on its own.
+ *
+ * @example
+ * parseNumber('١٬٢٣٤٫٥', { locale: 'ar-EG' }) // 1234.5
+ * parseNumber('1.234,5', { locale: 'de' }) // 1234.5
+ * parseNumber('١٢٫٥٪', { locale: 'ar-EG' }) // 0.125
+ * parseNumber('12abc') // NaN
+ */
+export function parseNumber(text: string, options: ParseNumberOptions = {}): number {
+  try {
+    const { locale = 'en', numberingSystem } = options
+    const { digits, group, decimal, minusSign } = numberSymbolsFor(locale, numberingSystem)
+    // A locale that groups with a space keeps its spaces until their position is known.
+    const spaced = group === ' '
+    const source = text.replace(MARKS_IN_NUMBERS, '').replace(SPACES_IN_NUMBERS, spaced ? ' ' : '')
+    let canonical = ''
+    for (const char of transliterateDigits(source, 'latn')) {
+      const digit = digits.indexOf(char)
+      if (digit >= 0) canonical += 9 - digit
+      else if (char === decimal) canonical += '.'
+      else if (char === group && !spaced) canonical += ','
+      else if (char === minusSign || char === '\u2212') canonical += '-'
+      else if (char === '\u066A') canonical += '%'
+      // A dot or comma that is not this locale's separator must not reach `Number()`.
+      else canonical += char === '.' || char === ',' ? '?' : char
+    }
+    // Spaces between two digits are a group separator, and are checked as one; the rest are dropped.
+    if (spaced) canonical = canonical.replace(/(\d) +(?=\d)/g, '$1,').replace(/ /g, '')
+    if (!CANONICAL_NUMBER.test(canonical)) return Number.NaN
+    // `e-2` moves the decimal point exactly; dividing by 100 would turn 5.6% into 0.055999999999999994.
+    return Number(canonical.replace(/,/g, '').replace('%', 'e-2'))
+  }
+  catch {
+    return Number.NaN
+  }
+}
+
 /** Direction-bound formatters returned by `useFormat()`. */
 export interface BoundFormatters {
   /** The locale these formatters are bound to. */
@@ -336,4 +458,6 @@ export interface BoundFormatters {
     unit: Intl.RelativeTimeFormatUnit,
     options?: RelativeTimeFormatOptions,
   ) => string
+  /** `parseNumber()` for this locale and numbering system: reads back what `formatNumber` writes. */
+  parseNumber: (text: string, options?: ParseNumberOptions) => number
 }

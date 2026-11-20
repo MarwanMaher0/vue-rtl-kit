@@ -16,7 +16,7 @@ import type { Direction } from 'vue-rtl-kit'
 | `useDirection` | `() => DirectionContext` | الحصول على أقرب نطاق، أو المخزن الجذري، أو القيمة الاحتياطية المنفصلة. |
 | `useRtl` | `() => RtlInstance` | الحصول على المخزن الجذري؛ ويُطلق خطأً عند عدم وجود الإضافة. |
 | `useLogicalStyles` | `() => UseLogicalStylesReturn` | أدوات مساعدة للأنماط المنطقية المرتبطة بالاتجاه. |
-| `useFormat` | `() => ComputedRef<BoundFormatters>` | أدوات تنسيق الأرقام والعملات والتواريخ والقوائم والأزمنة النسبية المرتبطة باللغة. |
+| `useFormat` | `() => ComputedRef<BoundFormatters>` | أدوات تنسيق الأرقام والعملات والتواريخ والقوائم والأزمنة النسبية المرتبطة باللغة، ومعها `parseNumber`. |
 
 راجع [createRtl](/ar/guide/create-rtl) و[useDirection](/ar/guide/use-direction) و[useLogicalStyles](/ar/guide/use-logical-styles) و[useFormat](/ar/guide/use-format) للاطلاع على أمثلة.
 
@@ -125,6 +125,7 @@ resolveDirection('ar-EG', { ar: 'rtl' }) // rtl
 | `formatDate` | `(value: Date \| number \| string, options?: DateFormatOptions) => string` | التنسيق باستخدام `Intl.DateTimeFormat`. |
 | `formatList` | `(items: Iterable<string>, options?: ListFormatOptions) => string` | ضم العناصر باستخدام `Intl.ListFormat`؛ ويعزل `isolate` كل عنصر ثم النتيجة كاملة. |
 | `formatRelativeTime` | `(value: number, unit: Intl.RelativeTimeFormatUnit, options?: RelativeTimeFormatOptions) => string` | التنسيق باستخدام `Intl.RelativeTimeFormat`؛ ويعيد `''` للقيم غير المنتهية. |
+| `parseNumber` | `(text: string, options?: ParseNumberOptions) => number` | معكوس `formatNumber`: قراءة عدد مكتوب بأرقام اللغة وفواصلها. يعيد `NaN` للنص الفارغ أو غير الصالح ولا يرمي استثناء. |
 | `transliterateDigits` | `(text: string, to: 'latn' \| 'arab' \| 'arabext') => string` | تحويل الأرقام فقط في سلسلة نصية موجودة. |
 | `withNumberingSystem` | `(locale: string, numberingSystem?: NumberingSystem) => string` | إضافة امتداد اللغة `-u-nu-` في Unicode. |
 
@@ -134,6 +135,7 @@ import {
   formatList,
   formatNumber,
   formatRelativeTime,
+  parseNumber,
   transliterateDigits,
 } from 'vue-rtl-kit'
 
@@ -141,8 +143,12 @@ formatNumber(1234.5, { locale: 'ar-EG', numberingSystem: 'latn' })
 formatCurrency(2500, 'EGP', { locale: 'ar-EG', isolate: true })
 formatList(['Ahmed', 'Sara', 'Omar'], { locale: 'ar', isolate: true })
 formatRelativeTime(-3, 'day', { locale: 'ar-EG', numberingSystem: 'latn' })
+parseNumber('١٬٢٣٤٫٥', { locale: 'ar-EG' }) // 1234.5
+parseNumber('12abc') // NaN
 transliterateDigits('طلب رقم 4821', 'arab')
 ```
+
+تقرأ `parseNumber` فاصل المجموعات والفاصلة العشرية وإشارة السالب من `formatToParts()` في `Intl.NumberFormat` بحسب `locale` و`numberingSystem` (الافتراضي `'en'`)، وتخزّنها مؤقتًا لكل وسم لغة. تقبل الأرقام الغربية والعربية الهندية والفارسية، وتتجاهل علامات الاتجاه ومحارف العزل والمسافات، وتقبل `-` أو U+2212 إشارةً للسالب وعلامة `+` في أول النص، وتقسم على 100 عند وجود `%` أو `٪` في آخره. تُقبل فواصل المجموعات بين أرقام الجزء الصحيح فقط. راجع [تحليل الأرقام](/ar/guide/use-format#parsing-numbers) لمعرفة القواعد كاملة.
 
 ## البيئة
 
@@ -283,6 +289,7 @@ interface BoundFormatters {
     unit: Intl.RelativeTimeFormatUnit,
     options?: RelativeTimeFormatOptions,
   ) => string
+  parseNumber: (text: string, options?: ParseNumberOptions) => number
 }
 ```
 
@@ -299,6 +306,11 @@ type NumberFormatOptions = FormatOptionsBase & Intl.NumberFormatOptions
 type DateFormatOptions = FormatOptionsBase & Intl.DateTimeFormatOptions
 type ListFormatOptions = FormatOptionsBase & Intl.ListFormatOptions
 type RelativeTimeFormatOptions = FormatOptionsBase & Intl.RelativeTimeFormatOptions
+
+interface ParseNumberOptions {
+  locale?: string
+  numberingSystem?: NumberingSystem
+}
 ```
 
 ## نوع النص ثنائي الاتجاه

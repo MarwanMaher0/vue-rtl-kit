@@ -263,7 +263,7 @@ Sources:
 
 ## Locale-aware formatting
 
-useFormat(): ComputedRef<BoundFormatters> binds number, currency, date, list, and relative-time formatters to the current scope's locale and direction, applying the root instance's configured numberingSystem. The bound formatters follow setLocale(). In templates, use format.formatNumber(...); in script, use format.value.formatNumber(...).
+useFormat(): ComputedRef<BoundFormatters> binds number, currency, date, list, and relative-time formatters, plus the parseNumber number parser, to the current scope's locale and direction, applying the root instance's configured numberingSystem. The bound formatters follow setLocale(). In templates, use format.formatNumber(...); in script, use format.value.formatNumber(...).
 
 ```ts
 import { useFormat } from 'vue-rtl-kit'
@@ -278,6 +278,7 @@ const date = format.value.formatDate('2024-05-12', {
 })
 const reviewers = format.value.formatList(['Ahmed', 'Sara', 'Omar'], { isolate: true })
 const edited = format.value.formatRelativeTime(-3, 'day')
+const typed = format.value.parseNumber('١٬٢٣٤٫٥') // 1234.5 when the scope locale is ar-EG
 ```
 
 Per-call options override bound locale and numbering system. NumberFormatOptions, DateFormatOptions, ListFormatOptions, and RelativeTimeFormatOptions extend the matching Intl options with locale, numberingSystem, and isolate. isolate can be boolean, rtl, ltr, or auto; true uses first-strong detection. This is formatting, not message translation.
@@ -288,10 +289,39 @@ Standalone functions:
 - formatDate(value, options?): Intl.DateTimeFormat; accepts Date, number, or string; returns an empty string for an invalid date.
 - formatList(items, options?): Intl.ListFormat with type ('conjunction', 'disjunction', 'unit') and style. formatList(['Ahmed', 'Sara', 'Omar'], { locale: 'ar' }) gives 'Ahmed وSara وOmar'. With isolate set, every item is wrapped in a first-strong isolate and then the whole result is isolated.
 - formatRelativeTime(value, unit, options?): Intl.RelativeTimeFormat with numeric and style; negative values are in the past. formatRelativeTime(-3, 'day', { locale: 'ar-EG' }) gives 'قبل ٣ أيام', and numberingSystem: 'latn' gives 'قبل 3 أيام'. A non-finite value returns an empty string.
+- parseNumber(text, options?): number. The inverse of formatNumber for form input; options are { locale?: string; numberingSystem?: NumberingSystem }, with locale defaulting to 'en'. Number() returns NaN for formatNumber output in ar-EG, fa-IR, he, de, or fr; parseNumber reads it back. It returns NaN for empty or invalid text and never throws.
 - transliterateDigits(text, 'latn' | 'arab' | 'arabext'): converts only digits in an existing string.
 - withNumberingSystem(locale, numberingSystem?): adds a Unicode -u-nu- locale extension.
 
 NumberingSystem accepts latn, arab, arabext, hanidec, deva, beng, or another runtime-supported string; unrecognized or empty values safely fall back to latn. Actual Intl behavior depends on the runtime's locale support. Each formatter kind (number, date, list, relative time) keeps its own bounded LRU cache of 32 Intl instances.
+
+parseNumber rules:
+- Separators: the group separator, decimal separator, and minus sign are read from Intl.NumberFormat formatToParts() for the locale and numbering system and cached per locale tag (32 entries). There is no hardcoded separator table. Parse with the same locale and numberingSystem used for formatting; the bound format.value.parseNumber already uses the scope locale and the configured numberingSystem.
+- Digits: Western (0-9), Arabic-Indic (U+0660 to U+0669), and Persian (U+06F0 to U+06F9) digits are accepted in every locale, along with the digits of the locale's own numbering system.
+- Ignored characters: U+061C, U+200E, U+200F, the isolates U+2066 to U+2069, the no-break space U+00A0, the narrow no-break space U+202F, and ordinary spaces are removed before parsing, so isolate: true output and space-grouped numbers parse. Embeddings and overrides (U+202A to U+202E), tabs, and line breaks are not removed and give NaN.
+- Sign: a leading ASCII hyphen, U+2212, or the locale's minus sign negates; a leading plus is allowed.
+- Percent: a trailing % or U+066A divides the result by 100 by moving the decimal point exactly, so '5.6%' gives 0.056. A leading percent sign gives NaN.
+- Group separators are accepted only between two digits of the integer part, before the decimal separator. Group sizes are not validated, so en-IN lakh grouping ('12,34,567.89') parses, '1,2' is 12 in en, and '1.5' is 15 in de, where '.' is the group separator. Where the locale groups with a space (fr, sv), a space, no-break space, or narrow no-break space between two digits is the group separator and follows the same rule: '1 234,5' parses in fr and '1,2 3' gives NaN, while spaces elsewhere, such as before a percent sign, are still ignored.
+- Decimal separator: at most one; '.5' and '5.' are accepted.
+- NaN: empty text, letters, currency symbols, compact or exponent notation such as '1e5', a separator the locale does not use, a second decimal separator, a separator on its own, a misplaced sign or percent sign, and non-string input.
+- Arabic locales that format with Arabic-Indic digits separate with U+066C and U+066B, so '1,234.5' gives NaN for ar-EG while '1234' parses; use numberingSystem: 'latn' to read Western-style separators.
+
+```ts
+import { formatNumber, parseNumber } from 'vue-rtl-kit'
+
+parseNumber('١٬٢٣٤٫٥', { locale: 'ar-EG' }) // 1234.5
+parseNumber('۱٬۲۳۴٫۵', { locale: 'fa-IR' }) // 1234.5
+parseNumber('1.234,5', { locale: 'de' }) // 1234.5
+parseNumber('1 234,5', { locale: 'fr' }) // 1234.5
+parseNumber('12,34,567.89', { locale: 'en-IN' }) // 1234567.89
+parseNumber('1,234.5', { locale: 'ar-EG', numberingSystem: 'latn' }) // 1234.5
+parseNumber('١٢٫٥٪', { locale: 'ar-EG' }) // 0.125
+parseNumber('') // NaN
+parseNumber('12abc') // NaN
+parseNumber('1.2.3') // NaN
+parseNumber('1,2 3', { locale: 'fr' }) // NaN
+parseNumber(formatNumber(-1234567.89, { locale: 'ar-EG', isolate: true }), { locale: 'ar-EG' }) // -1234567.89
+```
 
 Sources:
 - [useFormat](https://marwanmaher0.github.io/vue-rtl-kit/guide/use-format)
@@ -338,7 +368,8 @@ Core types:
 - RtlOptions configures createRtl; ResolvedRtlOptions represents resolved root options.
 - DirectionContext describes reactive state and actions; RtlInstance adds root/plugin behavior.
 - DirectionState omits isRoot; DirectionStateOptions requires dir and locale and optionally locales and pinned.
-- BoundFormatters exposes locale, dir, formatNumber, formatCurrency, formatDate, formatList, and formatRelativeTime.
+- BoundFormatters exposes locale, dir, formatNumber, formatCurrency, formatDate, formatList, formatRelativeTime, and parseNumber.
+- ParseNumberOptions contains optional locale and numberingSystem.
 - BidiRun contains text, dir, isolated, and hasStrong.
 - LogicalStyleOptions contains optional size, values, and shorthands flags.
 - RtlDirectiveValue accepts DirectionOrAuto, boolean, undefined, null, or { dir?, isolate? }.
@@ -353,6 +384,6 @@ vue-rtl-kit تدير اتجاه الواجهة وتنسيق القيم، ولا 
 
 يتبع اتجاه الجذر اللغة حتى يُثبّت عبر dir الأولي أو setDirection() أو toggleDirection(). بعد التثبيت، تغيّر setLocale() اللغة فقط. تقرأ useDirection() أقرب نطاق، أما useRtl() فتصل إلى الجذر المثبّت وترمي خطأ إن لم تكن الإضافة مثبتة. ينشئ RtlProvider نطاقًا محليًا؛ وعند غياب العنصر الحاوي يجب وضع سمات الاتجاه على الأبناء.
 
-BidiText أداة مبسطة لعزل مقاطع النص العادي، وليس محرّكًا للنص الغني ولا تنفيذًا كاملًا لخوارزمية Unicode ثنائية الاتجاه. لا يعالج الوسوم الغنية داخل الخانة؛ استخدم text لعزل النص العادي. يظل المتصفح مسؤولًا عن التخطيط النهائي. تتكيف أدوات CSS المنطقية مع أقرب dir، وتنسّق useFormat الأرقام والعملات والتواريخ والقوائم والأزمنة النسبية عبر Intl.
+BidiText أداة مبسطة لعزل مقاطع النص العادي، وليس محرّكًا للنص الغني ولا تنفيذًا كاملًا لخوارزمية Unicode ثنائية الاتجاه. لا يعالج الوسوم الغنية داخل الخانة؛ استخدم text لعزل النص العادي. يظل المتصفح مسؤولًا عن التخطيط النهائي. تتكيف أدوات CSS المنطقية مع أقرب dir، وتنسّق useFormat الأرقام والعملات والتواريخ والقوائم والأزمنة النسبية عبر Intl، وتقرأ parseNumber الأعداد المكتوبة بأرقام اللغة وفواصلها وتعيد NaN للنص غير الصالح.
 
 تدعم وحدة Nuxt سمات dir وlang في العرض على الخادم. تعطيل components يوقف تسجيل Nuxt وقت البناء فقط؛ اضبط registerGlobals: false أيضًا لإيقاف التسجيل العام من إضافة التشغيل. راجع الدليل العربي لكل واجهة قبل افتراض سلوك غير موثق.

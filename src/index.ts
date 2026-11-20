@@ -69,6 +69,7 @@ export {
   formatList,
   formatNumber,
   formatRelativeTime,
+  parseNumber,
   transliterateDigits,
   withNumberingSystem,
 } from './format'
@@ -78,6 +79,7 @@ export type {
   FormatOptionsBase,
   ListFormatOptions,
   NumberFormatOptions,
+  ParseNumberOptions,
   RelativeTimeFormatOptions,
 } from './format'
 

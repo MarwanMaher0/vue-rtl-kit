@@ -1,10 +1,16 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { logicalArrow, useLogicalStyles } from 'vue-rtl-kit'
+import { logicalArrow, parseNumber, useFormat, useLogicalStyles } from 'vue-rtl-kit'
+import type { ParseNumberOptions } from 'vue-rtl-kit'
 
 const preferred = ref<'rtl' | 'ltr' | 'auto'>('auto')
 const { arrow } = useLogicalStyles()
 const _step: 'next' | 'previous' | 'first' | 'last' | 'up' | 'down' | null = logicalArrow('ArrowRight', 'rtl')
+const _parseOptions: ParseNumberOptions = { locale: 'ar-EG', numberingSystem: 'arab' }
+const _parsed: number = parseNumber('١٬٢٣٤٫٥', _parseOptions)
+const _boundParsed: number = useFormat().value.parseNumber('1,234.5')
+// @ts-expect-error parseNumber reads text, not a number
+parseNumber(1234.5)
 </script>
 
 <template>
