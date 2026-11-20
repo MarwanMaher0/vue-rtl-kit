@@ -21,6 +21,7 @@ npm run lint       # ESLint, zero warnings allowed
 npm run typecheck  # vue-tsc --noEmit
 npm run build      # ESM + CJS + types (.d.ts and .d.cts) + styles.css
 npm test           # Vitest, test/
+npm run test:browser # Vitest browser mode in headless Chromium (test/browser/)
 npm run check:size # bundle size budgets
 npm run check:publish  # publint + arethetypeswrong on the packed tarball
 npm run docs:build # VitePress production build
@@ -35,6 +36,15 @@ command in `scripts/check-publish.mjs`.
 The Nuxt SSR test packs and installs the existing `dist/` offline, without rebuilding it.
 After changing source, build configuration, scripts, or package metadata, run `npm run build`
 before `npm test` or `npx vitest run test/nuxt.spec.ts`; missing or stale builds are rejected.
+
+`test:browser` runs `test/browser/**/*.browser.ts` in real headless Chromium through Playwright
+(`vitest.browser.config.ts`), keeping `npm test` and its coverage thresholds unchanged. Install
+the browser once before running it locally (`npx playwright install chromium`, or
+`npx playwright install --with-deps chromium` on Linux when system libraries are missing). Where
+jsdom cannot compute layout or sniffs text content for `:dir()`, the browser suite verifies
+`:dir()` utilities with opposite-script text, logical box geometry (`getBoundingClientRect`),
+computed direction from `v-rtl` and nested `RtlProvider` scopes, and per-character `Range`
+isolation for `BidiText` and `isolate()`.
 
 CI also builds the playground: `npx vite build -c playground/vite.config.ts`. It runs the
 production documentation build and documentation checks on every pull request; the Pages
@@ -108,6 +118,7 @@ Done once by a maintainer with publish rights on npm:
 - `src/components/`, `src/composables/` and `src/directives/` are the Vue surface.
 - `src/nuxt/` is the Nuxt module and its runtime plugin; `src/styles/logical.css` is the CSS.
 - `test/ssr.spec.ts` runs with no `window` and no `document`.
+- `test/browser/` runs in real headless Chromium via `vitest.browser.config.ts`.
 
 ## Style
 
