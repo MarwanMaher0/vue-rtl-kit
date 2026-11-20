@@ -19,6 +19,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } 
 import type { Component } from 'vue'
 import { nextTick } from 'vue'
 import { mount } from '@vue/test-utils'
+import type { VueWrapper } from '@vue/test-utils'
 import {
   FSI,
   PDI,
@@ -33,6 +34,14 @@ const ARABIC_INDIC = /[٠-٩]/
 const WESTERN = /[0-9]/
 const BIDI_ISOLATE_CHARS = /[\u2066-\u2069]/
 const MIXED_NAMES = ['سارة', 'Alex', 'عمر']
+
+/** Read the Vite example's useFormat card as `{ <dt label>: <dd text> }`. */
+function readFormatCard(wrapper: VueWrapper): Record<string, string> {
+  return Object.fromEntries(
+    wrapper.findAll('section[aria-labelledby="numbers-title"] dl > div')
+      .map(row => [row.find('dt').text(), row.find('dd').text()]),
+  )
+}
 
 /**
  * Wrap `@vitejs/plugin-vue` so `server.ssrLoadModule()` compiles SFC templates
@@ -166,9 +175,13 @@ describe('examples/vite/App.vue', () => {
       }))).toEqual(expectedArRuns.map(run => ({ dir: run.dir, text: run.text })))
 
       // useFormat card in Arabic (Arabic-Indic digits, isolated list, relative time)
-      const formatValuesAr = wrapper.findAll('section[aria-labelledby="numbers-title"] dd').map(node => node.text())
-      expect(formatValuesAr).toHaveLength(5)
-      const [totalAr, itemsAr, dateAr, listAr, relativeAr] = formatValuesAr
+      const formatCardAr = readFormatCard(wrapper)
+      expect(Object.keys(formatCardAr)).toHaveLength(5)
+      const totalAr = formatCardAr['الإجمالي']
+      const itemsAr = formatCardAr['عدد العناصر']
+      const dateAr = formatCardAr['تاريخ الطلب']
+      const listAr = formatCardAr['المراجعون']
+      const relativeAr = formatCardAr['آخر تحديث']
 
       for (const numeric of [totalAr!, itemsAr!, dateAr!, relativeAr!]) {
         expect(ARABIC_INDIC.test(numeric)).toBe(true)
@@ -199,9 +212,13 @@ describe('examples/vite/App.vue', () => {
       }))).toEqual(expectedEnRuns.map(run => ({ dir: run.dir, text: run.text })))
 
       // useFormat card in English (Western digits, isolated list, relative time)
-      const formatValuesEn = wrapper.findAll('section[aria-labelledby="numbers-title"] dd').map(node => node.text())
-      expect(formatValuesEn).toHaveLength(5)
-      const [totalEn, itemsEn, dateEn, listEn, relativeEn] = formatValuesEn
+      const formatCardEn = readFormatCard(wrapper)
+      expect(Object.keys(formatCardEn)).toHaveLength(5)
+      const totalEn = formatCardEn.Total
+      const itemsEn = formatCardEn['Item count']
+      const dateEn = formatCardEn['Order date']
+      const listEn = formatCardEn.Reviewers
+      const relativeEn = formatCardEn.Updated
 
       for (const numeric of [totalEn!, itemsEn!, dateEn!, relativeEn!]) {
         expect(WESTERN.test(numeric)).toBe(true)
