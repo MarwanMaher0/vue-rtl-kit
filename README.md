@@ -188,7 +188,7 @@ direction and there is no flash of LTR before hydration.
 | Module option | Default | Notes |
 | --- | --- | --- |
 | everything from `RtlOptions` except `persist` / `persistKey` | — | see the table below; Nuxt persists through `cookie` |
-| `autoImports` | `true` | auto-import `useDirection`, `useRtl`, `useLogicalStyles`, `useFormat`, `useInlineScroll` |
+| `autoImports` | `true` | auto-import `useDirection`, `useRtl`, `useLogicalStyles`, `useFormat` |
 | `components` | `true` | register `<RtlProvider>` and `<BidiText>` through Nuxt's component auto-registration |
 | `css` | `true` | inject `vue-rtl-kit/styles.css` |
 | `cookie` | `false` | persist locale/direction — see below |

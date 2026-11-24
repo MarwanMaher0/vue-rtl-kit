@@ -27,7 +27,7 @@ The configuration key is `rtl`. `ModuleOptions` extends `RtlOptions` with Nuxt-s
 | `htmlClass` | `boolean \| { rtl: string, ltr: string }` | `false` | Toggle default or custom direction classes on `<html>`. |
 | `numberingSystem` | `NumberingSystem \| Record<string, NumberingSystem>` | `undefined`; locale default | Default digits for `useFormat()`, globally or per locale. |
 | `registerGlobals` | `boolean` | `true` | Register `<RtlProvider>`, `<BidiText>`, and `v-rtl` globally through the runtime store. Forwarded to runtime config, so `false` disables global registration even when Nuxt component registration is on. |
-| `autoImports` | `boolean` | `true` | Auto-import `useDirection`, `useRtl`, `useLogicalStyles`, `useFormat`, and `useInlineScroll`. |
+| `autoImports` | `boolean` | `true` | Auto-import `useDirection`, `useRtl`, `useLogicalStyles`, and `useFormat`. |
 | `components` | `boolean` | `true` | Register `<RtlProvider>` and `<BidiText>` through Nuxt's component auto-registration. The runtime store still registers them globally unless `registerGlobals` is `false`. |
 | `css` | `boolean` | `true` | Inject `vue-rtl-kit/styles.css`. |
 | `cookie` | `false \| string \| { name?, maxAge?, sameSite? }` | `false` | Persist the visitor's locale/direction in a cookie (see below). |
