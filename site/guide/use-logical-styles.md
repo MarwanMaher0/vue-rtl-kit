@@ -147,3 +147,68 @@ logicalArrow('ArrowRight', 'rtl') // 'previous'
 logicalArrow('ArrowLeft', 'rtl') // 'next'
 logicalArrow('Home', 'rtl') // 'first'
 ```
+
+## Inline scrolling {#inline-scrolling}
+
+In RTL, modern browsers start a horizontal scroller at `scrollLeft === 0` on the inline-start (right) edge and scroll into negative values toward the inline-end (left) edge. Carousel prev/next buttons, edge checks, and `scrollTo({ left })` calls written for LTR break on Arabic, Persian, and Hebrew pages.
+
+`useInlineScroll(target, options?)` normalises inline scrolling into a single `0..max` scale in both directions, reads `getComputedStyle(el).direction` so `dir` islands, `v-rtl`, and `<RtlProvider>` all resolve automatically, attaches a passive `scroll` listener and `ResizeObserver`, re-reads when `target` or `useDirection().dir` changes, cleans up listeners on dispose, and is SSR-safe. Horizontal writing modes (`writing-mode: horizontal-tb`) only.
+
+### `useInlineScroll` return value
+
+| Member | Signature | Purpose |
+| --- | --- | --- |
+| `offset` | `Readonly<Ref<number>>` | Distance scrolled from inline-start in px, clamped to `0..max`. |
+| `max` | `Readonly<Ref<number>>` | Maximum scrollable inline distance (`max(0, scrollWidth - clientWidth)`). |
+| `atStart` | `Readonly<Ref<boolean>>` | `true` at (or within `tolerance` px of) inline-start, or when there is no overflow. |
+| `atEnd` | `Readonly<Ref<boolean>>` | `true` at (or within `tolerance` px of) inline-end, or when there is no overflow. |
+| `scrollTo` | `(offset: number, options?: ScrollInlineOptions) => void` | Clamp and scroll to an inline-start offset. |
+| `scrollBy` | `(delta: number, options?: ScrollInlineOptions) => void` | Scroll by a signed inline delta (positive moves toward inline-end). |
+| `scrollToStart` | `(options?: ScrollInlineOptions) => void` | Scroll to the inline-start edge (`0`). |
+| `scrollToEnd` | `(options?: ScrollInlineOptions) => void` | Scroll to the inline-end edge (`max`). |
+
+```vue
+<script setup lang="ts">
+import { ref } from 'vue'
+import { useInlineScroll } from 'vue-rtl-kit'
+
+const track = ref<HTMLElement | null>(null)
+const { atStart, atEnd, scrollBy, scrollToStart, scrollToEnd } = useInlineScroll(track)
+</script>
+
+<template>
+  <button type="button" :disabled="atStart" @click="scrollToStart({ behavior: 'smooth' })">
+    Start
+  </button>
+  <button type="button" :disabled="atStart" @click="scrollBy(-240, { behavior: 'smooth' })">
+    Previous
+  </button>
+  <div ref="track" style="display: flex; overflow-x: auto">
+    <slot />
+  </div>
+  <button type="button" :disabled="atEnd" @click="scrollBy(240, { behavior: 'smooth' })">
+    Next
+  </button>
+  <button type="button" :disabled="atEnd" @click="scrollToEnd({ behavior: 'smooth' })">
+    End
+  </button>
+</template>
+```
+
+Outside component setup, import the pure, tree-shakeable helpers directly (zero Vue imports, horizontal writing modes only). No overflow reports `0` and `{ atStart: true, atEnd: true }`; `null` targets, SSR, `NaN`, and `Infinity` return `0` or act as a no-op and never throw:
+
+```ts
+import {
+  getScrollInline,
+  getScrollInlineMax,
+  scrollByInline,
+  scrollInlineEdges,
+  scrollToInline,
+} from 'vue-rtl-kit'
+
+const offset = getScrollInline(el)
+const max = getScrollInlineMax(el)
+const { atStart, atEnd } = scrollInlineEdges(el, 1)
+scrollToInline(el, max, { behavior: 'smooth' })
+scrollByInline(el, -240, { behavior: 'smooth' })
+```

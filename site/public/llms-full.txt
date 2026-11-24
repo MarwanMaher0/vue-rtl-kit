@@ -230,9 +230,34 @@ const placement = computed(() => toPhysical({ insetInlineStart: '12px' }))
 
 Standalone exports are logicalArrow(key, dir), logicalProperty(property, options?), toLogicalStyle(style, options?), and toPhysicalStyle(style, dir). Physical conversion is useful for rendering paths such as canvas, SVG, email, or legacy consumers that cannot use logical CSS. StyleObject is Record<string, string | number | undefined>, and LogicalArrow is 'next' | 'previous' | 'first' | 'last' | 'up' | 'down'.
 
+## Inline scrolling in LTR and RTL
+
+In modern browsers (Chrome 85+, Firefox, Safari 15.4+), an RTL horizontal scroller starts at scrollLeft === 0 at inline-start (right) and scrolls into negative values toward inline-end (left). Horizontal writing modes (writing-mode: horizontal-tb) only.
+
+Pure Vue-free helpers (direction read from getComputedStyle(el).direction, so dir islands, v-rtl, and RtlProvider work automatically):
+- getScrollInline(el): distance from inline-start in px, clamped 0..max, identical in LTR and RTL.
+- getScrollInlineMax(el): max(0, scrollWidth - clientWidth).
+- scrollToInline(el, offset, options?): clamps offset to 0..max and calls el.scrollTo with the physical left (-clamped in RTL, +clamped in LTR) and optional behavior.
+- scrollByInline(el, delta, options?): scrolls by signed inline delta where positive moves toward inline-end.
+- scrollInlineEdges(el, tolerance = 1): returns { atStart, atEnd } within tolerance px.
+
+No overflow returns 0 and { atStart: true, atEnd: true }. Null elements, SSR, NaN, and Infinity return 0 or act as a no-op and never throw.
+
+Reactive composable: useInlineScroll(target, options?) returns readonly offset, max, atStart, and atEnd refs plus scrollTo, scrollBy, scrollToStart, and scrollToEnd. It attaches a passive scroll listener and ResizeObserver (when available), re-reads on target and useDirection().dir changes, removes listeners on dispose, and is SSR-safe.
+
+```ts
+import { ref } from 'vue'
+import { useInlineScroll } from 'vue-rtl-kit'
+
+const track = ref<HTMLElement | null>(null)
+const { atStart, atEnd, scrollBy, scrollToEnd } = useInlineScroll(track)
+```
+
 Sources:
 - [useLogicalStyles](https://marwanmaher0.github.io/vue-rtl-kit/guide/use-logical-styles)
 - [useLogicalStyles بالعربية](https://marwanmaher0.github.io/vue-rtl-kit/ar/guide/use-logical-styles)
+- [Browser support](https://marwanmaher0.github.io/vue-rtl-kit/guide/browser-support)
+- [دعم المتصفحات](https://marwanmaher0.github.io/vue-rtl-kit/ar/guide/browser-support)
 
 ## Optional CSS utilities
 
@@ -347,7 +372,7 @@ The runtime plugin creates the root store and writes reactive dir and lang attri
 Nuxt defaults differ from the standalone plugin: locales defaults to { en: 'ltr', ar: 'rtl' } and defaultLocale to en. dir remains optional and, if supplied, pins direction. syncDocument defaults true and htmlClass false. numberingSystem is optional.
 
 Build-time controls:
-- autoImports: true by default, importing useDirection, useRtl, useLogicalStyles, and useFormat.
+- autoImports: true by default, importing useDirection, useRtl, useLogicalStyles, useFormat, and useInlineScroll.
 - components: true by default, registering RtlProvider and BidiText through Nuxt.
 - css: true by default, injecting vue-rtl-kit/styles.css.
 - cookie: false by default; a cookie name or { name, maxAge, sameSite } enables persisting the visitor's locale/direction so SSR restores it for returning users. Unknown cookie values are ignored. The browser-only persist and persistKey options of createRtl are excluded from ModuleOptions; in Nuxt, persistence goes through this cookie option so the saved direction is already in the server-rendered HTML.
@@ -372,6 +397,7 @@ Core types:
 - ParseNumberOptions contains optional locale and numberingSystem.
 - BidiRun contains text, dir, isolated, and hasStrong.
 - LogicalStyleOptions contains optional size, values, and shorthands flags.
+- ScrollInlineOptions contains optional behavior; ScrollInlineEdges contains atStart and atEnd; UseInlineScrollOptions contains optional tolerance; UseInlineScrollReturn exposes readonly offset, max, atStart, atEnd plus scrollTo, scrollBy, scrollToStart, and scrollToEnd.
 - RtlDirectiveValue accepts DirectionOrAuto, boolean, undefined, null, or { dir?, isolate? }.
 
 The reference includes signatures for every export and complete type shapes:
@@ -384,6 +410,6 @@ vue-rtl-kit تدير اتجاه الواجهة وتنسيق القيم، ولا 
 
 يتبع اتجاه الجذر اللغة حتى يُثبّت عبر dir الأولي أو setDirection() أو toggleDirection(). بعد التثبيت، تغيّر setLocale() اللغة فقط. تقرأ useDirection() أقرب نطاق، أما useRtl() فتصل إلى الجذر المثبّت وترمي خطأ إن لم تكن الإضافة مثبتة. ينشئ RtlProvider نطاقًا محليًا؛ وعند غياب العنصر الحاوي يجب وضع سمات الاتجاه على الأبناء.
 
-BidiText أداة مبسطة لعزل مقاطع النص العادي، وليس محرّكًا للنص الغني ولا تنفيذًا كاملًا لخوارزمية Unicode ثنائية الاتجاه. لا يعالج الوسوم الغنية داخل الخانة؛ استخدم text لعزل النص العادي. يظل المتصفح مسؤولًا عن التخطيط النهائي. تتكيف أدوات CSS المنطقية مع أقرب dir، وتنسّق useFormat الأرقام والعملات والتواريخ والقوائم والأزمنة النسبية عبر Intl، وتقرأ parseNumber الأعداد المكتوبة بأرقام اللغة وفواصلها وتعيد NaN للنص غير الصالح.
+BidiText أداة مبسطة لعزل مقاطع النص العادي، وليس محرّكًا للنص الغني ولا تنفيذًا كاملًا لخوارزمية Unicode ثنائية الاتجاه. لا يعالج الوسوم الغنية داخل الخانة؛ استخدم text لعزل النص العادي. يظل المتصفح مسؤولًا عن التخطيط النهائي. تتكيف أدوات CSS المنطقية مع أقرب dir، وتوحّد useInlineScroll ودوال التمرير السطري إحداثيات scrollLeft الأفقي في LTR وRTL لأوضاع الكتابة الأفقية فقط، وتنسّق useFormat الأرقام والعملات والتواريخ والقوائم والأزمنة النسبية عبر Intl، وتقرأ parseNumber الأعداد المكتوبة بأرقام اللغة وفواصلها وتعيد NaN للنص غير الصالح.
 
 تدعم وحدة Nuxt سمات dir وlang في العرض على الخادم. تعطيل components يوقف تسجيل Nuxt وقت البناء فقط؛ اضبط registerGlobals: false أيضًا لإيقاف التسجيل العام من إضافة التشغيل. راجع الدليل العربي لكل واجهة قبل افتراض سلوك غير موثق.

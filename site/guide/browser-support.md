@@ -11,7 +11,10 @@ Everything here is native platform behaviour, with no polyfills. Layout uses CSS
 | Flow-relative corner radii (`border-start-start-radius`) | 89 | 66 | 15 |
 | `:dir()` (own-direction utilities) | 120 | 49 | 16.4 |
 | Independent `scale` property | 104 | 72 | 14.1 |
+| Inline scroll (negative RTL `scrollLeft`, `ResizeObserver`) | 85 | 69 | 15.4 |
 | `Intl` numbering systems (`-u-nu-`) | 24 | 29 | 10 |
+
+The inline scroll helpers (`getScrollInline`, `scrollToInline`, `scrollByInline`, `scrollInlineEdges`, and `useInlineScroll`) assume the CSSOM View negative-`scrollLeft` RTL model (Chrome 85+, Firefox, Safari 15.4+) and horizontal writing modes (`writing-mode: horizontal-tb`) only. `useInlineScroll` uses `ResizeObserver` when available (Chrome 64+, Firefox 69+, Safari 13.1+) and degrades safely when it is absent.
 
 ## `:dir()` and `scale`
 

@@ -11,7 +11,10 @@
 | أنصاف الأقطار المنطقية للزوايا (`border-start-start-radius`) | 89 | 66 | 15 |
 | `:dir()` (أدوات الاتجاه الذاتي) | 120 | 49 | 16.4 |
 | خاصية `scale` المستقلة | 104 | 72 | 14.1 |
+| التمرير السطري (`scrollLeft` السالب في RTL و`ResizeObserver`) | 85 | 69 | 15.4 |
 | أنظمة أرقام `Intl` (`-u-nu-`) | 24 | 29 | 10 |
+
+تفترض أدوات التمرير السطري (`getScrollInline` و`scrollToInline` و`scrollByInline` و`scrollInlineEdges` و`useInlineScroll`) نموذج `scrollLeft` السالب في RTL وفق مواصفة CSSOM View (Chrome 85 فأحدث، وFirefox، وSafari 15.4 فأحدث) وتدعم أوضاع الكتابة الأفقية (`writing-mode: horizontal-tb`) فقط. تستخدم `useInlineScroll` واجهة `ResizeObserver` عند توفرها (Chrome 64 فأحدث، وFirefox 69 فأحدث، وSafari 13.1 فأحدث) وتعمل بأمان عند غيابها.
 
 ## `:dir()` و`scale`
 

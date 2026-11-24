@@ -17,8 +17,9 @@ import type { Direction } from 'vue-rtl-kit'
 | `useRtl` | `() => RtlInstance` | Resolve the root store; throws when the plugin is absent. |
 | `useLogicalStyles` | `() => UseLogicalStylesReturn` | Direction-bound logical style helpers. |
 | `useFormat` | `() => ComputedRef<BoundFormatters>` | Locale-bound number, currency, date, list, and relative-time formatters, plus `parseNumber`. |
+| `useInlineScroll` | `(target: MaybeRefOrGetter<Element \| null \| undefined>, options?: UseInlineScrollOptions) => UseInlineScrollReturn` | Logical inline scroll state and controls for horizontal scrollers in LTR and RTL; SSR-safe. |
 
-See [createRtl](/guide/create-rtl), [useDirection](/guide/use-direction), [useLogicalStyles](/guide/use-logical-styles), and [useFormat](/guide/use-format) for examples.
+See [createRtl](/guide/create-rtl), [useDirection](/guide/use-direction), [useLogicalStyles](/guide/use-logical-styles) (including [Inline scrolling](/guide/use-logical-styles#inline-scrolling)), and [useFormat](/guide/use-format) for examples.
 
 ## Components and directives
 
@@ -81,6 +82,34 @@ logicalProperty('marginLeft') // marginInlineStart
 toLogicalStyle({ textAlign: 'left' }) // { textAlign: 'start' }
 toPhysicalStyle({ marginInlineStart: '8px' }, 'rtl')
 logicalArrow('ArrowRight', 'rtl') // 'previous'
+```
+
+## Inline scroll
+
+Pure, Vue-free helpers that normalise horizontal `scrollLeft` into a single `0..max` scale from inline-start to inline-end in both LTR and RTL. Direction comes from `getComputedStyle(el).direction`, so `dir` islands, `v-rtl`, and `<RtlProvider>` work automatically. Horizontal writing modes (`writing-mode: horizontal-tb`) only. No overflow returns `0` and `{ atStart: true, atEnd: true }`; `null`, SSR, `NaN`, and `Infinity` return `0` or no-op and never throw.
+
+| Export | Signature | Description |
+| --- | --- | --- |
+| `getScrollInline` | `(el: Element \| null \| undefined) => number` | Distance scrolled from inline-start in px, clamped to `0..max`. |
+| `getScrollInlineMax` | `(el: Element \| null \| undefined) => number` | Maximum scrollable inline distance: `max(0, scrollWidth - clientWidth)`. |
+| `scrollToInline` | `(el: Element \| null \| undefined, offset: number, options?: ScrollInlineOptions) => void` | Clamp `offset` and call `el.scrollTo` with physical `left`. |
+| `scrollByInline` | `(el: Element \| null \| undefined, delta: number, options?: ScrollInlineOptions) => void` | Scroll by signed inline `delta` (positive moves toward inline-end). |
+| `scrollInlineEdges` | `(el: Element \| null \| undefined, tolerance?: number) => ScrollInlineEdges` | Report `{ atStart, atEnd }` within `tolerance` px (default `1`). |
+
+```ts
+import {
+  getScrollInline,
+  getScrollInlineMax,
+  scrollByInline,
+  scrollInlineEdges,
+  scrollToInline,
+} from 'vue-rtl-kit'
+
+getScrollInline(el)
+getScrollInlineMax(el)
+scrollToInline(el, 240, { behavior: 'smooth' })
+scrollByInline(el, 240, { behavior: 'smooth' })
+scrollInlineEdges(el, 1)
 ```
 
 ## Locale helpers
@@ -267,6 +296,25 @@ interface UseLogicalStylesReturn {
 }
 ```
 
+### UseInlineScrollOptions and UseInlineScrollReturn
+
+```ts
+interface UseInlineScrollOptions {
+  tolerance?: number
+}
+
+interface UseInlineScrollReturn {
+  readonly offset: Readonly<Ref<number>>
+  readonly max: Readonly<Ref<number>>
+  readonly atStart: Readonly<Ref<boolean>>
+  readonly atEnd: Readonly<Ref<boolean>>
+  scrollTo: (offset: number, options?: ScrollInlineOptions) => void
+  scrollBy: (delta: number, options?: ScrollInlineOptions) => void
+  scrollToStart: (options?: ScrollInlineOptions) => void
+  scrollToEnd: (options?: ScrollInlineOptions) => void
+}
+```
+
 ### BoundFormatters
 
 ```ts
@@ -336,6 +384,19 @@ interface LogicalStyleOptions {
 }
 
 type StyleObject = Record<string, string | number | undefined>
+```
+
+## Inline scroll types
+
+```ts
+interface ScrollInlineOptions {
+  behavior?: ScrollBehavior
+}
+
+interface ScrollInlineEdges {
+  atStart: boolean
+  atEnd: boolean
+}
 ```
 
 ## Directive type

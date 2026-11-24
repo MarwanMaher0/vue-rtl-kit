@@ -23,6 +23,8 @@ export { useDirection, useRtl } from './composables/useDirection'
 export { useLogicalStyles } from './composables/useLogicalStyles'
 export type { UseLogicalStylesReturn } from './composables/useLogicalStyles'
 export { useFormat } from './composables/useFormat'
+export { useInlineScroll } from './composables/useInlineScroll'
+export type { UseInlineScrollOptions, UseInlineScrollReturn } from './composables/useInlineScroll'
 
 export { BidiText, RtlProvider } from './components'
 
@@ -54,6 +56,15 @@ export {
   toPhysicalStyle,
 } from './logical'
 export type { LogicalArrow, LogicalStyleOptions, StyleObject } from './logical'
+
+export {
+  getScrollInline,
+  getScrollInlineMax,
+  scrollByInline,
+  scrollInlineEdges,
+  scrollToInline,
+} from './scroll'
+export type { ScrollInlineEdges, ScrollInlineOptions } from './scroll'
 
 export {
   directionOfLocale,

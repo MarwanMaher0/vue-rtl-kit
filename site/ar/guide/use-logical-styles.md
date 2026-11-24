@@ -147,3 +147,68 @@ logicalArrow('ArrowRight', 'rtl') // 'previous'
 logicalArrow('ArrowLeft', 'rtl') // 'next'
 logicalArrow('Home', 'rtl') // 'first'
 ```
+
+## التمرير السطري {#inline-scrolling}
+
+في اتجاه RTL، تبدأ المتصفحات الحديثة عنصر التمرير الأفقي عند `scrollLeft === 0` في حافة بداية السطر (اليمين) ثم تتجه إلى قيم سالبة نحو حافة نهاية السطر (اليسار). لذلك تتعطل أزرار السابق والتالي في العروض الدوّارة، وفحوصات الوصول إلى النهاية، واستدعاءات `scrollTo({ left })` المكتوبة بافتراض LTR على الصفحات العربية والفارسية والعبرية.
+
+توحّد `useInlineScroll(target, options?)` إحداثيات التمرير السطري ضمن مقياس واحد من `0` إلى `max` في كلا الاتجاهين، وتقرأ `getComputedStyle(el).direction` بحيث تعمل جزر `dir` والتوجيه `v-rtl` ومكوّن `<RtlProvider>` تلقائيًا، وتربط مستمع `scroll` خاملًا (`passive`) ومراقب `ResizeObserver`، وتعيد القراءة عند تغيّر `target` أو `useDirection().dir`، وتزيل المستمعات عند التخلص من النطاق، كما أنها آمنة مع SSR. مخصصة لأوضاع الكتابة الأفقية (`writing-mode: horizontal-tb`) فقط.
+
+### القيمة المعادة من `useInlineScroll`
+
+| العضو | التوقيع | الغرض |
+| --- | --- | --- |
+| `offset` | `Readonly<Ref<number>>` | المسافة المقطوعة من بداية السطر بالبكسل، محصورة بين `0` و`max`. |
+| `max` | `Readonly<Ref<number>>` | أقصى مسافة تمرير سطرية (`max(0, scrollWidth - clientWidth)`). |
+| `atStart` | `Readonly<Ref<boolean>>` | تكون `true` عند بداية السطر (ضمن هامش `tolerance` بالبكسل) أو عند غياب الفيض. |
+| `atEnd` | `Readonly<Ref<boolean>>` | تكون `true` عند نهاية السطر (ضمن هامش `tolerance` بالبكسل) أو عند غياب الفيض. |
+| `scrollTo` | `(offset: number, options?: ScrollInlineOptions) => void` | تحصر الإزاحة وتمرّر إلى موضع مقاس من بداية السطر. |
+| `scrollBy` | `(delta: number, options?: ScrollInlineOptions) => void` | تمرّر بمقدار نسبي (القيمة الموجبة تتجه نحو نهاية السطر). |
+| `scrollToStart` | `(options?: ScrollInlineOptions) => void` | تمرّر إلى حافة بداية السطر (`0`). |
+| `scrollToEnd` | `(options?: ScrollInlineOptions) => void` | تمرّر إلى حافة نهاية السطر (`max`). |
+
+```vue
+<script setup lang="ts">
+import { ref } from 'vue'
+import { useInlineScroll } from 'vue-rtl-kit'
+
+const track = ref<HTMLElement | null>(null)
+const { atStart, atEnd, scrollBy, scrollToStart, scrollToEnd } = useInlineScroll(track)
+</script>
+
+<template>
+  <button type="button" :disabled="atStart" @click="scrollToStart({ behavior: 'smooth' })">
+    البداية
+  </button>
+  <button type="button" :disabled="atStart" @click="scrollBy(-240, { behavior: 'smooth' })">
+    السابق
+  </button>
+  <div ref="track" style="display: flex; overflow-x: auto">
+    <slot />
+  </div>
+  <button type="button" :disabled="atEnd" @click="scrollBy(240, { behavior: 'smooth' })">
+    التالي
+  </button>
+  <button type="button" :disabled="atEnd" @click="scrollToEnd({ behavior: 'smooth' })">
+    النهاية
+  </button>
+</template>
+```
+
+وخارج `setup` في المكونات، استورد الدوال النقية القابلة لاقتطاع الشجرة مباشرةً (دون أي استيراد من Vue، ولأوضاع الكتابة الأفقية فقط). عند غياب الفيض تُعيد `0` و`{ atStart: true, atEnd: true }`؛ كما أن تمرير `null` أو التشغيل على الخادم أو تمرير `NaN` أو `Infinity` يعيد `0` أو لا ينفّذ شيئًا دون رمي استثناء أبدًا:
+
+```ts
+import {
+  getScrollInline,
+  getScrollInlineMax,
+  scrollByInline,
+  scrollInlineEdges,
+  scrollToInline,
+} from 'vue-rtl-kit'
+
+const offset = getScrollInline(el)
+const max = getScrollInlineMax(el)
+const { atStart, atEnd } = scrollInlineEdges(el, 1)
+scrollToInline(el, max, { behavior: 'smooth' })
+scrollByInline(el, -240, { behavior: 'smooth' })
+```

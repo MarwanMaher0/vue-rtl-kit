@@ -1,16 +1,44 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { logicalArrow, parseNumber, useFormat, useLogicalStyles } from 'vue-rtl-kit'
-import type { ParseNumberOptions } from 'vue-rtl-kit'
+import {
+  getScrollInline,
+  getScrollInlineMax,
+  logicalArrow,
+  parseNumber,
+  scrollByInline,
+  scrollInlineEdges,
+  scrollToInline,
+  useFormat,
+  useInlineScroll,
+  useLogicalStyles,
+} from 'vue-rtl-kit'
+import type {
+  ParseNumberOptions,
+  ScrollInlineEdges,
+  ScrollInlineOptions,
+  UseInlineScrollOptions,
+  UseInlineScrollReturn,
+} from 'vue-rtl-kit'
 
 const preferred = ref<'rtl' | 'ltr' | 'auto'>('auto')
+const scroller = ref<HTMLElement | null>(null)
 const { arrow } = useLogicalStyles()
 const _step: 'next' | 'previous' | 'first' | 'last' | 'up' | 'down' | null = logicalArrow('ArrowRight', 'rtl')
+const _scrollOptions: ScrollInlineOptions = { behavior: 'smooth' }
+const _inlineScrollOpts: UseInlineScrollOptions = { tolerance: 2 }
+const _scrollState: UseInlineScrollReturn = useInlineScroll(scroller, _inlineScrollOpts)
+const _scrollOffset: number = getScrollInline(scroller.value)
+const _scrollMax: number = getScrollInlineMax(scroller.value)
+const _scrollEdges: ScrollInlineEdges = scrollInlineEdges(scroller.value)
+scrollToInline(scroller.value, 100, _scrollOptions)
+scrollByInline(scroller.value, 50, _scrollOptions)
 const _parseOptions: ParseNumberOptions = { locale: 'ar-EG', numberingSystem: 'arab' }
 const _parsed: number = parseNumber('١٬٢٣٤٫٥', _parseOptions)
 const _boundParsed: number = useFormat().value.parseNumber('1,234.5')
 // @ts-expect-error parseNumber reads text, not a number
 parseNumber(1234.5)
+// @ts-expect-error offset is readonly on useInlineScroll
+_scrollState.offset.value = 10
 </script>
 
 <template>

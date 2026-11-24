@@ -17,8 +17,9 @@ import type { Direction } from 'vue-rtl-kit'
 | `useRtl` | `() => RtlInstance` | الحصول على المخزن الجذري؛ ويُطلق خطأً عند عدم وجود الإضافة. |
 | `useLogicalStyles` | `() => UseLogicalStylesReturn` | أدوات مساعدة للأنماط المنطقية المرتبطة بالاتجاه. |
 | `useFormat` | `() => ComputedRef<BoundFormatters>` | أدوات تنسيق الأرقام والعملات والتواريخ والقوائم والأزمنة النسبية المرتبطة باللغة، ومعها `parseNumber`. |
+| `useInlineScroll` | `(target: MaybeRefOrGetter<Element \| null \| undefined>, options?: UseInlineScrollOptions) => UseInlineScrollReturn` | حالة التمرير السطري المنطقي وأوامر التحكم فيه في LTR وRTL، وآمنة مع SSR. |
 
-راجع [createRtl](/ar/guide/create-rtl) و[useDirection](/ar/guide/use-direction) و[useLogicalStyles](/ar/guide/use-logical-styles) و[useFormat](/ar/guide/use-format) للاطلاع على أمثلة.
+راجع [createRtl](/ar/guide/create-rtl) و[useDirection](/ar/guide/use-direction) و[useLogicalStyles](/ar/guide/use-logical-styles) (بما في ذلك [التمرير السطري](/ar/guide/use-logical-styles#inline-scrolling)) و[useFormat](/ar/guide/use-format) للاطلاع على أمثلة.
 
 ## المكونات والتوجيهات
 
@@ -81,6 +82,34 @@ logicalProperty('marginLeft') // marginInlineStart
 toLogicalStyle({ textAlign: 'left' }) // { textAlign: 'start' }
 toPhysicalStyle({ marginInlineStart: '8px' }, 'rtl')
 logicalArrow('ArrowRight', 'rtl') // 'previous'
+```
+
+## التمرير السطري
+
+دوال نقية دون أي استيراد من Vue توحّد `scrollLeft` الأفقي ضمن مقياس واحد من `0` إلى `max` من بداية السطر إلى نهايته في LTR وRTL. يُقرأ الاتجاه من `getComputedStyle(el).direction` بحيث تعمل جزر `dir` والتوجيه `v-rtl` ومكوّن `<RtlProvider>` تلقائيًا. لأوضاع الكتابة الأفقية (`writing-mode: horizontal-tb`) فقط. عند غياب الفيض تُعيد `0` و`{ atStart: true, atEnd: true }`؛ كما أن `null` وSSR و`NaN` و`Infinity` تُعيد `0` أو لا تنفّذ شيئًا دون رمي استثناء أبدًا.
+
+| التصدير | التوقيع | الوصف |
+| --- | --- | --- |
+| `getScrollInline` | `(el: Element \| null \| undefined) => number` | المسافة المقطوعة من بداية السطر بالبكسل، محصورة بين `0` و`max`. |
+| `getScrollInlineMax` | `(el: Element \| null \| undefined) => number` | أقصى مسافة تمرير سطرية: `max(0, scrollWidth - clientWidth)`. |
+| `scrollToInline` | `(el: Element \| null \| undefined, offset: number, options?: ScrollInlineOptions) => void` | تحصر `offset` وتستدعي `el.scrollTo` بإحداثي `left` المادي. |
+| `scrollByInline` | `(el: Element \| null \| undefined, delta: number, options?: ScrollInlineOptions) => void` | تمرّر بمقدار نسبي `delta` (القيمة الموجبة تتجه نحو نهاية السطر). |
+| `scrollInlineEdges` | `(el: Element \| null \| undefined, tolerance?: number) => ScrollInlineEdges` | تُعيد `{ atStart, atEnd }` ضمن هامش `tolerance` بالبكسل (الافتراضي `1`). |
+
+```ts
+import {
+  getScrollInline,
+  getScrollInlineMax,
+  scrollByInline,
+  scrollInlineEdges,
+  scrollToInline,
+} from 'vue-rtl-kit'
+
+getScrollInline(el)
+getScrollInlineMax(el)
+scrollToInline(el, 240, { behavior: 'smooth' })
+scrollByInline(el, 240, { behavior: 'smooth' })
+scrollInlineEdges(el, 1)
 ```
 
 ## أدوات اللغة المساعدة
@@ -267,6 +296,25 @@ interface UseLogicalStylesReturn {
 }
 ```
 
+### UseInlineScrollOptions وUseInlineScrollReturn
+
+```ts
+interface UseInlineScrollOptions {
+  tolerance?: number
+}
+
+interface UseInlineScrollReturn {
+  readonly offset: Readonly<Ref<number>>
+  readonly max: Readonly<Ref<number>>
+  readonly atStart: Readonly<Ref<boolean>>
+  readonly atEnd: Readonly<Ref<boolean>>
+  scrollTo: (offset: number, options?: ScrollInlineOptions) => void
+  scrollBy: (delta: number, options?: ScrollInlineOptions) => void
+  scrollToStart: (options?: ScrollInlineOptions) => void
+  scrollToEnd: (options?: ScrollInlineOptions) => void
+}
+```
+
 ### BoundFormatters
 
 ```ts
@@ -336,6 +384,19 @@ interface LogicalStyleOptions {
 }
 
 type StyleObject = Record<string, string | number | undefined>
+```
+
+## أنواع التمرير السطري
+
+```ts
+interface ScrollInlineOptions {
+  behavior?: ScrollBehavior
+}
+
+interface ScrollInlineEdges {
+  atStart: boolean
+  atEnd: boolean
+}
 ```
 
 ## نوع التوجيه

@@ -6,17 +6,25 @@
  * frame of LTR first, and that frame is very visible.
  */
 import { describe, expect, it } from 'vitest'
-import { createSSRApp, defineComponent, h, withDirectives } from 'vue'
+import { createSSRApp, defineComponent, h, ref, withDirectives } from 'vue'
 import { renderToString } from 'vue/server-renderer'
 import { BidiText, RtlProvider } from '../src/components'
 import { useDirection, useRtl } from '../src/composables/useDirection'
 import { useFormat } from '../src/composables/useFormat'
+import { useInlineScroll } from '../src/composables/useInlineScroll'
 import { useLogicalStyles } from '../src/composables/useLogicalStyles'
 import { createRtl } from '../src/core'
 import { vRtl } from '../src/directives/vRtl'
 import { isClient, isServer } from '../src/env'
 import { LRI, PDI, isolateRuns } from '../src/bidi'
 import { logicalArrow } from '../src/logical'
+import {
+  getScrollInline,
+  getScrollInlineMax,
+  scrollByInline,
+  scrollInlineEdges,
+  scrollToInline,
+} from '../src/scroll'
 
 describe('SSR environment', () => {
   it('reports a server environment', () => {
@@ -177,5 +185,42 @@ describe('SSR environment', () => {
 
     expect(await renderToString(appOne)).toBe('<main dir="rtl">rtl</main>')
     expect(await renderToString(appTwo)).toBe('<main dir="ltr">ltr</main>')
+  })
+
+  it('keeps inline scroll helpers and useInlineScroll SSR-safe with no window or document', async () => {
+    expect(typeof window).toBe('undefined')
+    expect(typeof document).toBe('undefined')
+
+    const stub = { scrollLeft: -120, scrollWidth: 500, clientWidth: 200 } as unknown as Element
+    expect(getScrollInline(null)).toBe(0)
+    expect(getScrollInline(stub)).toBe(0)
+    expect(getScrollInlineMax(null)).toBe(0)
+    expect(getScrollInlineMax(stub)).toBe(0)
+    expect(scrollInlineEdges(null)).toEqual({ atStart: true, atEnd: true })
+    expect(scrollInlineEdges(stub)).toEqual({ atStart: true, atEnd: true })
+    expect(() => {
+      scrollToInline(null, 50)
+      scrollToInline(stub, 50, { behavior: 'smooth' })
+      scrollByInline(null, 20)
+      scrollByInline(stub, 20)
+    }).not.toThrow()
+
+    const rtl = createRtl({ locales: ['en', 'ar'], defaultLocale: 'ar' })
+    const app = createSSRApp(
+      defineComponent({
+        setup() {
+          const track = ref<HTMLElement | null>(null)
+          const { offset, max, atStart, atEnd, scrollTo, scrollBy, scrollToStart, scrollToEnd } = useInlineScroll(track)
+          scrollTo(100)
+          scrollBy(50)
+          scrollToStart()
+          scrollToEnd()
+          return () => h('div', { ref: track }, `${offset.value}:${max.value}:${atStart.value}:${atEnd.value}`)
+        },
+      }),
+    )
+    app.use(rtl)
+    expect(await renderToString(app)).toBe('<div>0:0:true:true</div>')
+    rtl.dispose()
   })
 })

@@ -27,7 +27,7 @@ export default defineNuxtConfig({
 | `htmlClass` | `boolean \| { rtl: string, ltr: string }` | `false` | تبديل أصناف الاتجاه الافتراضية أو المخصصة على `<html>`. |
 | `numberingSystem` | `NumberingSystem \| Record<string, NumberingSystem>` | `undefined`؛ القيمة الافتراضية للغة | الأرقام الافتراضية لـ `useFormat()`، عالميًا أو لكل لغة. |
 | `registerGlobals` | `boolean` | `true` | تسجيل `<RtlProvider>` و`<BidiText>` و`v-rtl` عالميًا عبر مخزن التشغيل. يُمرَّر إلى إعدادات التشغيل، لذا تعطّل القيمة `false` التسجيل العام حتى عند تفعيل تسجيل مكوّنات Nuxt. |
-| `autoImports` | `boolean` | `true` | استيراد `useDirection` و`useRtl` و`useLogicalStyles` و`useFormat` تلقائيًا. |
+| `autoImports` | `boolean` | `true` | استيراد `useDirection` و`useRtl` و`useLogicalStyles` و`useFormat` و`useInlineScroll` تلقائيًا. |
 | `components` | `boolean` | `true` | تسجيل `<RtlProvider>` و`<BidiText>` عبر التسجيل التلقائي لمكوّنات Nuxt. ويظل مخزن التشغيل يسجّلها عالميًا ما لم تكن `registerGlobals` مساوية لـ `false`. |
 | `css` | `boolean` | `true` | حقن `vue-rtl-kit/styles.css`. |
 | `cookie` | `false \| string \| { name?, maxAge?, sameSite? }` | `false` | حفظ لغة الزائر واتجاهه في ملف تعريف ارتباط (انظر أدناه). |

@@ -4,9 +4,10 @@ Practical, reproducible bugs that show up when a Vue 3 or Nuxt UI is switched to
 Hebrew (`he`) or Persian (`fa`) — and the smallest fix for each. Every bug below follows the same
 pattern: a minimal broken snippet, why it breaks, a fix in plain CSS/Vue, and then the same fix with
 [vue-rtl-kit](../README.md). The vue-rtl-kit snippets use only APIs exported from `src/`:
-`createRtl`, `useDirection`, `useLogicalStyles`, `useFormat`, `BidiText`, `RtlProvider`, the `v-rtl`
-directive, the helpers `isolate` / `isolateRuns` / `transliterateDigits` / `logicalArrow`, and the
-classes in `vue-rtl-kit/styles.css`.
+`createRtl`, `useDirection`, `useLogicalStyles`, `useFormat`, `useInlineScroll`, `BidiText`,
+`RtlProvider`, the `v-rtl` directive, the helpers `isolate` / `isolateRuns` / `transliterateDigits` /
+`logicalArrow` / `getScrollInline` / `scrollToInline` / `scrollByInline` / `scrollInlineEdges`, and
+the classes in `vue-rtl-kit/styles.css`.
 
 You do not need the library for most of these fixes. Logical CSS properties and `<bdi>` are native.
 The library earns its place where the value is computed in JavaScript, where mixed-direction text has
@@ -33,8 +34,8 @@ createApp(App).use(rtl).mount('#app')
 
 ```ts
 // Nuxt — nuxt.config.ts. The module registers the plugin, auto-imports
-// useDirection / useRtl / useLogicalStyles / useFormat, registers
-// <BidiText> and <RtlProvider>, and injects the stylesheet.
+// useDirection / useRtl / useLogicalStyles / useFormat / useInlineScroll,
+// registers <BidiText> and <RtlProvider>, and injects the stylesheet.
 import { defineNuxtConfig } from 'nuxt/config'
 
 export default defineNuxtConfig({
@@ -1634,6 +1635,204 @@ logicalArrow('Home', 'rtl') // 'first'
 
 ---
 
+## 11. Horizontal scrollers and carousels breaking on negative `scrollLeft`
+
+### Broken
+
+```vue
+<script setup lang="ts">
+import { onMounted, ref } from 'vue'
+
+const track = ref<HTMLElement | null>(null)
+const atStart = ref(true)
+const atEnd = ref(false)
+
+function updateEdges() {
+  const el = track.value
+  if (!el) return
+  atStart.value = el.scrollLeft <= 0
+  atEnd.value = el.scrollLeft + el.clientWidth >= el.scrollWidth - 1
+}
+
+function next() {
+  track.value?.scrollBy({ left: 240, behavior: 'smooth' })
+}
+
+function prev() {
+  track.value?.scrollBy({ left: -240, behavior: 'smooth' })
+}
+
+onMounted(updateEdges)
+</script>
+
+<template>
+  <div class="carousel">
+    <button type="button" :disabled="atStart" @click="prev">السابق</button>
+    <div ref="track" class="track" @scroll.passive="updateEdges">
+      <div v-for="n in 8" :key="n" class="card">بطاقة {{ n }}</div>
+    </div>
+    <button type="button" :disabled="atEnd" @click="next">التالي</button>
+  </div>
+</template>
+
+<style scoped>
+.carousel { display: flex; align-items: center; gap: 0.5rem; }
+.track { display: flex; gap: 0.75rem; overflow-x: auto; inline-size: 20rem; }
+.card { flex: 0 0 10rem; padding: 1rem; border: 1px solid currentColor; }
+</style>
+```
+
+On an Arabic, Persian or Hebrew page, **التالي** ("Next") does nothing at all because the scroller
+is already at the right edge (`scrollLeft === 0`) and `left: +240` tries to scroll past it;
+**السابق** ("Previous") stays permanently disabled because `scrollLeft <= 0` is true everywhere in
+RTL; and `scrollLeft + clientWidth >= scrollWidth - 1` is never true even at the very end because
+`scrollLeft` is negative.
+
+**Why it breaks:** under the CSSOM View specification implemented by modern browsers (Chrome 85+,
+Firefox, Safari 15.4+), an RTL horizontal scroller starts at `scrollLeft === 0` at its inline-start
+(right) edge and scrolls into **negative** numbers down to `-(scrollWidth - clientWidth)` at its
+inline-end (left) edge. Any check that assumes `scrollLeft >= 0`, or any `scrollTo({ left })` /
+`scrollBy({ left })` call with an unsigned positive step, assumes LTR.
+
+### Fix — plain Vue
+
+Read the element's own computed `direction` (not `<html>`, so a `dir="ltr"` island on an RTL page
+still uses positive coordinates), normalise `scrollLeft` into a single `0..max` inline offset, and
+flip the sign before calling `scrollTo`:
+
+```vue
+<script setup lang="ts">
+import { onBeforeUnmount, onMounted, ref } from 'vue'
+
+const track = ref<HTMLElement | null>(null)
+const atStart = ref(true)
+const atEnd = ref(false)
+let observer: ResizeObserver | undefined
+
+function isRtl(el: Element): boolean {
+  return getComputedStyle(el).direction === 'rtl'
+}
+
+function inlineMax(el: Element): number {
+  return Math.max(0, el.scrollWidth - el.clientWidth)
+}
+
+function inlineOffset(el: Element): number {
+  const max = inlineMax(el)
+  if (max === 0) return 0
+  const raw = isRtl(el) ? -el.scrollLeft : el.scrollLeft
+  return Math.min(max, Math.max(0, raw))
+}
+
+function updateEdges() {
+  const el = track.value
+  if (!el) return
+  const max = inlineMax(el)
+  const offset = inlineOffset(el)
+  atStart.value = max === 0 || offset <= 1
+  atEnd.value = max === 0 || offset >= max - 1
+}
+
+function scrollByStep(delta: number) {
+  const el = track.value
+  if (!el) return
+  const max = inlineMax(el)
+  const next = Math.min(max, Math.max(0, inlineOffset(el) + delta))
+  el.scrollTo({ left: next === 0 ? 0 : (isRtl(el) ? -next : next), behavior: 'smooth' })
+}
+
+onMounted(() => {
+  updateEdges()
+  if (track.value && typeof ResizeObserver === 'function') {
+    observer = new ResizeObserver(updateEdges)
+    observer.observe(track.value)
+  }
+})
+
+onBeforeUnmount(() => observer?.disconnect())
+</script>
+
+<template>
+  <div class="carousel">
+    <button type="button" :disabled="atStart" @click="scrollByStep(-240)">السابق</button>
+    <div ref="track" class="track" @scroll.passive="updateEdges">
+      <div v-for="n in 8" :key="n" class="card">بطاقة {{ n }}</div>
+    </div>
+    <button type="button" :disabled="atEnd" @click="scrollByStep(240)">التالي</button>
+  </div>
+</template>
+```
+
+Keep a small tolerance (around `1px`) on `atStart` / `atEnd`: high-DPI displays and browser zoom
+often settle at `max - 0.5`, which would otherwise leave the "Next" button enabled at the end of the
+strip. This approach covers horizontal writing modes (`writing-mode: horizontal-tb`) only; vertical
+writing modes scroll their inline axis through `scrollTop`.
+
+### Fix — vue-rtl-kit
+
+`useInlineScroll(target)` wraps the passive `scroll` listener, `ResizeObserver`, direction-change
+re-reads, edge checks and logical scroll actions into one SSR-safe composable:
+
+```vue
+<script setup lang="ts">
+import { ref } from 'vue'
+import { useInlineScroll } from 'vue-rtl-kit'
+
+const track = ref<HTMLElement | null>(null)
+const { atStart, atEnd, scrollBy, scrollToStart, scrollToEnd } = useInlineScroll(track)
+</script>
+
+<template>
+  <div class="carousel">
+    <button type="button" :disabled="atStart" @click="scrollToStart({ behavior: 'smooth' })">
+      البداية
+    </button>
+    <button type="button" :disabled="atStart" @click="scrollBy(-240, { behavior: 'smooth' })">
+      السابق
+    </button>
+    <div ref="track" class="track">
+      <div v-for="n in 8" :key="n" class="card">بطاقة {{ n }}</div>
+    </div>
+    <button type="button" :disabled="atEnd" @click="scrollBy(240, { behavior: 'smooth' })">
+      التالي
+    </button>
+    <button type="button" :disabled="atEnd" @click="scrollToEnd({ behavior: 'smooth' })">
+      النهاية
+    </button>
+  </div>
+</template>
+
+<style scoped>
+.carousel { display: flex; align-items: center; gap: 0.5rem; }
+.track { display: flex; gap: 0.75rem; overflow-x: auto; inline-size: 20rem; }
+.card { flex: 0 0 10rem; padding: 1rem; border: 1px solid currentColor; }
+</style>
+```
+
+Because direction is read from `getComputedStyle(el).direction`, a carousel inside `<RtlProvider dir="ltr">`,
+`v-rtl:ltr`, or a raw `dir="ltr"` island on an RTL page automatically uses LTR scroll coordinates
+while an RTL carousel beside it uses RTL coordinates — and both stay accurate when `useDirection().dir`
+toggles live. Outside component setup, use the pure, tree-shakeable helpers directly (zero Vue
+imports, horizontal writing modes only):
+
+```ts
+import {
+  getScrollInline,
+  getScrollInlineMax,
+  scrollByInline,
+  scrollInlineEdges,
+  scrollToInline,
+} from 'vue-rtl-kit'
+
+const offset = getScrollInline(el)         // 0..max in both LTR and RTL
+const max = getScrollInlineMax(el)         // max(0, scrollWidth - clientWidth)
+const { atStart, atEnd } = scrollInlineEdges(el)
+scrollToInline(el, max, { behavior: 'smooth' })
+scrollByInline(el, -240, { behavior: 'smooth' })
+```
+
+---
+
 ## Checklist
 
 Run through this with `dir` toggled live (the README's playground does exactly that) in at least one
@@ -1657,10 +1856,12 @@ Arabic, one Hebrew and one Persian build before calling an RTL release done:
       scoped/isolated or overridden in logical properties — including its teleported overlays (§9).
 - [ ] Custom tabs, sliders, carousels and horizontal menus swap `ArrowLeft`/`ArrowRight` in RTL,
       keep `Home`/`End` as first/last, and ignore `Ctrl`/`Alt`/`Meta` shortcuts (§10).
+- [ ] Horizontal scrollers and carousels normalise negative RTL `scrollLeft`, clamp `0..max`, and
+      check start/end edges with a subpixel tolerance instead of assuming `scrollLeft >= 0` (§11).
 
 The through-line: direction is a property of the *paragraph and the layout flow*, not of your data.
 Keep strings in logical order, state direction as close to the content as possible (`dir`,
 `<RtlProvider>`, `v-rtl`), express layout in logical properties, isolate foreign runs instead of
-reordering them, map horizontal arrow keys to logical steps, and multiply the handful of physical
-pixel values that remain by the direction sign. Do those six things and Arabic, Hebrew and Persian
-stop being a second, buggier UI.
+reordering them, map horizontal arrow keys and inline scroll offsets to logical coordinates, and
+multiply the handful of physical pixel values that remain by the direction sign. Do those things and
+Arabic, Hebrew and Persian stop being a second, buggier UI.

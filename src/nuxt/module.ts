@@ -129,7 +129,7 @@ const rtl = defineNuxtModule<ModuleOptions>({
     }
 
     if (options.autoImports !== false) {
-      for (const name of ['useDirection', 'useRtl', 'useLogicalStyles', 'useFormat'] as const) {
+      for (const name of ['useDirection', 'useRtl', 'useLogicalStyles', 'useFormat', 'useInlineScroll'] as const) {
         addImports({ name, from: 'vue-rtl-kit' })
       }
     }

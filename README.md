@@ -65,9 +65,10 @@ bare `2024` — which reads the same either way — is left alone.
 - [Common RTL bugs in Vue apps and how to fix them](./docs/common-rtl-bugs.md) — physical CSS
   properties that do not flip, icons that must (and must not) mirror, Latin runs and punctuation
   breaking inside RTL text, mixed-direction form input, numbering systems, the SSR direction flash,
-  transforms going the wrong way, third-party components that hardcode LTR, and arrow-key navigation
-  going backwards in tabs, sliders, carousels and menus. Each bug has a minimal broken snippet, a
-  plain CSS/Vue fix, and the vue-rtl-kit version.
+  transforms going the wrong way, third-party components that hardcode LTR, arrow-key navigation
+  going backwards in tabs, sliders, carousels and menus, and horizontal scrollers breaking on
+  negative RTL `scrollLeft`. Each bug has a minimal broken snippet, a plain CSS/Vue fix, and the
+  vue-rtl-kit version.
 
 ## Install
 
@@ -101,19 +102,21 @@ budgets are set to their measured byte counts plus fixed `+256 B` (`0.25 kB`) ra
 
 | Entry point | Artifact | Raw (current / budget) | Gzip (current / budget) |
 | --- | --- | --- | --- |
-| `vue-rtl-kit` (ESM) | `dist/vue-rtl-kit.js` | 31.57 kB / ≤ 31.82 kB | 10.31 kB / ≤ 10.41 kB |
-| `vue-rtl-kit` (CJS) | `dist/vue-rtl-kit.cjs` | 22.89 kB / ≤ 23.14 kB | 8.60 kB / ≤ 8.70 kB |
-| `vue-rtl-kit/nuxt` | `dist/nuxt/module.js` | 3.08 kB / ≤ 3.25 kB | 1.12 kB / ≤ 1.50 kB |
+| `vue-rtl-kit` (ESM) | `dist/vue-rtl-kit.js` | 34.26 kB / ≤ 34.51 kB | 11.09 kB / ≤ 11.19 kB |
+| `vue-rtl-kit` (CJS) | `dist/vue-rtl-kit.cjs` | 24.98 kB / ≤ 25.23 kB | 9.29 kB / ≤ 9.39 kB |
+| `vue-rtl-kit/nuxt` | `dist/nuxt/module.js` | 3.10 kB / ≤ 3.25 kB | 1.13 kB / ≤ 1.50 kB |
 | `vue-rtl-kit/nuxt` (runtime plugin) | `dist/nuxt/runtime/plugin.js` | 2.77 kB / ≤ 3.00 kB | 1.02 kB / ≤ 1.20 kB |
 | `vue-rtl-kit/styles.css` | `dist/styles.css` | 7.10 kB / ≤ 8.00 kB | 1.91 kB / ≤ 2.50 kB |
 
-`sideEffects` lists only `*.css`, so a bundler can drop unused helpers. `npm run check:treeshake` bundles each import on its own against `dist/vue-rtl-kit.js` (Rollup, `vue` external, esbuild minify). Vue stays external, so Rollup would otherwise keep a bare `import 'vue'`; the check declares `vue` side-effect free with `treeshake.moduleSideEffects` (the same assumption a consumer bundler makes for an unused Vue import) and fails if `chunk.imports` still includes `vue`. It also fails if `{ isolateRuns }`, `{ toLogicalStyle }`, `{ logicalArrow }` or `{ directionOfLocale }` exceeds 2 kB gzip, or if `{ formatNumber }` still contains component or directive code:
+`sideEffects` lists only `*.css`, so a bundler can drop unused helpers. `npm run check:treeshake` bundles each import on its own against `dist/vue-rtl-kit.js` (Rollup, `vue` external, esbuild minify). Vue stays external, so Rollup would otherwise keep a bare `import 'vue'`; the check declares `vue` side-effect free with `treeshake.moduleSideEffects` (the same assumption a consumer bundler makes for an unused Vue import) and fails if `chunk.imports` still includes `vue`. It also fails if `{ isolateRuns }`, `{ toLogicalStyle }`, `{ logicalArrow }`, `{ getScrollInline }`, `{ scrollToInline }` or `{ directionOfLocale }` exceeds 2 kB gzip, or if `{ formatNumber }` still contains component or directive code:
 
 | Import | Gzip (current / budget) | Must not include |
 | --- | --- | --- |
 | `{ isolateRuns }` | 1.02 kB / ≤ 2.00 kB | `vue` |
 | `{ toLogicalStyle }` | 1.25 kB / ≤ 2.00 kB | `vue` |
 | `{ logicalArrow }` | 0.18 kB / ≤ 2.00 kB | `vue` |
+| `{ getScrollInline }` | 0.36 kB / ≤ 2.00 kB | `vue` |
+| `{ scrollToInline }` | 0.41 kB / ≤ 2.00 kB | `vue` |
 | `{ directionOfLocale }` | 0.62 kB / ≤ 2.00 kB | `vue` |
 | `{ formatNumber }` | 0.75 kB | components, directives |
 
@@ -185,7 +188,7 @@ direction and there is no flash of LTR before hydration.
 | Module option | Default | Notes |
 | --- | --- | --- |
 | everything from `RtlOptions` except `persist` / `persistKey` | — | see the table below; Nuxt persists through `cookie` |
-| `autoImports` | `true` | auto-import `useDirection`, `useRtl`, `useLogicalStyles`, `useFormat` |
+| `autoImports` | `true` | auto-import `useDirection`, `useRtl`, `useLogicalStyles`, `useFormat`, `useInlineScroll` |
 | `components` | `true` | register `<RtlProvider>` and `<BidiText>` through Nuxt's component auto-registration |
 | `css` | `true` | inject `vue-rtl-kit/styles.css` |
 | `cookie` | `false` | persist locale/direction — see below |
@@ -243,6 +246,7 @@ excluded from `ModuleOptions`.
 | `useRtl()` | `RtlInstance` | The app-level store, skipping any `<RtlProvider>`. Throws if the plugin is missing. |
 | `useLogicalStyles()` | see below | `toLogical()`, `toPhysical()`, `property()`, `mirror()`, `arrow()`, plus `startSide`, `endSide`, `sign`. |
 | `useFormat()` | `ComputedRef<BoundFormatters>` | `formatNumber` / `formatCurrency` / `formatDate` / `formatList` / `formatRelativeTime` / `parseNumber` bound to the current locale and numbering system; they follow `setLocale()` and the `numberingSystem` configured in `createRtl()`. |
+| `useInlineScroll(target, options?)` | `UseInlineScrollReturn` | Readonly `offset`, `max`, `atStart`, `atEnd` refs plus `scrollTo()`, `scrollBy()`, `scrollToStart()`, `scrollToEnd()`. Uses a passive `scroll` listener and `ResizeObserver`, re-reads on `target` and `useDirection().dir` changes, cleans up on dispose, and is SSR-safe. Horizontal writing modes only. |
 
 ### Components
 
@@ -311,6 +315,43 @@ and the directional *values* of `text-align`, `float`, `clear`, `caption-side`, 
 Values containing `var()`, `calc()`, `!important` or a top-level `border-radius` `/` slash are
 left untouched rather than mis-parsed. Other functions such as `rgb()`, `hsl()` and `env()` are
 kept intact and split only at top-level whitespace.
+
+### Inline scroll helpers
+
+In RTL, modern browsers start a horizontal scroller at `scrollLeft === 0` on the inline-start
+(right) edge and scroll into negative values toward the inline-end (left) edge — breaking carousel
+prev/next controls, "at end" checks and `scrollTo({ left })`. These pure helpers (no Vue import)
+normalise inline scroll coordinates to a single `0..max` scale in both directions, reading
+`getComputedStyle(el).direction` so `dir` islands, `v-rtl` and `<RtlProvider>` all resolve
+automatically. Horizontal writing modes (`writing-mode: horizontal-tb`) only.
+
+```ts
+import {
+  getScrollInline,
+  getScrollInlineMax,
+  scrollByInline,
+  scrollInlineEdges,
+  scrollToInline,
+} from 'vue-rtl-kit'
+
+getScrollInline(el)                       // distance from inline-start in px, clamped 0..max
+getScrollInlineMax(el)                    // max(0, scrollWidth - clientWidth)
+scrollToInline(el, 240, { behavior: 'smooth' })
+scrollByInline(el, 240, { behavior: 'smooth' }) // positive moves toward inline-end
+scrollInlineEdges(el, 1)                  // { atStart, atEnd }
+```
+
+| Function | Description |
+| --- | --- |
+| `getScrollInline(el)` | Distance scrolled from the inline-start edge in px, clamped to `0..max`, identical in LTR and RTL. |
+| `getScrollInlineMax(el)` | Maximum scrollable inline distance: `max(0, scrollWidth - clientWidth)`. |
+| `scrollToInline(el, offset, options?)` | Clamps `offset` to `0..max` and calls `el.scrollTo` with the physical `left` (`-clamped` in RTL, `+clamped` in LTR). |
+| `scrollByInline(el, delta, options?)` | Scrolls by signed inline `delta` (positive moves toward inline-end, negative toward inline-start), clamped to `0..max`. |
+| `scrollInlineEdges(el, tolerance?)` | Returns `{ atStart, atEnd }` within `tolerance` px (default `1` to absorb subpixel rounding). |
+
+No overflow returns `0` and `{ atStart: true, atEnd: true }`. Passing `null`, running on the
+server, or passing `NaN`/`Infinity` returns `0` or acts as a no-op and never throws. For reactive
+Vue components, use `useInlineScroll(target)`.
 
 ### Formatting
 
@@ -475,6 +516,7 @@ Everything is native platform behaviour, no polyfills:
 | Flow-relative corner radii (`border-start-start-radius`) | 89 | 66 | 15 |
 | `:dir()` (own-direction utilities) | 120 | 49 | 16.4 |
 | Independent `scale` property | 104 | 72 | 14.1 |
+| Inline scroll (negative RTL `scrollLeft`, `ResizeObserver`) | 85 | 69 | 15.4 |
 | `Intl` numbering systems (`-u-nu-`) | 24 | 29 | 10 |
 
 Own-direction utilities and transform-preserving mirroring require Chrome 120+, Firefox 72+,
