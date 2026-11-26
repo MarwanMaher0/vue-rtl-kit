@@ -7,6 +7,7 @@ import {
   formatDate,
   formatList,
   formatNumber,
+  formatPlural,
   formatRelativeTime,
   formatterCacheStats,
   resetFormatterCaches,
@@ -357,6 +358,161 @@ describe('formatRelativeTime', () => {
   })
 })
 
+describe('formatPlural', () => {
+  const files = {
+    zero: 'لا ملفات',
+    one: 'ملف واحد',
+    two: 'ملفان',
+    few: '{count} ملفات',
+    many: '{count} ملفًا',
+    other: '{count} ملف',
+  }
+  const days = { one: '{count} day', other: '{count} days' }
+
+  it.each([
+    { count: 0, expected: 'لا ملفات' },
+    { count: 1, expected: 'ملف واحد' },
+    { count: 2, expected: 'ملفان' },
+    { count: 3, expected: '3 ملفات' },
+    { count: 10, expected: '10 ملفات' },
+    { count: 11, expected: '11 ملفًا' },
+    { count: 99, expected: '99 ملفًا' },
+    { count: 100, expected: '100 ملف' },
+    { count: 101, expected: '101 ملف' },
+  ])('selects the Arabic plural category for $count', ({ count, expected }) => {
+    expect(formatPlural(count, files, { locale: 'ar', numberingSystem: 'latn' })).toBe(expected)
+    expect(new Intl.PluralRules('ar').select(count)).toBe(
+      count === 0 ? 'zero' : count === 1 ? 'one' : count === 2 ? 'two' : count <= 10 ? 'few' : count <= 99 ? 'many' : 'other',
+    )
+  })
+
+  it('uses Arabic-Indic digits inside the Arabic form by default', () => {
+    expect(formatPlural(3, files, { locale: 'ar-EG' })).toBe('٣ ملفات')
+    expect(formatPlural(11, files, { locale: 'ar-EG' })).toBe('١١ ملفًا')
+    expect(formatPlural(100, files, { locale: 'ar-EG' })).toBe('١٠٠ ملف')
+  })
+
+  it('selects the Hebrew two category for 2', () => {
+    const heDays = { one: 'יום אחד', two: 'יומיים', other: '{count} ימים' }
+    expect(formatPlural(1, heDays, { locale: 'he' })).toBe('יום אחד')
+    expect(formatPlural(2, heDays, { locale: 'he' })).toBe('יומיים')
+    expect(formatPlural(3, heDays, { locale: 'he' })).toBe('3 ימים')
+    expect(formatPlural(11, heDays, { locale: 'he' })).toBe('11 ימים')
+  })
+
+  it('selects the Persian one category for 0 and 1', () => {
+    const faFiles = { one: '{count} فایل', other: '{count} فایل‌ها' }
+    expect(formatPlural(0, faFiles, { locale: 'fa' })).toBe('۰ فایل')
+    expect(formatPlural(1, faFiles, { locale: 'fa' })).toBe('۱ فایل')
+    expect(formatPlural(2, faFiles, { locale: 'fa' })).toBe('۲ فایل‌ها')
+  })
+
+  it('defaults to English cardinal rules', () => {
+    expect(formatPlural(1, days)).toBe('1 day')
+    expect(formatPlural(0, days)).toBe('0 days')
+    expect(formatPlural(2, days)).toBe('2 days')
+    expect(formatPlural(11, days)).toBe('11 days')
+    expect(formatPlural(1, days, { locale: 'en', type: 'cardinal' })).toBe('1 day')
+  })
+
+  it.each([
+    { count: 1, expected: '1st' },
+    { count: 2, expected: '2nd' },
+    { count: 3, expected: '3rd' },
+    { count: 4, expected: '4th' },
+    { count: 11, expected: '11th' },
+    { count: 21, expected: '21st' },
+    { count: 103, expected: '103rd' },
+  ])('supports English ordinal rules for $count', ({ count, expected }) => {
+    const ordinal = { one: '{count}st', two: '{count}nd', few: '{count}rd', other: '{count}th' }
+    expect(formatPlural(count, ordinal, { locale: 'en', type: 'ordinal' })).toBe(expected)
+  })
+
+  it('applies the numbering system to every {count} and falls back to latn for invalid ones', () => {
+    expect(formatPlural(1234, files, { locale: 'ar-EG', numberingSystem: 'latn' })).toBe('1,234 ملفًا')
+    expect(formatPlural(3, files, { locale: 'ar-EG', numberingSystem: 'invalid' })).toBe('3 ملفات')
+    expect(formatPlural(3, days, { locale: 'en', numberingSystem: 'arab' })).toBe('٣ days')
+  })
+
+  it('isolates the formatted number inside the form', () => {
+    expect(formatPlural(3, files, { locale: 'ar-EG', isolate: true })).toBe(`${FSI}٣${PDI} ملفات`)
+    expect(formatPlural(3, days, { locale: 'en', isolate: 'ltr' })).toBe(`${LRI}3${PDI} days`)
+    expect(formatPlural(3, files, { locale: 'ar-EG', isolate: 'rtl' })).toBe(`${RLI}٣${PDI} ملفات`)
+  })
+
+  it('falls back to other when the selected category has no form', () => {
+    expect(formatPlural(11, { other: '{count} ملف' }, { locale: 'ar', numberingSystem: 'latn' })).toBe('11 ملف')
+    expect(formatPlural(0, { other: '{count} ملف' }, { locale: 'ar', numberingSystem: 'latn' })).toBe('0 ملف')
+    expect(formatPlural(2, { one: '{count} file', other: '{count} files' }, { locale: 'he' })).toBe('2 files')
+  })
+
+  it.each([
+    { count: NaN, expected: 'NaN days' },
+    { count: Infinity, expected: '∞ days' },
+    { count: -Infinity, expected: '-∞ days' },
+    { count: 1.5, expected: '1.5 days' },
+  ])('uses the rules result for $count without throwing', ({ count, expected }) => {
+    expect(() => formatPlural(count, days)).not.toThrow()
+    expect(formatPlural(count, days)).toBe(expected)
+  })
+
+  it.each([
+    { count: -1, expected: '-1 day' },
+    { count: -2, expected: '-2 days' },
+  ])('uses the rules result for negative count $count in English', ({ count, expected }) => {
+    expect(formatPlural(count, days)).toBe(expected)
+  })
+
+  it.each([
+    { count: -1, expected: 'ملف واحد' },
+    { count: -2, expected: 'ملفان' },
+    // Intl.NumberFormat puts an LRM before the minus sign in Arabic locales.
+    { count: -3, expected: '\u200E-3 ملفات' },
+    { count: -11, expected: '\u200E-11 ملفًا' },
+    { count: 1.5, expected: '1.5 ملف' },
+  ])('uses the rules result for negative and fractional count $count in Arabic', ({ count, expected }) => {
+    expect(formatPlural(count, files, { locale: 'ar', numberingSystem: 'latn' })).toBe(expected)
+  })
+
+  it('falls back from invalid locale tags like the other formatters', () => {
+    expect(formatPlural(3, files, { locale: 'ar_EG' })).toBe(formatPlural(3, files, { locale: 'ar-EG' }))
+    expect(formatPlural(11, files, { locale: 'ar--EG', numberingSystem: 'latn' })).toBe('11 ملفًا')
+    expect(formatPlural(2, days, { locale: '123-en' })).toBe('2 days')
+    expect(formatPlural(1, days, { locale: '' })).toBe('1 day')
+    expect(formatPlural(1, days, { locale: '@' })).toBe('1 day')
+  })
+
+  it('returns an empty string without Intl.PluralRules', () => {
+    const descriptor = Object.getOwnPropertyDescriptor(Intl, 'PluralRules')
+    delete (Intl as { PluralRules?: unknown }).PluralRules
+    resetFormatterCaches()
+    try {
+      expect('PluralRules' in Intl).toBe(false)
+      expect(() => formatPlural(11, files, { locale: 'ar' })).not.toThrow()
+      expect(formatPlural(11, files, { locale: 'ar' })).toBe('')
+      expect(formatPlural(1, days)).toBe('')
+    }
+    finally {
+      if (descriptor) Object.defineProperty(Intl, 'PluralRules', descriptor)
+      resetFormatterCaches()
+    }
+    expect(formatPlural(11, files, { locale: 'ar', numberingSystem: 'latn' })).toBe('11 ملفًا')
+  })
+
+  it('returns an empty string for an empty forms.other', () => {
+    expect(formatPlural(1, { other: '' })).toBe('')
+    expect(formatPlural(11, { many: '{count} ملفًا', other: '' }, { locale: 'ar' })).toBe('')
+    expect(formatPlural(1, { one: '{count} day', other: '' })).toBe('')
+  })
+
+  it('replaces every {count} and leaves text without {count} as is', () => {
+    expect(formatPlural(3, { other: '{count} من {count}' }, { locale: 'en' })).toBe('3 من 3')
+    expect(formatPlural(5, { other: 'plusieurs fichiers' }, { locale: 'fr' })).toBe('plusieurs fichiers')
+    expect(formatPlural(2, { other: '$& {count}' }, { locale: 'en' })).toBe('$& 2')
+    expect(formatPlural(0, { zero: 'لا ملفات', other: '{count} ملف' }, { locale: 'ar' })).toBe('لا ملفات')
+  })
+})
+
 describe('transliterateDigits', () => {
   it('converts to Arabic-Indic and back', () => {
     expect(transliterateDigits('طلب 4821', 'arab')).toBe('طلب ٤٨٢١')
@@ -423,6 +579,38 @@ describe('useFormat', () => {
     rtl.setLocale('en')
     await nextTick()
     expect(formatters.value.formatRelativeTime(-3, 'day')).toBe('3 days ago')
+    rtl.dispose()
+  })
+
+  it('binds formatPlural to the current locale and configured numbering system', async () => {
+    const files = {
+      zero: 'لا ملفات',
+      one: 'ملف واحد',
+      two: 'ملفان',
+      few: '{count} ملفات',
+      many: '{count} ملفًا',
+      other: '{count} ملف',
+    }
+    const days = { one: '{count} day', other: '{count} days' }
+    const { rtl, formatters } = setup({
+      locales: ['en', 'ar-EG'],
+      defaultLocale: 'en',
+      numberingSystem: { ar: 'latn' },
+    })
+    expect(formatters.value.formatPlural(1, days)).toBe('1 day')
+    expect(formatters.value.formatPlural(11, days)).toBe('11 days')
+
+    rtl.setLocale('ar-EG')
+    await nextTick()
+    expect(formatters.value.formatPlural(11, files)).toBe('11 ملفًا')
+    expect(formatters.value.formatPlural(3, files)).toBe('3 ملفات')
+    expect(formatters.value.formatPlural(3, files, { numberingSystem: 'arab' })).toBe('٣ ملفات')
+    expect(formatters.value.formatPlural(2, days, { locale: 'en' })).toBe('2 days')
+    expect(formatters.value.formatPlural(1, { other: '' })).toBe('')
+
+    rtl.setLocale('en')
+    await nextTick()
+    expect(formatters.value.formatPlural(1, days)).toBe('1 day')
     rtl.dispose()
   })
 
@@ -564,7 +752,7 @@ describe('useFormat', () => {
 describe('formatter caches', () => {
   // Intl.ListFormat and Intl.RelativeTimeFormat must be called with `new`, so
   // spy through a plain constructor function that forwards to the original.
-  const spyOnConstructor = <K extends 'ListFormat' | 'RelativeTimeFormat'>(name: K) => {
+  const spyOnConstructor = <K extends 'ListFormat' | 'RelativeTimeFormat' | 'PluralRules'>(name: K) => {
     const Original = Intl[name] as unknown as new (...args: unknown[]) => object
     return vi.spyOn(Intl, name).mockImplementation(function (...args: unknown[]) {
       return new Original(...args)
@@ -657,6 +845,31 @@ describe('formatter caches', () => {
     formatRelativeTime(1, 'day', { locale: keys[0]! })
     expect(ctor).toHaveBeenCalledTimes(1)
     expect(formatterCacheStats().relativeTime).toBe(FORMATTER_CACHE_LIMIT)
+    ctor.mockRestore()
+  })
+
+  it('bounds the Intl.PluralRules cache the same way and keys cardinal and ordinal apart', () => {
+    resetFormatterCaches()
+    const ctor = spyOnConstructor('PluralRules')
+    const days = { one: '{count} day', other: '{count} days' }
+    formatPlural(1, days, { locale: 'en' })
+    formatPlural(2, days, { locale: 'en' })
+    expect(ctor).toHaveBeenCalledTimes(1)
+
+    ctor.mockClear()
+    formatPlural(1, days, { locale: 'en', type: 'ordinal' })
+    expect(ctor).toHaveBeenCalledTimes(1)
+
+    ctor.mockClear()
+    const keys = Array.from({ length: FORMATTER_CACHE_LIMIT * 3 }, (_, i) => `en-x-pl${i}`)
+    for (const locale of keys) formatPlural(1, days, { locale })
+    expect(ctor).toHaveBeenCalledTimes(keys.length)
+
+    ctor.mockClear()
+    formatPlural(1, days, { locale: keys.at(-1)! })
+    expect(ctor).not.toHaveBeenCalled()
+    formatPlural(1, days, { locale: keys[0]! })
+    expect(ctor).toHaveBeenCalledTimes(1)
     ctor.mockRestore()
   })
 

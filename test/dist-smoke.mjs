@@ -20,7 +20,7 @@ function check(label, api) {
   for (const name of [
     'createRtl', 'splitBidiRuns', 'isolateRuns', 'logicalArrow', 'toLogicalStyle', 'toPhysicalStyle',
     'getScrollInline', 'getScrollInlineMax', 'scrollToInline', 'scrollByInline', 'scrollInlineEdges',
-    'useInlineScroll', 'formatNumber', 'directionOfLocale', 'foldSearchText', 'matchesSearch',
+    'useInlineScroll', 'formatNumber', 'formatPlural', 'directionOfLocale', 'foldSearchText', 'matchesSearch',
     'findSearchMatches', 'BidiText', 'RtlProvider', 'vRtl',
   ]) {
     assert.equal(typeof api[name], name === 'BidiText' || name === 'RtlProvider' || name === 'vRtl' ? 'object' : 'function', `${label}: missing export ${name}`)
@@ -40,6 +40,8 @@ function check(label, api) {
   assert.deepEqual(api.findSearchMatches('مرحبا مُحَمَّدٌ!', 'محمد'), [{ start: 6, end: 15 }], `${label}: findSearchMatches`)
   assert.deepEqual(api.toLogicalStyle({ marginLeft: '8px' }), { marginInlineStart: '8px' }, `${label}: toLogicalStyle`)
   assert.deepEqual(api.toPhysicalStyle({ paddingInline: '1px 2px' }, 'rtl'), { paddingRight: '1px', paddingLeft: '2px' }, `${label}: toPhysicalStyle`)
+  assert.equal(api.formatPlural(11, { many: '{count} ملفًا', other: '{count} ملف' }, { locale: 'ar', numberingSystem: 'latn' }), '11 ملفًا', `${label}: formatPlural ar many`)
+  assert.equal(api.formatPlural(2, { one: '{count} file', other: '{count} files' }), '2 files', `${label}: formatPlural en other`)
 
   const rtl = api.createRtl({ locales: { en: 'ltr', ar: 'rtl' }, defaultLocale: 'ar' })
   assert.deepEqual(rtl.htmlAttrs(), { dir: 'rtl', lang: 'ar' }, `${label}: htmlAttrs`)

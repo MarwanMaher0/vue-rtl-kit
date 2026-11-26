@@ -3,9 +3,11 @@ import { computed, hasInjectionContext, inject } from 'vue'
 import type {
   BoundFormatters,
   DateFormatOptions,
+  FormatPluralOptions,
   ListFormatOptions,
   NumberFormatOptions,
   ParseNumberOptions,
+  PluralForms,
   RelativeTimeFormatOptions,
 } from '../format'
 import {
@@ -13,6 +15,7 @@ import {
   formatDate,
   formatList,
   formatNumber,
+  formatPlural,
   formatRelativeTime,
   parseNumber,
 } from '../format'
@@ -22,8 +25,8 @@ import { useDirection } from './useDirection'
 
 /**
  * `formatNumber` / `formatDate` / `formatCurrency` / `formatList` /
- * `formatRelativeTime` / `parseNumber`, pre-bound to the current
- * locale and to the numbering system configured in `createRtl()`.
+ * `formatRelativeTime` / `formatPlural` / `parseNumber`, pre-bound to the
+ * current locale and to the numbering system configured in `createRtl()`.
  *
  * Saves threading `locale` through every call site, and means switching the app
  * from Arabic-Indic to Western digits is one option change rather than a
@@ -63,6 +66,8 @@ export function useFormat(): ComputedRef<BoundFormatters> {
         unit: Intl.RelativeTimeFormatUnit,
         options: RelativeTimeFormatOptions = {},
       ) => formatRelativeTime(value, unit, { ...defaults, ...options }),
+      formatPlural: (count: number, forms: PluralForms, options: FormatPluralOptions = {}) =>
+        formatPlural(count, forms, { ...defaults, ...options }),
       parseNumber: (text: string, options: ParseNumberOptions = {}) =>
         parseNumber(text, { ...defaults, ...options }),
     }

@@ -26,6 +26,7 @@ import {
   scrollToInline,
 } from '../src/scroll'
 import { findSearchMatches, foldSearchText, matchesSearch } from '../src/search'
+import { formatPlural } from '../src/format'
 
 describe('SSR environment', () => {
   it('reports a server environment', () => {
@@ -254,5 +255,42 @@ describe('SSR environment', () => {
       }),
     )
     expect(await renderToString(app)).toBe('<p dir="rtl">مرحبا <mark>مُحَمَّدٌ</mark> في القاهرة ١٢٣</p>')
+  })
+
+  it('selects Arabic plural categories on the server with no window or document', async () => {
+    expect(typeof window).toBe('undefined')
+    expect(typeof document).toBe('undefined')
+
+    const files = {
+      zero: 'لا ملفات',
+      one: 'ملف واحد',
+      two: 'ملفان',
+      few: '{count} ملفات',
+      many: '{count} ملفًا',
+      other: '{count} ملف',
+    }
+    expect(formatPlural(0, files, { locale: 'ar' })).toBe('لا ملفات')
+    expect(formatPlural(1, files, { locale: 'ar' })).toBe('ملف واحد')
+    expect(formatPlural(2, files, { locale: 'ar' })).toBe('ملفان')
+    expect(formatPlural(3, files, { locale: 'ar' })).toBe('3 ملفات')
+    expect(formatPlural(11, files, { locale: 'ar' })).toBe('11 ملفًا')
+    expect(formatPlural(100, files, { locale: 'ar' })).toBe('100 ملف')
+    expect(formatPlural(3, files, { locale: 'ar-EG' })).toBe('٣ ملفات')
+    expect(formatPlural(NaN, files, { locale: 'en' })).toBe('NaN ملف')
+    expect(formatPlural(1, { other: '' }, { locale: 'ar' })).toBe('')
+
+    const rtl = createRtl({ locales: { en: 'ltr', ar: 'rtl' }, defaultLocale: 'ar', numberingSystem: 'latn' })
+    const app = createSSRApp(
+      defineComponent({
+        setup() {
+          const { dir } = useDirection()
+          const fmt = useFormat()
+          return () => h('p', { dir: dir.value }, fmt.value.formatPlural(11, files))
+        },
+      }),
+    )
+    app.use(rtl)
+    expect(await renderToString(app)).toBe('<p dir="rtl">11 ملفًا</p>')
+    rtl.dispose()
   })
 })

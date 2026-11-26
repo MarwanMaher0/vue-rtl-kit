@@ -28,6 +28,24 @@ export type DateFormatOptions = FormatOptionsBase & Intl.DateTimeFormatOptions
 export type ListFormatOptions = FormatOptionsBase & Intl.ListFormatOptions
 export type RelativeTimeFormatOptions = FormatOptionsBase & Intl.RelativeTimeFormatOptions
 
+/** Options for {@link formatPlural}. */
+export type FormatPluralOptions = FormatOptionsBase & {
+  /** `'cardinal'` (default) counts things; `'ordinal'` ranks them (1st, 2nd, …). */
+  type?: 'cardinal' | 'ordinal'
+}
+
+/**
+ * The message forms {@link formatPlural} chooses from, keyed by CLDR plural
+ * category. Arabic uses all six (`zero`, `one`, `two`, `few`, `many`, `other`);
+ * most languages use fewer. Missing categories fall back to `other`, which is
+ * the only required form. Every `{count}` in the chosen form is replaced with
+ * the formatted number.
+ */
+export interface PluralForms extends Partial<Record<Intl.LDMLPluralRule, string>> {
+  /** Fallback form, used whenever the selected category has no form of its own. */
+  other: string
+}
+
 /** Options for {@link parseNumber}. */
 export interface ParseNumberOptions {
   /** BCP-47 locale tag the text is written in. Defaults to `'en'`. */
@@ -135,6 +153,7 @@ const numberFormatters = /*#__PURE__*/ new LruCache<Intl.NumberFormat>(FORMATTER
 const dateFormatters = /*#__PURE__*/ new LruCache<Intl.DateTimeFormat>(FORMATTER_CACHE_LIMIT)
 const listFormatters = /*#__PURE__*/ new LruCache<Intl.ListFormat>(FORMATTER_CACHE_LIMIT)
 const relativeTimeFormatters = /*#__PURE__*/ new LruCache<Intl.RelativeTimeFormat>(FORMATTER_CACHE_LIMIT)
+const pluralRules = /*#__PURE__*/ new LruCache<Intl.PluralRules>(FORMATTER_CACHE_LIMIT)
 
 /** What `parseNumber()` needs to know about a locale and numbering system. */
 interface NumberSymbols {
@@ -177,6 +196,7 @@ export function resetFormatterCaches(): void {
   dateFormatters.clear()
   listFormatters.clear()
   relativeTimeFormatters.clear()
+  pluralRules.clear()
   numberSymbols.clear()
   supportedNumberingSystems = undefined
 }
@@ -326,6 +346,57 @@ export function formatRelativeTime(
 }
 
 /**
+ * Pick the plural form for `count` with `Intl.PluralRules` and fill in its
+ * `{count}` placeholders.
+ *
+ * `n === 1 ? singular : plural` is wrong for Arabic, which has six plural
+ * categories: `0` is `zero`, `1` `one`, `2` `two`, `3`–`10` `few`, `11`–`99`
+ * `many`, and `100` `other`. The category comes from the locale's CLDR rules,
+ * not from a hand-written range check, so Hebrew `two`, Persian `one` for `0`,
+ * and English ordinals (`1st`, `2nd`, `3rd`) work too.
+ *
+ * The form for the selected category is used, falling back to `forms.other`
+ * when that category has no form. Every `{count}` in the chosen form is
+ * replaced with `formatNumber(count, options)`, so `numberingSystem` and
+ * `isolate` apply to the number inside the sentence. Text without `{count}`
+ * is returned as is.
+ *
+ * Non-finite (`NaN`, `Infinity`), negative and fractional counts select the
+ * category `Intl.PluralRules` reports (usually `other`) without throwing.
+ * Returns an empty string when `forms.other` is empty or the runtime has no
+ * `Intl.PluralRules`.
+ *
+ * @example
+ * const files = { zero: 'لا ملفات', one: 'ملف واحد', two: 'ملفان', few: '{count} ملفات', many: '{count} ملفًا', other: '{count} ملف' }
+ * formatPlural(11, files, { locale: 'ar' }) // '11 ملفًا' — not '11 ملفات'
+ * formatPlural(3, files, { locale: 'ar-EG' }) // '٣ ملفات'
+ * formatPlural(2, { one: '{count} day', other: '{count} days' }) // '2 days'
+ * formatPlural(3, { few: '{count}rd', other: '{count}th' }, { type: 'ordinal' }) // '3rd'
+ */
+export function formatPlural(
+  count: number,
+  forms: PluralForms,
+  options: FormatPluralOptions = {},
+): string {
+  const fallback = forms?.other
+  if (!fallback || typeof Intl.PluralRules !== 'function') return ''
+  const { locale = 'en', numberingSystem, intl } = split(options)
+  const tag = withNumberingSystem(locale, numberingSystem)
+  const key = cacheKey(tag, intl)
+  let rules = pluralRules.get(key)
+  if (!rules) {
+    rules = makeFormatter(locale, numberingSystem, intl, Intl.PluralRules)
+    pluralRules.set(key, rules)
+  }
+  const form = forms[rules.select(count)] ?? fallback
+  // `type` selects plural rules, not number formatting; keep it out of the
+  // NumberFormat options. A replacer function keeps `$` in a formatted number
+  // (a currency symbol) from being read as a replacement pattern.
+  const { type: _type, ...numberOptions } = options
+  return form.replace(/\{count\}/g, () => formatNumber(count, numberOptions))
+}
+
+/**
  * Convert the digits in a string between numbering systems without touching
  * anything else.
  *
@@ -458,6 +529,8 @@ export interface BoundFormatters {
     unit: Intl.RelativeTimeFormatUnit,
     options?: RelativeTimeFormatOptions,
   ) => string
+  /** `formatPlural()` for this locale and numbering system: picks the CLDR plural form and fills in `{count}`. */
+  formatPlural: (count: number, forms: PluralForms, options?: FormatPluralOptions) => string
   /** `parseNumber()` for this locale and numbering system: reads back what `formatNumber` writes. */
   parseNumber: (text: string, options?: ParseNumberOptions) => number
 }

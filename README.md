@@ -102,13 +102,13 @@ budgets are set to their measured byte counts plus fixed `+256 B` (`0.25 kB`) ra
 
 | Entry point | Artifact | Raw (current / budget) | Gzip (current / budget) |
 | --- | --- | --- | --- |
-| `vue-rtl-kit` (ESM) | `dist/vue-rtl-kit.js` | 36.87 kB / ≤ 37.12 kB | 11.91 kB / ≤ 12.01 kB |
-| `vue-rtl-kit` (CJS) | `dist/vue-rtl-kit.cjs` | 26.86 kB / ≤ 27.11 kB | 10.04 kB / ≤ 10.14 kB |
+| `vue-rtl-kit` (ESM) | `dist/vue-rtl-kit.js` | 37.41 kB / ≤ 37.66 kB | 12.04 kB / ≤ 12.14 kB |
+| `vue-rtl-kit` (CJS) | `dist/vue-rtl-kit.cjs` | 27.26 kB / ≤ 27.51 kB | 10.17 kB / ≤ 10.27 kB |
 | `vue-rtl-kit/nuxt` | `dist/nuxt/module.js` | 3.08 kB / ≤ 3.25 kB | 1.12 kB / ≤ 1.50 kB |
 | `vue-rtl-kit/nuxt` (runtime plugin) | `dist/nuxt/runtime/plugin.js` | 2.77 kB / ≤ 3.00 kB | 1.02 kB / ≤ 1.20 kB |
 | `vue-rtl-kit/styles.css` | `dist/styles.css` | 7.10 kB / ≤ 8.00 kB | 1.91 kB / ≤ 2.50 kB |
 
-`sideEffects` lists only `*.css`, so a bundler can drop unused helpers. `npm run check:treeshake` bundles each import on its own against `dist/vue-rtl-kit.js` (Rollup, `vue` external, esbuild minify). Vue stays external, so Rollup would otherwise keep a bare `import 'vue'`; the check declares `vue` side-effect free with `treeshake.moduleSideEffects` (the same assumption a consumer bundler makes for an unused Vue import) and fails if `chunk.imports` still includes `vue`. It also fails if `{ isolateRuns }`, `{ toLogicalStyle }`, `{ logicalArrow }`, `{ getScrollInline }`, `{ scrollToInline }`, `{ directionOfLocale }` or `{ findSearchMatches }` exceeds 2 kB gzip, or if `{ formatNumber }` still contains component or directive code:
+`sideEffects` lists only `*.css`, so a bundler can drop unused helpers. `npm run check:treeshake` bundles each import on its own against `dist/vue-rtl-kit.js` (Rollup, `vue` external, esbuild minify). Vue stays external, so Rollup would otherwise keep a bare `import 'vue'`; the check declares `vue` side-effect free with `treeshake.moduleSideEffects` (the same assumption a consumer bundler makes for an unused Vue import) and fails if `chunk.imports` still includes `vue`. It also fails if `{ isolateRuns }`, `{ toLogicalStyle }`, `{ logicalArrow }`, `{ getScrollInline }`, `{ scrollToInline }`, `{ directionOfLocale }`, `{ findSearchMatches }` or `{ formatPlural }` exceeds 2 kB gzip, or if `{ formatNumber }` still contains component or directive code:
 
 | Import | Gzip (current / budget) | Must not include |
 | --- | --- | --- |
@@ -119,6 +119,7 @@ budgets are set to their measured byte counts plus fixed `+256 B` (`0.25 kB`) ra
 | `{ scrollToInline }` | 0.41 kB / ≤ 2.00 kB | `vue` |
 | `{ directionOfLocale }` | 0.62 kB / ≤ 2.00 kB | `vue` |
 | `{ findSearchMatches }` | 0.82 kB / ≤ 2.00 kB | `vue` |
+| `{ formatPlural }` | 0.91 kB / ≤ 2.00 kB | `vue` |
 | `{ formatNumber }` | 0.75 kB | components, directives |
 
 ## Quickstart — Vue
@@ -246,7 +247,7 @@ excluded from `ModuleOptions`.
 | `useDirection()` | `DirectionContext` | `dir`, `isRtl`, `isLtr`, `locale`, `startSide`, `endSide`, `sign`, `setDirection()`, `toggleDirection()`, `setLocale()`, `htmlAttrs()`. Resolves to the nearest `<RtlProvider>`, then the app store, then a detached fallback — it never throws. |
 | `useRtl()` | `RtlInstance` | The app-level store, skipping any `<RtlProvider>`. Throws if the plugin is missing. |
 | `useLogicalStyles()` | see below | `toLogical()`, `toPhysical()`, `property()`, `mirror()`, `arrow()`, plus `startSide`, `endSide`, `sign`. |
-| `useFormat()` | `ComputedRef<BoundFormatters>` | `formatNumber` / `formatCurrency` / `formatDate` / `formatList` / `formatRelativeTime` / `parseNumber` bound to the current locale and numbering system; they follow `setLocale()` and the `numberingSystem` configured in `createRtl()`. |
+| `useFormat()` | `ComputedRef<BoundFormatters>` | `formatNumber` / `formatCurrency` / `formatDate` / `formatList` / `formatRelativeTime` / `formatPlural` / `parseNumber` bound to the current locale and numbering system; they follow `setLocale()` and the `numberingSystem` configured in `createRtl()`. |
 | `useInlineScroll(target, options?)` | `UseInlineScrollReturn` | Readonly `offset`, `max`, `atStart`, `atEnd` refs plus `scrollTo()`, `scrollBy()`, `scrollToStart()`, `scrollToEnd()`. Uses a passive `scroll` listener and `ResizeObserver`, re-reads on `target` and `useDirection().dir` changes, cleans up on dispose, and is SSR-safe. Horizontal writing modes only. |
 
 ### Components
@@ -362,6 +363,7 @@ import {
   formatDate,
   formatList,
   formatNumber,
+  formatPlural,
   formatRelativeTime,
   parseNumber,
 } from 'vue-rtl-kit'
@@ -374,6 +376,20 @@ formatList(['Ahmed', 'Sara', 'Omar'], { locale: 'ar' })              // 'Ahmed �
 formatList(['PDF', 'CSV'], { locale: 'en', type: 'disjunction' })    // 'PDF or CSV'
 formatRelativeTime(-3, 'day', { locale: 'ar-EG' })                   // 'قبل ٣ أيام'
 formatRelativeTime(-3, 'day', { locale: 'ar-EG', numberingSystem: 'latn' }) // 'قبل 3 أيام'
+
+const files = {
+  zero: 'لا ملفات',
+  one: 'ملف واحد',
+  two: 'ملفان',
+  few: '{count} ملفات',
+  many: '{count} ملفًا',
+  other: '{count} ملف',
+}
+formatPlural(11, files, { locale: 'ar' })                            // '11 ملفًا' — not '11 ملفات'
+formatPlural(3, files, { locale: 'ar-EG' })                          // '٣ ملفات'
+formatPlural(2, { one: '{count} day', other: '{count} days' })       // '2 days'
+formatPlural(3, { few: '{count}rd', other: '{count}th' }, { type: 'ordinal' }) // '3rd'
+
 parseNumber('١٬٢٣٤٫٥', { locale: 'ar-EG' })                          // 1234.5
 parseNumber('1.234,5', { locale: 'de' })                             // 1234.5
 parseNumber('12abc')                                                 // NaN
@@ -394,6 +410,16 @@ both take the same `locale`, `numberingSystem` and `isolate` options as the othe
 name cannot swap places with its Arabic neighbours — and then isolates the whole list as requested.
 `formatRelativeTime` returns `''` for a non-finite value, as `formatDate` does for an invalid date.
 Each formatter kind keeps its own LRU cache of `Intl` instances (32 entries).
+
+`formatPlural(count, forms, options)` picks the plural form with `Intl.PluralRules` instead of
+`n === 1 ? a : b`, which is wrong for Arabic's six categories: `0` is `zero`, `1` `one`, `2` `two`,
+`3`–`10` `few`, `11`–`99` `many`, `100` `other`. `forms` is a
+`Partial<Record<'zero' | 'one' | 'two' | 'few' | 'many' | 'other', string>>` with `other` required;
+a missing category falls back to `other`. Every `{count}` in the chosen form is replaced with
+`formatNumber(count, options)`, so `numberingSystem` and `isolate` keep working inside the sentence.
+`options` adds `type: 'cardinal' | 'ordinal'` (English `1st` / `2nd` / `3rd`) to the shared options.
+`NaN`, `Infinity`, negative and fractional counts select the category the rules report without
+throwing; an empty `forms.other` or a runtime without `Intl.PluralRules` returns `''`.
 
 `parseNumber(text, options)` is the inverse of `formatNumber` for form input: `Number()` returns
 `NaN` for what `formatNumber` writes in `ar-EG`, `fa-IR`, `he`, `de` or `fr`. It takes `locale`

@@ -16,7 +16,7 @@ import type { Direction } from 'vue-rtl-kit'
 | `useDirection` | `() => DirectionContext` | الحصول على أقرب نطاق، أو المخزن الجذري، أو القيمة الاحتياطية المنفصلة. |
 | `useRtl` | `() => RtlInstance` | الحصول على المخزن الجذري؛ ويُطلق خطأً عند عدم وجود الإضافة. |
 | `useLogicalStyles` | `() => UseLogicalStylesReturn` | أدوات مساعدة للأنماط المنطقية المرتبطة بالاتجاه. |
-| `useFormat` | `() => ComputedRef<BoundFormatters>` | أدوات تنسيق الأرقام والعملات والتواريخ والقوائم والأزمنة النسبية المرتبطة باللغة، ومعها `parseNumber`. |
+| `useFormat` | `() => ComputedRef<BoundFormatters>` | أدوات تنسيق الأرقام والعملات والتواريخ والقوائم والأزمنة النسبية وصيغ الجمع المرتبطة باللغة، ومعها `parseNumber`. |
 | `useInlineScroll` | `(target: MaybeRefOrGetter<Element \| null \| undefined>, options?: UseInlineScrollOptions) => UseInlineScrollReturn` | حالة التمرير السطري المنطقي وأوامر التحكم فيه في LTR وRTL، وآمنة مع SSR. |
 
 راجع [createRtl](/ar/guide/create-rtl) و[useDirection](/ar/guide/use-direction) و[useLogicalStyles](/ar/guide/use-logical-styles) (بما في ذلك [التمرير السطري](/ar/guide/use-logical-styles#inline-scrolling)) و[useFormat](/ar/guide/use-format) للاطلاع على أمثلة.
@@ -173,6 +173,7 @@ findSearchMatches('مرحبا مُحَمَّدٌ!', 'محمد') // [{ start: 6, 
 | `formatDate` | `(value: Date \| number \| string, options?: DateFormatOptions) => string` | التنسيق باستخدام `Intl.DateTimeFormat`. |
 | `formatList` | `(items: Iterable<string>, options?: ListFormatOptions) => string` | ضم العناصر باستخدام `Intl.ListFormat`؛ ويعزل `isolate` كل عنصر ثم النتيجة كاملة. |
 | `formatRelativeTime` | `(value: number, unit: Intl.RelativeTimeFormatUnit, options?: RelativeTimeFormatOptions) => string` | التنسيق باستخدام `Intl.RelativeTimeFormat`؛ ويعيد `''` للقيم غير المنتهية. |
+| `formatPlural` | `(count: number, forms: PluralForms, options?: FormatPluralOptions) => string` | اختيار صيغة الجمع وفق CLDR عبر `Intl.PluralRules` واستبدال كل `{count}` بقيمة `formatNumber(count, options)`؛ وتعود الفئات غير المزوّدة بصيغة إلى `forms.other`. يعيد `''` حين تكون `forms.other` فارغة أو حين لا تتوفر `Intl.PluralRules`. |
 | `parseNumber` | `(text: string, options?: ParseNumberOptions) => number` | معكوس `formatNumber`: قراءة عدد مكتوب بأرقام اللغة وفواصلها. يعيد `NaN` للنص الفارغ أو غير الصالح ولا يرمي استثناء. |
 | `transliterateDigits` | `(text: string, to: 'latn' \| 'arab' \| 'arabext') => string` | تحويل الأرقام فقط في سلسلة نصية موجودة. |
 | `withNumberingSystem` | `(locale: string, numberingSystem?: NumberingSystem) => string` | إضافة امتداد اللغة `-u-nu-` في Unicode. |
@@ -182,6 +183,7 @@ import {
   formatCurrency,
   formatList,
   formatNumber,
+  formatPlural,
   formatRelativeTime,
   parseNumber,
   transliterateDigits,
@@ -191,10 +193,14 @@ formatNumber(1234.5, { locale: 'ar-EG', numberingSystem: 'latn' })
 formatCurrency(2500, 'EGP', { locale: 'ar-EG', isolate: true })
 formatList(['Ahmed', 'Sara', 'Omar'], { locale: 'ar', isolate: true })
 formatRelativeTime(-3, 'day', { locale: 'ar-EG', numberingSystem: 'latn' })
+formatPlural(11, { many: '{count} ملفًا', other: '{count} ملف' }, { locale: 'ar' }) // '11 ملفًا'
+formatPlural(3, { few: '{count}rd', other: '{count}th' }, { type: 'ordinal' }) // '3rd'
 parseNumber('١٬٢٣٤٫٥', { locale: 'ar-EG' }) // 1234.5
 parseNumber('12abc') // NaN
 transliterateDigits('طلب رقم 4821', 'arab')
 ```
+
+تختار `formatPlural` الفئة عبر `Intl.PluralRules` بحسب اللغة — وتستخدم العربية الفئات الست جميعها (`zero` و`one` و`two` و`few` و`many` و`other`)، فالعدد `11` فئته `many` لا `few` — ويحوّل `type: 'ordinal'` إلى قواعد الترتيب (الإنجليزية `1st` و`2nd` و`3rd`). وتختار القيم `NaN` و`Infinity` والسالبة والكسرية الفئة التي تعلنها القواعد دون رمي استثناء. راجع [صيغ الجمع](/ar/guide/use-format#plural-forms).
 
 تقرأ `parseNumber` فاصل المجموعات والفاصلة العشرية وإشارة السالب من `formatToParts()` في `Intl.NumberFormat` بحسب `locale` و`numberingSystem` (الافتراضي `'en'`)، وتخزّنها مؤقتًا لكل وسم لغة. تقبل الأرقام الغربية والعربية الهندية والفارسية، وتتجاهل علامات الاتجاه ومحارف العزل والمسافات، وتقبل `-` أو U+2212 إشارةً للسالب وعلامة `+` في أول النص، وتقسم على 100 عند وجود `%` أو `٪` في آخره. تُقبل فواصل المجموعات بين أرقام الجزء الصحيح فقط. راجع [تحليل الأرقام](/ar/guide/use-format#parsing-numbers) لمعرفة القواعد كاملة.
 
@@ -356,6 +362,7 @@ interface BoundFormatters {
     unit: Intl.RelativeTimeFormatUnit,
     options?: RelativeTimeFormatOptions,
   ) => string
+  formatPlural: (count: number, forms: PluralForms, options?: FormatPluralOptions) => string
   parseNumber: (text: string, options?: ParseNumberOptions) => number
 }
 ```
@@ -373,6 +380,11 @@ type NumberFormatOptions = FormatOptionsBase & Intl.NumberFormatOptions
 type DateFormatOptions = FormatOptionsBase & Intl.DateTimeFormatOptions
 type ListFormatOptions = FormatOptionsBase & Intl.ListFormatOptions
 type RelativeTimeFormatOptions = FormatOptionsBase & Intl.RelativeTimeFormatOptions
+type FormatPluralOptions = FormatOptionsBase & { type?: 'cardinal' | 'ordinal' }
+
+interface PluralForms extends Partial<Record<'zero' | 'one' | 'two' | 'few' | 'many' | 'other', string>> {
+  other: string
+}
 
 interface ParseNumberOptions {
   locale?: string

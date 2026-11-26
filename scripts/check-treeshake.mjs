@@ -26,6 +26,7 @@ const CASES = [
   { spec: 'scrollToInline', maxGzip: MAX_GZIP, forbidVue: true },
   { spec: 'directionOfLocale', maxGzip: MAX_GZIP, forbidVue: true },
   { spec: 'findSearchMatches', maxGzip: MAX_GZIP, forbidVue: true },
+  { spec: 'formatPlural', maxGzip: MAX_GZIP, forbidVue: true },
   { spec: 'formatNumber', forbidComponents: true },
 ]
 

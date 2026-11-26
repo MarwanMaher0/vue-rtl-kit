@@ -1,6 +1,6 @@
 # useFormat
 
-تربط `useFormat()` منسّقات الأرقام والعملات والتواريخ والقوائم والأزمنة النسبية، ومحلّل الأرقام `parseNumber()`، بلغة النطاق الحالي واتجاهه. كما تطبّق إعداد `numberingSystem` المضبوط على نسخة `createRtl()` الجذرية.
+تربط `useFormat()` منسّقات الأرقام والعملات والتواريخ والقوائم والأزمنة النسبية وصيغ الجمع، ومحلّل الأرقام `parseNumber()`، بلغة النطاق الحالي واتجاهه. كما تطبّق إعداد `numberingSystem` المضبوط على نسخة `createRtl()` الجذرية.
 
 ```ts
 function useFormat(): ComputedRef<BoundFormatters>
@@ -43,6 +43,7 @@ console.log(format.value.formatNumber(1234.5))
 | `formatDate` | `(value: Date \| number \| string, options?: DateFormatOptions) => string` |
 | `formatList` | `(items: Iterable<string>, options?: ListFormatOptions) => string` |
 | `formatRelativeTime` | `(value: number, unit: Intl.RelativeTimeFormatUnit, options?: RelativeTimeFormatOptions) => string` |
+| `formatPlural` | `(count: number, forms: PluralForms, options?: FormatPluralOptions) => string` |
 | `parseNumber` | `(text: string, options?: ParseNumberOptions) => number` |
 
 تتجاوز الخيارات المقدّمة في كل استدعاء اللغة ونظام الأرقام المرتبطين. ويُعاد حساب المنسّقات المرتبطة عندما يغيّر `setLocale()` لغة النطاق. يوسّع كل من `NumberFormatOptions` و`DateFormatOptions` و`ListFormatOptions` و`RelativeTimeFormatOptions` خيارات `Intl` المقابلة بما يلي:
@@ -78,6 +79,62 @@ formatRelativeTime(1, 'day', { locale: 'en', numeric: 'auto' }) // 'tomorrow'
 // Each item gets its own first-strong isolate, then the whole list is isolated.
 format.value.formatList(['Ahmed Ali', 'سارة'], { isolate: 'rtl' })
 ```
+
+## صيغ الجمع {#plural-forms}
+
+تختار `formatPlural()` صيغة الرسالة المناسبة للعدد عبر `Intl.PluralRules`، بدلًا من `n === 1 ? singular : plural` الخاطئة في العربية: فللعربية ست فئات جمع، والعدد `11` يأخذ فئة `many` لا `few`. وللعبرية فئة `two`، وتعدّ الفارسية `0` ضمن `one`، أما الترتيبية الإنجليزية (`1st` و`2nd` و`3rd`) فمجموعة قواعد مختلفة أيضًا.
+
+```ts
+function formatPlural(count: number, forms: PluralForms, options?: FormatPluralOptions): string
+
+interface PluralForms extends Partial<Record<'zero' | 'one' | 'two' | 'few' | 'many' | 'other', string>> {
+  other: string
+}
+
+type FormatPluralOptions = FormatOptionsBase & { type?: 'cardinal' | 'ordinal' }
+```
+
+يربط `forms` فئات الجمع في CLDR بنصوص الرسائل؛ و`other` هي الصيغة الوحيدة المطلوبة، وتعود إليها أي فئة لا صيغة خاصة بها. ويُستبدل كل `{count}` في الصيغة المختارة بقيمة `formatNumber(count, options)`، فيُطبَّق نظام الأرقام المرتبط ويلفّ `isolate` العدد داخل الجملة. أما النص الذي لا يحتوي `{count}` فيُعاد كما هو.
+
+| العدد (`ar`) | الفئة | صيغة المثال |
+| --- | --- | --- |
+| `0` | `zero` | `لا ملفات` |
+| `1` | `one` | `ملف واحد` |
+| `2` | `two` | `ملفان` |
+| `3`–`10` | `few` | `{count} ملفات` |
+| `11`–`99` | `many` | `{count} ملفًا` |
+| `100`، `101`، … | `other` | `{count} ملف` |
+
+```ts
+const files = {
+  zero: 'لا ملفات',
+  one: 'ملف واحد',
+  two: 'ملفان',
+  few: '{count} ملفات',
+  many: '{count} ملفًا',
+  other: '{count} ملف',
+}
+
+formatPlural(0, files, { locale: 'ar' }) // 'لا ملفات'
+formatPlural(1, files, { locale: 'ar' }) // 'ملف واحد'
+formatPlural(2, files, { locale: 'ar' }) // 'ملفان'
+formatPlural(3, files, { locale: 'ar' }) // '3 ملفات'
+formatPlural(11, files, { locale: 'ar' }) // '11 ملفًا'
+formatPlural(100, files, { locale: 'ar' }) // '100 ملف'
+formatPlural(3, files, { locale: 'ar-EG' }) // '٣ ملفات'
+formatPlural(11, files, { locale: 'ar-EG', numberingSystem: 'latn' }) // '11 ملفًا'
+
+// Missing categories fall back to other.
+formatPlural(11, { other: '{count} ملف' }, { locale: 'ar' }) // '11 ملف'
+
+// Ordinal rules: English 1st, 2nd, 3rd, 4th…
+formatPlural(3, { few: '{count}rd', other: '{count}th' }, { type: 'ordinal' }) // '3rd'
+
+// Bound to the scope locale and the configured numbering system.
+format.value.formatPlural(11, files)
+```
+
+تختار القيم `NaN` و`Infinity` والسالبة والكسرية الفئة التي تعلنها `Intl.PluralRules` (غالبًا `other`) دون رمي استثناء. وتعيد الدالة سلسلة فارغة حين تكون `forms.other` فارغة أو حين لا تتوفر `Intl.PluralRules` في بيئة التشغيل. وتُخزَّن نسخ القواعد مؤقتًا لكل لغة و`type` في ذاكرة LRU المحدودة نفسها الخاصة بسائر المنسّقات.
 
 ## تحليل الأرقام {#parsing-numbers}
 
@@ -149,7 +206,7 @@ const invalid = computed(() => text.value !== '' && Number.isNaN(amount.value))
 
 ## معالجة المدخلات غير الصالحة
 
-تُحوَّل الشرطات السفلية في وسوم اللغة إلى شرطات، لذا تُنسَّق `ar_EG` كما لو كانت `ar-EG`. إذا كان الوسم غير صالح، يحاول المنسّق استخدام وسم اللغة الفرعي ثم يعود إلى `en`. يُدرج نظام الأرقام قبل قسم الاستخدام الخاص `-x-`، لذا ينتج `en-x-foo` مع `numberingSystem: 'arab'` أرقامًا عربية، بينما تعود قيم `numberingSystem` غير المعروفة أو الفارغة بأمان إلى `'latn'`. وتعيد `formatDate()` سلسلة فارغة للتواريخ غير الصالحة بدلًا من رمي استثناء، وكذلك تفعل `formatRelativeTime()` مع القيم غير المنتهية مثل `NaN` و`Infinity`. تستخدم `parseNumber()` البدائل نفسها للغة ونظام الأرقام، وتعيد `NaN` للنص الذي لا تستطيع قراءته.
+تُحوَّل الشرطات السفلية في وسوم اللغة إلى شرطات، لذا تُنسَّق `ar_EG` كما لو كانت `ar-EG`. إذا كان الوسم غير صالح، يحاول المنسّق استخدام وسم اللغة الفرعي ثم يعود إلى `en`. يُدرج نظام الأرقام قبل قسم الاستخدام الخاص `-x-`، لذا ينتج `en-x-foo` مع `numberingSystem: 'arab'` أرقامًا عربية، بينما تعود قيم `numberingSystem` غير المعروفة أو الفارغة بأمان إلى `'latn'`. وتعيد `formatDate()` سلسلة فارغة للتواريخ غير الصالحة بدلًا من رمي استثناء، وكذلك تفعل `formatRelativeTime()` مع القيم غير المنتهية مثل `NaN` و`Infinity`. وتستخدم `formatPlural()` بدائل اللغة نفسها، وتعيد سلسلة فارغة حين تكون `forms.other` فارغة أو حين لا تتوفر `Intl.PluralRules`. تستخدم `parseNumber()` البدائل نفسها للغة ونظام الأرقام، وتعيد `NaN` للنص الذي لا تستطيع قراءته.
 
 ```ts
 formatNumber(12, { locale: 'ar_EG' }) // '١٢'
@@ -157,6 +214,7 @@ formatNumber(12, { locale: 'en-x-foo', numberingSystem: 'arab' }) // '١٢'
 formatNumber(12, { locale: 'ar-EG', numberingSystem: 'invalid' }) // '12'
 formatDate('not a date') // ''
 formatRelativeTime(NaN, 'day') // ''
+formatPlural(1, { other: '' }) // ''
 parseNumber('١٢', { locale: 'ar_EG' }) // 12
 parseNumber('not a number') // NaN
 ```
@@ -171,6 +229,7 @@ import {
   formatDate,
   formatList,
   formatNumber,
+  formatPlural,
   formatRelativeTime,
   parseNumber,
   transliterateDigits,
@@ -182,6 +241,7 @@ formatCurrency(2500, 'EGP', { locale: 'ar-EG' })
 formatDate('2024-05-12', { locale: 'ar-SA', calendar: 'islamic-umalqura' })
 formatList(['PDF', 'CSV'], { locale: 'en', type: 'disjunction' })
 formatRelativeTime(2, 'hour', { locale: 'ar-EG' })
+formatPlural(2, { one: '{count} يوم', other: '{count} أيام' }, { locale: 'ar' })
 parseNumber('١٬٢٣٤٫٥', { locale: 'ar-EG' })
 transliterateDigits('طلب رقم 4821', 'arab')
 withNumberingSystem('ar-EG', 'latn')

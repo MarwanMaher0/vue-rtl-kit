@@ -16,7 +16,7 @@ import type { Direction } from 'vue-rtl-kit'
 | `useDirection` | `() => DirectionContext` | Resolve the nearest scope, root store, or detached fallback. |
 | `useRtl` | `() => RtlInstance` | Resolve the root store; throws when the plugin is absent. |
 | `useLogicalStyles` | `() => UseLogicalStylesReturn` | Direction-bound logical style helpers. |
-| `useFormat` | `() => ComputedRef<BoundFormatters>` | Locale-bound number, currency, date, list, and relative-time formatters, plus `parseNumber`. |
+| `useFormat` | `() => ComputedRef<BoundFormatters>` | Locale-bound number, currency, date, list, relative-time, and plural formatters, plus `parseNumber`. |
 | `useInlineScroll` | `(target: MaybeRefOrGetter<Element \| null \| undefined>, options?: UseInlineScrollOptions) => UseInlineScrollReturn` | Logical inline scroll state and controls for horizontal scrollers in LTR and RTL; SSR-safe. |
 
 See [createRtl](/guide/create-rtl), [useDirection](/guide/use-direction), [useLogicalStyles](/guide/use-logical-styles) (including [Inline scrolling](/guide/use-logical-styles#inline-scrolling)), and [useFormat](/guide/use-format) for examples.
@@ -173,6 +173,7 @@ findSearchMatches('مرحبا مُحَمَّدٌ!', 'محمد') // [{ start: 6, 
 | `formatDate` | `(value: Date \| number \| string, options?: DateFormatOptions) => string` | Format with `Intl.DateTimeFormat`. |
 | `formatList` | `(items: Iterable<string>, options?: ListFormatOptions) => string` | Join items with `Intl.ListFormat`; `isolate` wraps each item and the result. |
 | `formatRelativeTime` | `(value: number, unit: Intl.RelativeTimeFormatUnit, options?: RelativeTimeFormatOptions) => string` | Format with `Intl.RelativeTimeFormat`; returns `''` for a non-finite value. |
+| `formatPlural` | `(count: number, forms: PluralForms, options?: FormatPluralOptions) => string` | Pick the CLDR plural form with `Intl.PluralRules` and replace every `{count}` with `formatNumber(count, options)`; missing categories fall back to `forms.other`. Returns `''` for an empty `forms.other` or when `Intl.PluralRules` is unavailable. |
 | `parseNumber` | `(text: string, options?: ParseNumberOptions) => number` | Inverse of `formatNumber`: read a number written with the locale's digits and separators. Returns `NaN` for empty or invalid text; never throws. |
 | `transliterateDigits` | `(text: string, to: 'latn' \| 'arab' \| 'arabext') => string` | Convert only digits in an existing string. |
 | `withNumberingSystem` | `(locale: string, numberingSystem?: NumberingSystem) => string` | Add a Unicode `-u-nu-` locale extension. |
@@ -182,6 +183,7 @@ import {
   formatCurrency,
   formatList,
   formatNumber,
+  formatPlural,
   formatRelativeTime,
   parseNumber,
   transliterateDigits,
@@ -191,10 +193,14 @@ formatNumber(1234.5, { locale: 'ar-EG', numberingSystem: 'latn' })
 formatCurrency(2500, 'EGP', { locale: 'ar-EG', isolate: true })
 formatList(['Ahmed', 'Sara', 'Omar'], { locale: 'ar', isolate: true })
 formatRelativeTime(-3, 'day', { locale: 'ar-EG', numberingSystem: 'latn' })
+formatPlural(11, { many: '{count} ملفًا', other: '{count} ملف' }, { locale: 'ar' }) // '11 ملفًا'
+formatPlural(3, { few: '{count}rd', other: '{count}th' }, { type: 'ordinal' }) // '3rd'
 parseNumber('١٬٢٣٤٫٥', { locale: 'ar-EG' }) // 1234.5
 parseNumber('12abc') // NaN
 transliterateDigits('طلب رقم 4821', 'arab')
 ```
+
+`formatPlural` selects the category with `Intl.PluralRules` for the locale — Arabic uses all six (`zero`, `one`, `two`, `few`, `many`, `other`), so `11` is `many`, not `few` — and `type: 'ordinal'` switches to ordinal rules (English `1st`, `2nd`, `3rd`). `NaN`, `Infinity`, negative, and fractional counts select the category the rules report without throwing. See [Plural forms](/guide/use-format#plural-forms).
 
 `parseNumber` reads its group separator, decimal separator, and minus sign from `Intl.NumberFormat` `formatToParts()` for `locale` and `numberingSystem` (default `'en'`), cached per locale tag. It accepts Western, Arabic-Indic, and Persian digits, ignores bidi marks, isolates, and spaces, accepts `-` or U+2212 as minus and a leading `+`, and divides by 100 for a trailing `%` or `٪`. Group separators are accepted only between digits of the integer part. See [Parsing numbers](/guide/use-format#parsing-numbers) for the full rules.
 
@@ -356,6 +362,7 @@ interface BoundFormatters {
     unit: Intl.RelativeTimeFormatUnit,
     options?: RelativeTimeFormatOptions,
   ) => string
+  formatPlural: (count: number, forms: PluralForms, options?: FormatPluralOptions) => string
   parseNumber: (text: string, options?: ParseNumberOptions) => number
 }
 ```
@@ -373,6 +380,11 @@ type NumberFormatOptions = FormatOptionsBase & Intl.NumberFormatOptions
 type DateFormatOptions = FormatOptionsBase & Intl.DateTimeFormatOptions
 type ListFormatOptions = FormatOptionsBase & Intl.ListFormatOptions
 type RelativeTimeFormatOptions = FormatOptionsBase & Intl.RelativeTimeFormatOptions
+type FormatPluralOptions = FormatOptionsBase & { type?: 'cardinal' | 'ordinal' }
+
+interface PluralForms extends Partial<Record<'zero' | 'one' | 'two' | 'few' | 'many' | 'other', string>> {
+  other: string
+}
 
 interface ParseNumberOptions {
   locale?: string

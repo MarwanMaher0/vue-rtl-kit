@@ -79,6 +79,7 @@ export {
   formatDate,
   formatList,
   formatNumber,
+  formatPlural,
   formatRelativeTime,
   parseNumber,
   transliterateDigits,
@@ -88,9 +89,11 @@ export type {
   BoundFormatters,
   DateFormatOptions,
   FormatOptionsBase,
+  FormatPluralOptions,
   ListFormatOptions,
   NumberFormatOptions,
   ParseNumberOptions,
+  PluralForms,
   RelativeTimeFormatOptions,
 } from './format'
 

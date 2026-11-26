@@ -1,6 +1,6 @@
 # useFormat
 
-`useFormat()` binds number, currency, date, list, and relative-time formatters, and the `parseNumber()` number parser, to the current scope's locale and direction. It also applies the `numberingSystem` configured on the root `createRtl()` instance.
+`useFormat()` binds number, currency, date, list, relative-time, and plural formatters, and the `parseNumber()` number parser, to the current scope's locale and direction. It also applies the `numberingSystem` configured on the root `createRtl()` instance.
 
 ```ts
 function useFormat(): ComputedRef<BoundFormatters>
@@ -43,6 +43,7 @@ The computed ref is unwrapped in templates. In script, call methods through `for
 | `formatDate` | `(value: Date \| number \| string, options?: DateFormatOptions) => string` |
 | `formatList` | `(items: Iterable<string>, options?: ListFormatOptions) => string` |
 | `formatRelativeTime` | `(value: number, unit: Intl.RelativeTimeFormatUnit, options?: RelativeTimeFormatOptions) => string` |
+| `formatPlural` | `(count: number, forms: PluralForms, options?: FormatPluralOptions) => string` |
 | `parseNumber` | `(text: string, options?: ParseNumberOptions) => number` |
 
 Per-call options override the bound locale and numbering system. The bound formatters are recomputed when `setLocale()` changes the scope's locale. `NumberFormatOptions`, `DateFormatOptions`, `ListFormatOptions`, and `RelativeTimeFormatOptions` extend their corresponding `Intl` options with:
@@ -78,6 +79,62 @@ formatRelativeTime(1, 'day', { locale: 'en', numeric: 'auto' }) // 'tomorrow'
 // Each item gets its own first-strong isolate, then the whole list is isolated.
 format.value.formatList(['Ahmed Ali', 'سارة'], { isolate: 'rtl' })
 ```
+
+## Plural forms {#plural-forms}
+
+`formatPlural()` picks the message form for a count with `Intl.PluralRules`, instead of `n === 1 ? singular : plural`, which is wrong for Arabic: Arabic has six plural categories, and `11` takes `many`, not `few`. Hebrew has a `two` category, Persian counts `0` as `one`, and English ordinals (`1st`, `2nd`, `3rd`) are a different rule set again.
+
+```ts
+function formatPlural(count: number, forms: PluralForms, options?: FormatPluralOptions): string
+
+interface PluralForms extends Partial<Record<'zero' | 'one' | 'two' | 'few' | 'many' | 'other', string>> {
+  other: string
+}
+
+type FormatPluralOptions = FormatOptionsBase & { type?: 'cardinal' | 'ordinal' }
+```
+
+`forms` maps CLDR plural categories to message text; `other` is the only required form, and any category without a form of its own falls back to it. Every `{count}` in the chosen form is replaced with `formatNumber(count, options)`, so the bound numbering system applies and `isolate` wraps the number inside the sentence. Text without `{count}` is returned as is.
+
+| Count (`ar`) | Category | Example form |
+| --- | --- | --- |
+| `0` | `zero` | `لا ملفات` |
+| `1` | `one` | `ملف واحد` |
+| `2` | `two` | `ملفان` |
+| `3`–`10` | `few` | `{count} ملفات` |
+| `11`–`99` | `many` | `{count} ملفًا` |
+| `100`, `101`, … | `other` | `{count} ملف` |
+
+```ts
+const files = {
+  zero: 'لا ملفات',
+  one: 'ملف واحد',
+  two: 'ملفان',
+  few: '{count} ملفات',
+  many: '{count} ملفًا',
+  other: '{count} ملف',
+}
+
+formatPlural(0, files, { locale: 'ar' }) // 'لا ملفات'
+formatPlural(1, files, { locale: 'ar' }) // 'ملف واحد'
+formatPlural(2, files, { locale: 'ar' }) // 'ملفان'
+formatPlural(3, files, { locale: 'ar' }) // '3 ملفات'
+formatPlural(11, files, { locale: 'ar' }) // '11 ملفًا'
+formatPlural(100, files, { locale: 'ar' }) // '100 ملف'
+formatPlural(3, files, { locale: 'ar-EG' }) // '٣ ملفات'
+formatPlural(11, files, { locale: 'ar-EG', numberingSystem: 'latn' }) // '11 ملفًا'
+
+// Missing categories fall back to other.
+formatPlural(11, { other: '{count} ملف' }, { locale: 'ar' }) // '11 ملف'
+
+// Ordinal rules: English 1st, 2nd, 3rd, 4th…
+formatPlural(3, { few: '{count}rd', other: '{count}th' }, { type: 'ordinal' }) // '3rd'
+
+// Bound to the scope locale and the configured numbering system.
+format.value.formatPlural(11, files)
+```
+
+`NaN`, `Infinity`, negative, and fractional counts select the category `Intl.PluralRules` reports (usually `other`) without throwing. An empty `forms.other`, or a runtime without `Intl.PluralRules`, returns an empty string. The rules instances are cached per locale and `type` in the same bounded LRU as the other formatters.
 
 ## Parsing numbers {#parsing-numbers}
 
@@ -149,7 +206,7 @@ const invalid = computed(() => text.value !== '' && Number.isNaN(amount.value))
 
 ## Input fallbacks
 
-Underscores in locale tags are normalized to hyphens, so `ar_EG` formats as `ar-EG`. If a tag is invalid, the formatter tries its language subtag and then falls back to `en`. Numbering systems are inserted before a private-use `-x-` section, so `en-x-foo` with `numberingSystem: 'arab'` produces Arabic-Indic digits; unrecognized or empty `numberingSystem` values safely fall back to `'latn'`. `formatDate()` returns an empty string for invalid dates instead of throwing, and `formatRelativeTime()` does the same for a non-finite value such as `NaN` or `Infinity`. `parseNumber()` uses the same locale and numbering-system fallbacks and returns `NaN` for text it cannot read.
+Underscores in locale tags are normalized to hyphens, so `ar_EG` formats as `ar-EG`. If a tag is invalid, the formatter tries its language subtag and then falls back to `en`. Numbering systems are inserted before a private-use `-x-` section, so `en-x-foo` with `numberingSystem: 'arab'` produces Arabic-Indic digits; unrecognized or empty `numberingSystem` values safely fall back to `'latn'`. `formatDate()` returns an empty string for invalid dates instead of throwing, and `formatRelativeTime()` does the same for a non-finite value such as `NaN` or `Infinity`. `formatPlural()` uses the same locale fallbacks and returns an empty string when `forms.other` is empty or `Intl.PluralRules` is unavailable. `parseNumber()` uses the same locale and numbering-system fallbacks and returns `NaN` for text it cannot read.
 
 ```ts
 formatNumber(12, { locale: 'ar_EG' }) // '١٢'
@@ -157,6 +214,7 @@ formatNumber(12, { locale: 'en-x-foo', numberingSystem: 'arab' }) // '١٢'
 formatNumber(12, { locale: 'ar-EG', numberingSystem: 'invalid' }) // '12'
 formatDate('not a date') // ''
 formatRelativeTime(NaN, 'day') // ''
+formatPlural(1, { other: '' }) // ''
 parseNumber('١٢', { locale: 'ar_EG' }) // 12
 parseNumber('not a number') // NaN
 ```
@@ -171,6 +229,7 @@ import {
   formatDate,
   formatList,
   formatNumber,
+  formatPlural,
   formatRelativeTime,
   parseNumber,
   transliterateDigits,
@@ -182,6 +241,7 @@ formatCurrency(2500, 'EGP', { locale: 'ar-EG' })
 formatDate('2024-05-12', { locale: 'ar-SA', calendar: 'islamic-umalqura' })
 formatList(['PDF', 'CSV'], { locale: 'en', type: 'disjunction' })
 formatRelativeTime(2, 'hour', { locale: 'ar-EG' })
+formatPlural(2, { one: '{count} يوم', other: '{count} أيام' }, { locale: 'ar' })
 parseNumber('١٬٢٣٤٫٥', { locale: 'ar-EG' })
 transliterateDigits('طلب رقم 4821', 'arab')
 withNumberingSystem('ar-EG', 'latn')
