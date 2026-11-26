@@ -300,7 +300,7 @@ declare function useLogicalPlacement(placement: MaybeRefOrGetter<LogicalPlacemen
 
 The converters do not import Vue. resolvePlacement maps inline-start to left in LTR and right in RTL; inline-end maps the opposite way. The suffix on a horizontal placement stays the same (vertical alignment), and explicit left/right placements pass through, suffix and all. Shared top/bottom strings are interpreted as logical inputs: in RTL, top-start becomes top-end and bottom-end becomes bottom-start; unaligned top/bottom stay the same. toLogicalPlacement reverses the conversion for the same direction. Invalid placement strings throw TypeError in development and resolve to 'bottom' in production.
 
-useLogicalPlacement accepts a value, ref, or getter. With an anchor's template ref, it uses the element's computed CSS direction and reacts to dir, class, and style changes on that element or its ancestors. Without a mounted target (including SSR), it uses useDirection().dir from the current direction scope.
+useLogicalPlacement accepts a value, ref, or getter. With an anchor's template ref, it uses the element's computed CSS direction and reacts to dir, class, and style changes on that element or its ancestors. It does not watch stylesheets: a stylesheet rule that changes direction without changing those attributes does not trigger an update; toggle a class on the target or an ancestor instead. Without a mounted target (including SSR), it uses useDirection().dir from the current direction scope.
 
 Floating UI is an optional consumer install (`npm install @floating-ui/vue`). In a Vue component, pass the computed `placement` directly to useFloating:
 

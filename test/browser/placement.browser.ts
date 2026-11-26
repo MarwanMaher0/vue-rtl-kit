@@ -72,3 +72,29 @@ it('positions tooltips on the inline side of their anchors in an RTL provider an
     wrapper.unmount()
   }
 })
+
+it('follows dir="auto" on an ancestor when its text direction changes', async () => {
+  const text = ref('مرحبا بالعالم')
+  let side!: ReturnType<typeof useLogicalPlacement>
+
+  const App = defineComponent({
+    setup() {
+      const anchor = ref<HTMLElement | null>(null)
+      side = useLogicalPlacement('inline-start', anchor)
+      return () => h('div', { dir: 'auto' }, [
+        h('span', text.value),
+        h('button', { ref: anchor, type: 'button' }, '?'),
+      ])
+    },
+  })
+  const wrapper = mount(App, { attachTo: attachHost(document.createElement('div')) })
+
+  try {
+    await expect.poll(() => side.value).toBe('right')
+    text.value = 'Hello world'
+    await expect.poll(() => side.value).toBe('left')
+  }
+  finally {
+    wrapper.unmount()
+  }
+})
