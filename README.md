@@ -66,9 +66,9 @@ bare `2024` — which reads the same either way — is left alone.
   properties that do not flip, icons that must (and must not) mirror, Latin runs and punctuation
   breaking inside RTL text, mixed-direction form input, numbering systems, the SSR direction flash,
   transforms going the wrong way, third-party components that hardcode LTR, arrow-key navigation
-  going backwards in tabs, sliders, carousels and menus, and horizontal scrollers breaking on
-  negative RTL `scrollLeft`. Each bug has a minimal broken snippet, a plain CSS/Vue fix, and the
-  vue-rtl-kit version.
+  going backwards in tabs, sliders, carousels and menus, horizontal scrollers breaking on
+  negative RTL `scrollLeft`, and popovers opening on the wrong side. Each bug has a minimal broken
+  snippet, a plain CSS/Vue fix, and the vue-rtl-kit version.
 
 ## Install
 
@@ -102,23 +102,24 @@ budgets are set to their measured byte counts plus fixed `+256 B` (`0.25 kB`) ra
 
 | Entry point | Artifact | Raw (current / budget) | Gzip (current / budget) |
 | --- | --- | --- | --- |
-| `vue-rtl-kit` (ESM) | `dist/vue-rtl-kit.js` | 37.41 kB / ≤ 37.66 kB | 12.04 kB / ≤ 12.14 kB |
-| `vue-rtl-kit` (CJS) | `dist/vue-rtl-kit.cjs` | 27.26 kB / ≤ 27.51 kB | 10.17 kB / ≤ 10.27 kB |
+| `vue-rtl-kit` (ESM) | `dist/vue-rtl-kit.js` | 39.93 kB / ≤ 40.18 kB | 12.69 kB / ≤ 12.79 kB |
+| `vue-rtl-kit` (CJS) | `dist/vue-rtl-kit.cjs` | 29.12 kB / ≤ 29.37 kB | 10.75 kB / ≤ 10.85 kB |
 | `vue-rtl-kit/nuxt` | `dist/nuxt/module.js` | 3.08 kB / ≤ 3.25 kB | 1.12 kB / ≤ 1.50 kB |
 | `vue-rtl-kit/nuxt` (runtime plugin) | `dist/nuxt/runtime/plugin.js` | 2.77 kB / ≤ 3.00 kB | 1.02 kB / ≤ 1.20 kB |
 | `vue-rtl-kit/styles.css` | `dist/styles.css` | 7.10 kB / ≤ 8.00 kB | 1.91 kB / ≤ 2.50 kB |
 
-`sideEffects` lists only `*.css`, so a bundler can drop unused helpers. `npm run check:treeshake` bundles each import on its own against `dist/vue-rtl-kit.js` (Rollup, `vue` external, esbuild minify). Vue stays external, so Rollup would otherwise keep a bare `import 'vue'`; the check declares `vue` side-effect free with `treeshake.moduleSideEffects` (the same assumption a consumer bundler makes for an unused Vue import) and fails if `chunk.imports` still includes `vue`. It also fails if `{ isolateRuns }`, `{ toLogicalStyle }`, `{ logicalArrow }`, `{ getScrollInline }`, `{ scrollToInline }`, `{ directionOfLocale }`, `{ findSearchMatches }` or `{ formatPlural }` exceeds 2 kB gzip, or if `{ formatNumber }` still contains component or directive code:
+`sideEffects` lists only `*.css`, so a bundler can drop unused helpers. `npm run check:treeshake` bundles each import on its own against `dist/vue-rtl-kit.js` (Rollup, `vue` external, esbuild minify). Vue stays external, so Rollup would otherwise keep a bare `import 'vue'`; the check declares `vue` side-effect free with `treeshake.moduleSideEffects` (the same assumption a consumer bundler makes for an unused Vue import) and fails if `chunk.imports` still includes `vue`. It also fails if `{ isolateRuns }`, `{ toLogicalStyle }`, `{ logicalArrow }`, `{ resolvePlacement }`, `{ getScrollInline }`, `{ scrollToInline }`, `{ directionOfLocale }`, `{ findSearchMatches }` or `{ formatPlural }` exceeds 2 kB gzip, or if `{ formatNumber }` still contains component or directive code:
 
 | Import | Gzip (current / budget) | Must not include |
 | --- | --- | --- |
 | `{ isolateRuns }` | 1.02 kB / ≤ 2.00 kB | `vue` |
 | `{ toLogicalStyle }` | 1.25 kB / ≤ 2.00 kB | `vue` |
 | `{ logicalArrow }` | 0.18 kB / ≤ 2.00 kB | `vue` |
+| `{ resolvePlacement }` | 0.36 kB / ≤ 2.00 kB | `vue` |
 | `{ getScrollInline }` | 0.36 kB / ≤ 2.00 kB | `vue` |
 | `{ scrollToInline }` | 0.41 kB / ≤ 2.00 kB | `vue` |
 | `{ directionOfLocale }` | 0.62 kB / ≤ 2.00 kB | `vue` |
-| `{ findSearchMatches }` | 0.82 kB / ≤ 2.00 kB | `vue` |
+| `{ findSearchMatches }` | 0.81 kB / ≤ 2.00 kB | `vue` |
 | `{ formatPlural }` | 0.91 kB / ≤ 2.00 kB | `vue` |
 | `{ formatNumber }` | 0.75 kB | components, directives |
 
@@ -249,6 +250,7 @@ excluded from `ModuleOptions`.
 | `useLogicalStyles()` | see below | `toLogical()`, `toPhysical()`, `property()`, `mirror()`, `arrow()`, plus `startSide`, `endSide`, `sign`. |
 | `useFormat()` | `ComputedRef<BoundFormatters>` | `formatNumber` / `formatCurrency` / `formatDate` / `formatList` / `formatRelativeTime` / `formatPlural` / `parseNumber` bound to the current locale and numbering system; they follow `setLocale()` and the `numberingSystem` configured in `createRtl()`. |
 | `useInlineScroll(target, options?)` | `UseInlineScrollReturn` | Readonly `offset`, `max`, `atStart`, `atEnd` refs plus `scrollTo()`, `scrollBy()`, `scrollToStart()`, `scrollToEnd()`. Uses a passive `scroll` listener and `ResizeObserver`, re-reads on `target` and `useDirection().dir` changes, cleans up on dispose, and is SSR-safe. Horizontal writing modes only. |
+| `useLogicalPlacement(placement, target?)` | `ComputedRef<PhysicalPlacement>` | Resolve a placement using the target element's computed `direction`, or `useDirection().dir` without a mounted target or during SSR. See [Floating UI example](#floating-ui-example). |
 
 ### Components
 
@@ -310,6 +312,7 @@ toPhysicalStyle({ marginInline: '1px 2px' }, 'rtl')
 | `toPhysicalStyle(style, dir)` | Logical → physical, for environments without logical-property support. Expands 1–2-value logical shorthands (`marginInline`, `paddingInline`, `insetInline`, `insetBlock`, `borderInlineWidth/Style/Color`, `scrollMarginInline`, `scrollPaddingInline`, …) to the physical sides for `dir`. |
 | `logicalProperty(name, options?)` | One property name, either casing preserved. |
 | `logicalArrow(key, dir)` | Map `'ArrowRight'` / `'ArrowLeft'` / `'Home'` / `'End'` / `'ArrowUp'` / `'ArrowDown'` to `'next' \| 'previous' \| 'first' \| 'last' \| 'up' \| 'down' \| null` (`ArrowRight` is `'previous'` in `'rtl'`). |
+| `resolvePlacement(placement, dir)` / `toLogicalPlacement(physical, dir)` | Convert between logical and physical placement strings. For example, `'inline-end'` resolves to `'right'` in LTR and `'left'` in RTL. |
 
 Covers margin, padding, border (width/style/colour), corner radii, inset, scroll margin/padding,
 overflow, `overscroll-behavior`, size and `contain-intrinsic-width`/`height` (with `{ size: true }`),
@@ -317,6 +320,46 @@ and the directional *values* of `text-align`, `float`, `clear`, `caption-side`, 
 Values containing `var()`, `calc()`, `!important` or a top-level `border-radius` `/` slash are
 left untouched rather than mis-parsed. Other functions such as `rgb()`, `hsl()` and `env()` are
 kept intact and split only at top-level whitespace.
+
+### Floating UI example
+
+Use a logical placement when a popover should follow its trigger's direction, even inside a local
+`dir` override. For this example, install `@floating-ui/vue` in your app (`npm install @floating-ui/vue`);
+it is not a dependency of vue-rtl-kit.
+
+```vue
+<script setup lang="ts">
+import { autoUpdate, offset, useFloating } from '@floating-ui/vue'
+import { ref } from 'vue'
+import { useLogicalPlacement } from 'vue-rtl-kit'
+
+const trigger = ref<HTMLElement | null>(null)
+const panel = ref<HTMLElement | null>(null)
+const open = ref(false)
+const placement = useLogicalPlacement('inline-end', trigger)
+const { floatingStyles } = useFloating(trigger, panel, {
+  placement,
+  middleware: [offset(8)],
+  whileElementsMounted: autoUpdate,
+})
+</script>
+
+<template>
+  <div dir="rtl" lang="ar">
+    <button ref="trigger" type="button" :aria-expanded="open" @click="open = !open">
+      تفاصيل الشحن
+    </button>
+    <div v-if="open" ref="panel" :style="floatingStyles">يصل طلبك خلال ثلاثة أيام عمل.</div>
+  </div>
+</template>
+```
+
+`inline-end` opens to the right in LTR and to the left in RTL. Floating UI already resolves
+`top`/`bottom` alignment suffixes (`-start`/`-end`) using the **floating element's** direction.
+Pass a logical value such as `'bottom-start'` directly when that element has the intended direction.
+If you pass an already resolved `top`/`bottom` suffix instead, set `direction: ltr` on the positioning
+wrapper and set the intended direction on an inner content element so the suffix isn't flipped twice.
+See [Popovers on the wrong side](./docs/common-rtl-bugs.md#12-popovers-on-the-wrong-side) for the plain Vue alternative.
 
 ### Inline scroll helpers
 

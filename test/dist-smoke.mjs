@@ -22,11 +22,14 @@ function check(label, api) {
     'getScrollInline', 'getScrollInlineMax', 'scrollToInline', 'scrollByInline', 'scrollInlineEdges',
     'useInlineScroll', 'formatNumber', 'formatPlural', 'directionOfLocale', 'foldSearchText', 'matchesSearch',
     'findSearchMatches', 'BidiText', 'RtlProvider', 'vRtl',
+    'resolvePlacement', 'toLogicalPlacement', 'useLogicalPlacement',
   ]) {
     assert.equal(typeof api[name], name === 'BidiText' || name === 'RtlProvider' || name === 'vRtl' ? 'object' : 'function', `${label}: missing export ${name}`)
   }
   assert.equal(api.directionOfLocale('ar-EG'), 'rtl', `${label}: directionOfLocale`)
   assert.equal(api.logicalArrow('ArrowRight', 'rtl'), 'previous', `${label}: logicalArrow`)
+  assert.equal(api.resolvePlacement('inline-end-start', 'rtl'), 'left-start', `${label}: resolvePlacement`)
+  assert.equal(api.toLogicalPlacement('left-start', 'rtl'), 'inline-end-start', `${label}: toLogicalPlacement`)
   assert.equal(api.getScrollInline(null), 0, `${label}: getScrollInline(null)`)
   assert.equal(api.getScrollInlineMax(null), 0, `${label}: getScrollInlineMax(null)`)
   assert.deepEqual(api.scrollInlineEdges(null), { atStart: true, atEnd: true }, `${label}: scrollInlineEdges(null)`)
@@ -57,7 +60,12 @@ async function checkSsr(label, api) {
       const { dir } = api.useDirection()
       const track = ref(null)
       const { offset, atStart, atEnd } = api.useInlineScroll(track)
-      return () => h('div', { dir: dir.value, 'data-scroll': `${offset.value}:${atStart.value}:${atEnd.value}` }, [
+      const placement = api.useLogicalPlacement('inline-start', track)
+      return () => h('div', {
+        'dir': dir.value,
+        'data-scroll': `${offset.value}:${atStart.value}:${atEnd.value}`,
+        'data-placement': placement.value,
+      }, [
         h(api.BidiText, { as: 'p', text: 'آخر تحديث 12-05-2024' }),
         h(api.RtlProvider, { dir: 'ltr', tag: 'pre' }, () => 'npm test'),
       ])
@@ -66,7 +74,7 @@ async function checkSsr(label, api) {
   app.use(rtl)
   const html = await renderToString(app)
   rtl.dispose()
-  assert.match(html, /^<div dir="rtl" data-scroll="0:true:true">/, `${label}: SSR root dir and inline scroll`)
+  assert.match(html, /^<div dir="rtl" data-scroll="0:true:true" data-placement="right">/, `${label}: SSR root dir, scroll and placement`)
   assert.ok(html.includes('<bdi dir="ltr">12-05-2024</bdi>'), `${label}: SSR BidiText`)
   assert.ok(html.includes('<pre dir="ltr" lang="ar"'), `${label}: SSR RtlProvider`)
 }

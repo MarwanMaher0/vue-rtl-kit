@@ -5,15 +5,20 @@ import {
   getScrollInlineMax,
   logicalArrow,
   parseNumber,
+  resolvePlacement,
   scrollByInline,
   scrollInlineEdges,
   scrollToInline,
+  toLogicalPlacement,
   useFormat,
   useInlineScroll,
+  useLogicalPlacement,
   useLogicalStyles,
 } from 'vue-rtl-kit'
 import type {
+  LogicalPlacement,
   ParseNumberOptions,
+  PhysicalPlacement,
   ScrollInlineEdges,
   ScrollInlineOptions,
   UseInlineScrollOptions,
@@ -35,6 +40,15 @@ scrollByInline(scroller.value, 50, _scrollOptions)
 const _parseOptions: ParseNumberOptions = { locale: 'ar-EG', numberingSystem: 'arab' }
 const _parsed: number = parseNumber('١٬٢٣٤٫٥', _parseOptions)
 const _boundParsed: number = useFormat().value.parseNumber('1,234.5')
+const logicalPlacement = ref<LogicalPlacement>('inline-start-end')
+const _physical: PhysicalPlacement = resolvePlacement(logicalPlacement.value, 'rtl')
+const _logical: LogicalPlacement = toLogicalPlacement(_physical, 'rtl')
+const _placement = useLogicalPlacement(logicalPlacement, scroller)
+const _value: PhysicalPlacement = _placement.value
+// @ts-expect-error the composable accepts logical placements only
+useLogicalPlacement('left-start')
+// @ts-expect-error the resolved placement is readonly
+_placement.value = 'right'
 // @ts-expect-error parseNumber reads text, not a number
 parseNumber(1234.5)
 // @ts-expect-error offset is readonly on useInlineScroll

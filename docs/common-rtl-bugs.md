@@ -4,10 +4,10 @@ Practical, reproducible bugs that show up when a Vue 3 or Nuxt UI is switched to
 Hebrew (`he`) or Persian (`fa`) — and the smallest fix for each. Every bug below follows the same
 pattern: a minimal broken snippet, why it breaks, a fix in plain CSS/Vue, and then the same fix with
 [vue-rtl-kit](../README.md). The vue-rtl-kit snippets use only APIs exported from `src/`:
-`createRtl`, `useDirection`, `useLogicalStyles`, `useFormat`, `useInlineScroll`, `BidiText`,
-`RtlProvider`, the `v-rtl` directive, the helpers `isolate` / `isolateRuns` / `transliterateDigits` /
-`logicalArrow` / `getScrollInline` / `scrollToInline` / `scrollByInline` / `scrollInlineEdges`, and
-the classes in `vue-rtl-kit/styles.css`.
+`createRtl`, `useDirection`, `useLogicalStyles`, `useFormat`, `useInlineScroll`, `useLogicalPlacement`,
+`BidiText`, `RtlProvider`, the `v-rtl` directive, the helpers `isolate` / `isolateRuns` /
+`transliterateDigits` / `logicalArrow` / `getScrollInline` / `scrollToInline` / `scrollByInline` /
+`scrollInlineEdges`, and the classes in `vue-rtl-kit/styles.css`.
 
 You do not need the library for most of these fixes. Logical CSS properties and `<bdi>` are native.
 The library earns its place where the value is computed in JavaScript, where mixed-direction text has
@@ -1833,6 +1833,83 @@ scrollByInline(el, -240, { behavior: 'smooth' })
 
 ---
 
+## 12. Popovers on the wrong side
+
+### Broken
+
+```vue
+<script setup lang="ts">
+import { autoUpdate, offset, useFloating } from '@floating-ui/vue'
+import { ref } from 'vue'
+
+const dir = ref<'ltr' | 'rtl'>('rtl')
+const trigger = ref<HTMLElement | null>(null)
+const panel = ref<HTMLElement | null>(null)
+const open = ref(false)
+const { floatingStyles } = useFloating(trigger, panel, {
+  placement: 'right',
+  middleware: [offset(8)],
+  whileElementsMounted: autoUpdate,
+})
+</script>
+
+<template>
+  <div :dir="dir" lang="ar" class="example">
+    <button ref="trigger" type="button" :aria-expanded="open" @click="open = !open">
+      تفاصيل الشحن
+    </button>
+    <div v-if="open" ref="panel" :style="floatingStyles">يصل طلبك خلال ثلاثة أيام عمل.</div>
+  </div>
+</template>
+
+<style scoped>
+.example { display: flex; justify-content: center; }
+</style>
+```
+
+This example uses `@floating-ui/vue` as an optional install in your app. Click **تفاصيل الشحن** with
+`dir` set to `'rtl'` and then to `'ltr'`: the panel opens on the right both times, but it should open
+on the inline-end side (left in RTL, right in LTR).
+
+**Why it breaks:** `'right'` names a physical side. Changing the wrapper's `dir` doesn't turn it
+into `'left'`.
+
+### Fix — plain Vue
+
+When Vue already controls the wrapper's direction, compute the physical side from the same ref.
+Add `computed` to the Vue import, then change the `placement` option to:
+
+```ts
+placement: computed<'left' | 'right'>(() => dir.value === 'rtl' ? 'left' : 'right'),
+```
+
+This follows changes to `dir`. If CSS or a nested `dir` override can change the trigger's direction
+independently, read `getComputedStyle(trigger.value).direction` once the trigger is mounted and
+update the placement when that computed direction changes.
+
+### Fix — vue-rtl-kit
+
+Instead of mapping `dir` yourself, import `useLogicalPlacement` and create the placement before the
+`useFloating` call. Replace `placement: 'right'` in its options with the `placement` ref:
+
+```ts
+import { useLogicalPlacement } from 'vue-rtl-kit'
+
+const placement = useLogicalPlacement('inline-end', trigger)
+```
+
+Using the trigger ref makes the placement follow the trigger's computed direction, including
+changes to `dir`, `class`, or `style` on the trigger or its ancestors. Without a mounted trigger,
+including during SSR, it falls back to the direction from `useDirection()`.
+
+For aligned `top`/`bottom` placements, Floating UI already interprets `-start`/`-end` using the
+floating element's direction. Pass the logical value directly if that element has the intended
+direction. If you pass an already resolved suffix, use an LTR positioning wrapper and set the
+intended direction on its inner content to avoid swapping alignment twice. See the complete
+[Floating UI example](../README.md#floating-ui-example).
+
+---
+
 ## Checklist
 
 Run through this with `dir` toggled live (the README's playground does exactly that) in at least one
@@ -1858,6 +1935,8 @@ Arabic, one Hebrew and one Persian build before calling an RTL release done:
       keep `Home`/`End` as first/last, and ignore `Ctrl`/`Alt`/`Meta` shortcuts (§10).
 - [ ] Horizontal scrollers and carousels normalise negative RTL `scrollLeft`, clamp `0..max`, and
       check start/end edges with a subpixel tolerance instead of assuming `scrollLeft >= 0` (§11).
+- [ ] Popovers meant to open toward inline-start or inline-end follow the trigger's direction,
+      including inside a local direction override (§12).
 
 The through-line: direction is a property of the *paragraph and the layout flow*, not of your data.
 Keep strings in logical order, state direction as close to the content as possible (`dir`,

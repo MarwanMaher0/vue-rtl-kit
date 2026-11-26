@@ -288,6 +288,40 @@ Sources:
 - [Browser support](https://marwanmaher0.github.io/vue-rtl-kit/guide/browser-support)
 - [دعم المتصفحات](https://marwanmaher0.github.io/vue-rtl-kit/ar/guide/browser-support)
 
+## Logical placement for popovers, menus, and tooltips
+
+Use logical placement strings for horizontal writing modes, so a popover can open toward inline-end instead of a hardcoded right side. LogicalPlacement uses top, bottom, inline-start, and inline-end; PhysicalPlacement uses top, bottom, left, and right. Both allow an optional -start or -end suffix.
+
+```ts
+declare function resolvePlacement(placement: LogicalPlacement | PhysicalPlacement, dir: Direction): PhysicalPlacement
+declare function toLogicalPlacement(physical: PhysicalPlacement, dir: Direction): LogicalPlacement
+declare function useLogicalPlacement(placement: MaybeRefOrGetter<LogicalPlacement>, target?: Ref<HTMLElement | null>): ComputedRef<PhysicalPlacement>
+```
+
+The converters do not import Vue. resolvePlacement maps inline-start to left in LTR and right in RTL; inline-end maps the opposite way. The suffix on a horizontal placement stays the same (vertical alignment), and explicit left/right placements pass through, suffix and all. Shared top/bottom strings are interpreted as logical inputs: in RTL, top-start becomes top-end and bottom-end becomes bottom-start; unaligned top/bottom stay the same. toLogicalPlacement reverses the conversion for the same direction. Invalid placement strings throw TypeError in development and resolve to 'bottom' in production.
+
+useLogicalPlacement accepts a value, ref, or getter. With an anchor's template ref, it uses the element's computed CSS direction and reacts to dir, class, and style changes on that element or its ancestors. Without a mounted target (including SSR), it uses useDirection().dir from the current direction scope.
+
+Floating UI is an optional consumer install (`npm install @floating-ui/vue`). In a Vue component, pass the computed `placement` directly to useFloating:
+
+```ts
+import { autoUpdate, useFloating } from '@floating-ui/vue'
+import { ref } from 'vue'
+import { useLogicalPlacement } from 'vue-rtl-kit'
+
+const trigger = ref<HTMLElement | null>(null)
+const panel = ref<HTMLElement | null>(null)
+const placement = useLogicalPlacement('inline-end', trigger)
+const { floatingStyles } = useFloating(trigger, panel, { placement, whileElementsMounted: autoUpdate })
+```
+
+Bind `ref="trigger"` to the trigger and `ref="panel"` and `:style="floatingStyles"` to the floating element. Floating UI uses the floating element's direction to interpret top/bottom suffixes. Pass a logical value such as 'bottom-start' directly if the element has the intended direction. If you pass an already resolved top/bottom suffix, set direction: ltr on the positioning wrapper and set the intended direction on an inner content element to prevent a second flip.
+
+Sources:
+- [Logical placement API](https://marwanmaher0.github.io/vue-rtl-kit/api#logical-placement)
+- [تحديد الموضع المنطقي](https://marwanmaher0.github.io/vue-rtl-kit/ar/api#logical-placement)
+- [Floating UI example](https://github.com/MarwanMaher0/vue-rtl-kit#floating-ui-example)
+
 ## Optional CSS utilities
 
 Import `vue-rtl-kit/styles.css` once. Nuxt loads it by default. Logical layout utilities follow the nearest dir attribute and do not require a stylesheet swap when direction changes.
@@ -444,5 +478,7 @@ vue-rtl-kit تدير اتجاه الواجهة وتنسيق القيم، ولا 
 يتبع اتجاه الجذر اللغة حتى يُثبّت عبر dir الأولي أو setDirection() أو toggleDirection(). بعد التثبيت، تغيّر setLocale() اللغة فقط. تقرأ useDirection() أقرب نطاق، أما useRtl() فتصل إلى الجذر المثبّت وترمي خطأ إن لم تكن الإضافة مثبتة. ينشئ RtlProvider نطاقًا محليًا؛ وعند غياب العنصر الحاوي يجب وضع سمات الاتجاه على الأبناء.
 
 BidiText أداة مبسطة لعزل مقاطع النص العادي، وليس محرّكًا للنص الغني ولا تنفيذًا كاملًا لخوارزمية Unicode ثنائية الاتجاه. لا يعالج الوسوم الغنية داخل الخانة؛ استخدم text لعزل النص العادي. يظل المتصفح مسؤولًا عن التخطيط النهائي. تتكيف أدوات CSS المنطقية مع أقرب dir، وتوحّد useInlineScroll ودوال التمرير السطري إحداثيات scrollLeft الأفقي في LTR وRTL لأوضاع الكتابة الأفقية فقط، وتوحّد دوال البحث foldSearchText وmatchesSearch وfindSearchMatches الحركات والهمزات والتطويل ونقاط التشكيل العبرية والأرقام المحلية مع إرجاع نطاقات UTF-16 الأصلية للتظليل دون اشتقاق صرفي أو مطابقة ضبابية، وتنسّق useFormat الأرقام والعملات والتواريخ والقوائم والأزمنة النسبية عبر Intl، وتختار formatPlural صيغة الجمع بفئات CLDR الست للعربية (صفر، مفرد، مثنى، قليل، كثير، غير ذلك) بدل شرط `n === 1` الخاطئ، وتقرأ parseNumber الأعداد المكتوبة بأرقام اللغة وفواصلها وتعيد NaN للنص غير الصالح.
+
+لتحديد موضع نافذة منبثقة عند نهاية السطر، استخدم `useLogicalPlacement('inline-end', trigger)`. تكون النافذة على يسار زرّ الفتح في RTL وعلى يمينه في LTR. تقرأ الدالة اتجاه الزر المحسوب، وتستخدم اتجاه نطاق Vue عند غياب الزر أو أثناء العرض على الخادم. عند استخدام Floating UI، مرّر محاذاة `top` أو `bottom` المنطقية مباشرةً إذا كان اتجاه العنصر العائم هو المطلوب.
 
 تدعم وحدة Nuxt سمات dir وlang في العرض على الخادم. تعطيل components يوقف تسجيل Nuxt وقت البناء فقط؛ اضبط registerGlobals: false أيضًا لإيقاف التسجيل العام من إضافة التشغيل. راجع الدليل العربي لكل واجهة قبل افتراض سلوك غير موثق.

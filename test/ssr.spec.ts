@@ -12,6 +12,7 @@ import { BidiText, RtlProvider } from '../src/components'
 import { useDirection, useRtl } from '../src/composables/useDirection'
 import { useFormat } from '../src/composables/useFormat'
 import { useInlineScroll } from '../src/composables/useInlineScroll'
+import { resolvePlacement, toLogicalPlacement, useLogicalPlacement } from '../src'
 import { useLogicalStyles } from '../src/composables/useLogicalStyles'
 import { createRtl } from '../src/core'
 import { vRtl } from '../src/directives/vRtl'
@@ -187,6 +188,30 @@ describe('SSR environment', () => {
 
     expect(await renderToString(appOne)).toBe('<main dir="rtl">rtl</main>')
     expect(await renderToString(appTwo)).toBe('<main dir="ltr">ltr</main>')
+  })
+
+  it('imports and resolves placements without window or document', async () => {
+    expect(typeof window).toBe('undefined')
+    expect(typeof document).toBe('undefined')
+    expect(resolvePlacement('inline-end-start', 'rtl')).toBe('left-start')
+    expect(toLogicalPlacement('top-end', 'rtl')).toBe('top-start')
+
+    const Probe = defineComponent({
+      setup() {
+        const anchor = ref<HTMLElement | null>(null)
+        const withTarget = useLogicalPlacement('inline-start', anchor)
+        const withoutTarget = useLogicalPlacement('bottom-start')
+        return () => h('button', {
+          ref: anchor,
+          'data-anchor-placement': withTarget.value,
+          'data-scope-placement': withoutTarget.value,
+        }, 'مساعدة')
+      },
+    })
+    const app = createSSRApp({ render: () => h(RtlProvider, { dir: 'rtl' }, () => h(Probe)) })
+    expect(await renderToString(app)).toContain(
+      '<button data-anchor-placement="right" data-scope-placement="bottom-end">مساعدة</button>',
+    )
   })
 
   it('keeps inline scroll helpers and useInlineScroll SSR-safe with no window or document', async () => {

@@ -18,6 +18,7 @@ import type { Direction } from 'vue-rtl-kit'
 | `useLogicalStyles` | `() => UseLogicalStylesReturn` | Direction-bound logical style helpers. |
 | `useFormat` | `() => ComputedRef<BoundFormatters>` | Locale-bound number, currency, date, list, relative-time, and plural formatters, plus `parseNumber`. |
 | `useInlineScroll` | `(target: MaybeRefOrGetter<Element \| null \| undefined>, options?: UseInlineScrollOptions) => UseInlineScrollReturn` | Logical inline scroll state and controls for horizontal scrollers in LTR and RTL; SSR-safe. |
+| `useLogicalPlacement` | `(placement: MaybeRefOrGetter<LogicalPlacement>, target?: Ref<HTMLElement \| null>) => ComputedRef<PhysicalPlacement>` | Resolve a reactive [logical placement](#logical-placement) against the target's computed direction, or the current direction scope when no target is mounted or during SSR. |
 
 See [createRtl](/guide/create-rtl), [useDirection](/guide/use-direction), [useLogicalStyles](/guide/use-logical-styles) (including [Inline scrolling](/guide/use-logical-styles#inline-scrolling)), and [useFormat](/guide/use-format) for examples.
 
@@ -84,8 +85,38 @@ toPhysicalStyle({ marginInlineStart: '8px' }, 'rtl')
 logicalArrow('ArrowRight', 'rtl') // 'previous'
 ```
 
-## Inline scroll
+## Logical placement {#logical-placement}
 
+Use these helpers for tooltips, menus, and popovers in horizontal writing modes. The two converters are pure and do not import Vue.
+
+| Export | Signature | Description |
+| --- | --- | --- |
+| `resolvePlacement` | `(placement: LogicalPlacement \| PhysicalPlacement, dir: Direction) => PhysicalPlacement` | Map `inline-start`/`inline-end` to physical sides; interpret shared `top`/`bottom` suffixes as logical. |
+| `toLogicalPlacement` | `(physical: PhysicalPlacement, dir: Direction) => LogicalPlacement` | Convert a physical placement to the logical placement that resolves back to it for the same direction. |
+
+`inline-start` is left in LTR and right in RTL; `inline-end` is the opposite. On these sides, `-start`/`-end` align vertically and do not swap. Explicit `left`/`right` placements pass through unchanged. For `top` and `bottom`, the side does not change, but RTL swaps `-start` and `-end`; even though the names are shared between the two types, `resolvePlacement` treats their suffixes as logical. Invalid placement strings throw a `TypeError` in development and fall back to `'bottom'` in production.
+
+```ts
+import { resolvePlacement, toLogicalPlacement } from 'vue-rtl-kit'
+
+resolvePlacement('inline-end-start', 'rtl') // 'left-start'
+resolvePlacement('right-start', 'rtl') // 'right-start'
+resolvePlacement('bottom-start', 'rtl') // 'bottom-end'
+toLogicalPlacement('left-start', 'rtl') // 'inline-end-start'
+toLogicalPlacement('bottom-end', 'rtl') // 'bottom-start'
+```
+
+`useLogicalPlacement(placement, target?)` accepts a value, ref, or getter. Pass the anchor's template ref as `target` to use its computed CSS `direction`. The composable reacts to `dir`, `class`, and `style` changes on the target or its ancestors. It does not watch stylesheets: adding, editing, or toggling a stylesheet rule without changing those attributes does not trigger a placement update. For a live CSS override, toggle a class on the target or an ancestor instead. Without a mounted target, including on the server, it uses the direction from `useDirection()` (the nearest provider, then the app store or detached fallback).
+
+**Floating UI:** Pass a logical `top`/`bottom` suffix (such as `'bottom-start'`) directly when the floating element has the intended direction: Floating UI interprets the suffix using that element's direction. To pass an already resolved `top`/`bottom` suffix, set `direction: ltr` on the positioning wrapper and set the intended direction on an inner content element to avoid a second flip. See the [Floating UI example](https://github.com/MarwanMaher0/vue-rtl-kit#floating-ui-example).
+
+```ts
+type Placement<Side extends string> = Side | `${Side}-${'start' | 'end'}`
+type LogicalPlacement = Placement<'top' | 'bottom' | 'inline-start' | 'inline-end'>
+type PhysicalPlacement = Placement<'top' | 'bottom' | 'left' | 'right'>
+```
+
+## Inline scroll
 Pure, Vue-free helpers that normalise horizontal `scrollLeft` into a single `0..max` scale from inline-start to inline-end in both LTR and RTL. Direction comes from `getComputedStyle(el).direction`, so `dir` islands, `v-rtl`, and `<RtlProvider>` work automatically. Horizontal writing modes (`writing-mode: horizontal-tb`) only. No overflow returns `0` and `{ atStart: true, atEnd: true }`; `null`, SSR, `NaN`, and `Infinity` return `0` or no-op and never throw.
 
 | Export | Signature | Description |

@@ -18,6 +18,7 @@ import type { Direction } from 'vue-rtl-kit'
 | `useLogicalStyles` | `() => UseLogicalStylesReturn` | أدوات مساعدة للأنماط المنطقية المرتبطة بالاتجاه. |
 | `useFormat` | `() => ComputedRef<BoundFormatters>` | أدوات تنسيق الأرقام والعملات والتواريخ والقوائم والأزمنة النسبية وصيغ الجمع المرتبطة باللغة، ومعها `parseNumber`. |
 | `useInlineScroll` | `(target: MaybeRefOrGetter<Element \| null \| undefined>, options?: UseInlineScrollOptions) => UseInlineScrollReturn` | حالة التمرير السطري المنطقي وأوامر التحكم فيه في LTR وRTL، وآمنة مع SSR. |
+| `useLogicalPlacement` | `(placement: MaybeRefOrGetter<LogicalPlacement>, target?: Ref<HTMLElement \| null>) => ComputedRef<PhysicalPlacement>` | تحويل [موضع منطقي](#logical-placement) تفاعلي بحسب اتجاه العنصر المحسوب، أو بحسب نطاق الاتجاه الحالي عند غياب العنصر أو أثناء العرض على الخادم. |
 
 راجع [createRtl](/ar/guide/create-rtl) و[useDirection](/ar/guide/use-direction) و[useLogicalStyles](/ar/guide/use-logical-styles) (بما في ذلك [التمرير السطري](/ar/guide/use-logical-styles#inline-scrolling)) و[useFormat](/ar/guide/use-format) للاطلاع على أمثلة.
 
@@ -84,8 +85,38 @@ toPhysicalStyle({ marginInlineStart: '8px' }, 'rtl')
 logicalArrow('ArrowRight', 'rtl') // 'previous'
 ```
 
-## التمرير السطري
+## تحديد الموضع المنطقي {#logical-placement}
 
+استخدم هذه الدوال لتحديد مواضع التلميحات والقوائم والنوافذ المنبثقة في أوضاع الكتابة الأفقية. دالتا التحويل نقيّتان ولا تستوردان Vue.
+
+| التصدير | التوقيع | الوصف |
+| --- | --- | --- |
+| `resolvePlacement` | `(placement: LogicalPlacement \| PhysicalPlacement, dir: Direction) => PhysicalPlacement` | تحويل كل من `inline-start` و`inline-end` إلى الجانب الفعلي المناسب، وتفسير لواحق `top` و`bottom` بوصفها محاذاة منطقية. |
+| `toLogicalPlacement` | `(physical: PhysicalPlacement, dir: Direction) => LogicalPlacement` | تحويل موضع فعلي إلى موضع منطقي يعود إلى الموضع الفعلي نفسه عند التحويل في الاتجاه ذاته. |
+
+تعني `inline-start` اليسار في LTR واليمين في RTL، بينما تعني `inline-end` العكس. على هذين الجانبين، تحدد اللاحقتان `-start` و`-end` المحاذاة الرأسية من دون أن تتأثّرا باتجاه الكتابة. وتبقى المواضع المحددة صراحةً بـ`left` أو `right` كما هي. أما `top` و`bottom` فيبقيان في الأعلى والأسفل، لكن اللاحقتين `-start` و`-end` تتبادلان دوريهما في RTL. ورغم أن الاسمين مشتركان بين النوعين، تتعامل `resolvePlacement` مع لاحقتيهما على أنهما منطقيتان. إذا كانت سلسلة الموضع غير صالحة، ترمي الدالة خطأ `TypeError` في وضع التطوير وتعيد `'bottom'` في وضع الإنتاج.
+
+```ts
+import { resolvePlacement, toLogicalPlacement } from 'vue-rtl-kit'
+
+resolvePlacement('inline-end-start', 'rtl') // 'left-start'
+resolvePlacement('right-start', 'rtl') // 'right-start'
+resolvePlacement('bottom-start', 'rtl') // 'bottom-end'
+toLogicalPlacement('left-start', 'rtl') // 'inline-end-start'
+toLogicalPlacement('bottom-end', 'rtl') // 'bottom-start'
+```
+
+تقبل `useLogicalPlacement(placement, target?)` قيمةً أو مرجعًا تفاعليًا (`ref`) أو دالةً تُرجع القيمة. مرّر مرجع عنصر الارتكاز في القالب إلى `target` لقراءة قيمة `direction` المحسوبة من CSS. تستجيب الدالة لتغيّر `dir` أو `class` أو `style` على العنصر أو أحد أسلافه. لا تراقب الدالة أوراق الأنماط: لا تؤدي إضافة قاعدة CSS أو تعديلها أو تفعيلها أو تعطيلها إلى تحديث الموضع ما لم تتغيّر إحدى هذه السمات. لتغيير الاتجاه مباشرةً عبر CSS، بدّل صنفًا (`class`) على العنصر أو أحد أسلافه. قبل تركيب العنصر أو عند غيابه، بما في ذلك أثناء العرض على الخادم، تستخدم الاتجاه الذي تعيده `useDirection()` (أقرب مزوّد للاتجاه، ثم مخزن التطبيق أو القيمة الاحتياطية المستقلة).
+
+**Floating UI:** إذا كان اتجاه العنصر العائم هو المطلوب، فمرّر محاذاة `top` أو `bottom` المنطقية مباشرةً، مثل `'bottom-start'`؛ إذ تفسّر Floating UI اللاحقة بحسب اتجاه ذلك العنصر. إذا مرّرت لاحقة محوّلة مسبقًا، فاضبط `direction: ltr` على العنصر الحاوي الذي يحدّد الموضع، واضبط الاتجاه المطلوب على عنصر المحتوى الداخلي حتى لا تنعكس المحاذاة مرتين. راجع [مثال Floating UI بالإنجليزية](https://github.com/MarwanMaher0/vue-rtl-kit#floating-ui-example).
+
+```ts
+type Placement<Side extends string> = Side | `${Side}-${'start' | 'end'}`
+type LogicalPlacement = Placement<'top' | 'bottom' | 'inline-start' | 'inline-end'>
+type PhysicalPlacement = Placement<'top' | 'bottom' | 'left' | 'right'>
+```
+
+## التمرير السطري
 دوال نقية دون أي استيراد من Vue توحّد `scrollLeft` الأفقي ضمن مقياس واحد من `0` إلى `max` من بداية السطر إلى نهايته في LTR وRTL. يُقرأ الاتجاه من `getComputedStyle(el).direction` بحيث تعمل جزر `dir` والتوجيه `v-rtl` ومكوّن `<RtlProvider>` تلقائيًا. لأوضاع الكتابة الأفقية (`writing-mode: horizontal-tb`) فقط. عند غياب الفيض تُعيد `0` و`{ atStart: true, atEnd: true }`؛ كما أن `null` وSSR و`NaN` و`Infinity` تُعيد `0` أو لا تنفّذ شيئًا دون رمي استثناء أبدًا.
 
 | التصدير | التوقيع | الوصف |

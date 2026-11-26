@@ -25,6 +25,7 @@ export type { UseLogicalStylesReturn } from './composables/useLogicalStyles'
 export { useFormat } from './composables/useFormat'
 export { useInlineScroll } from './composables/useInlineScroll'
 export type { UseInlineScrollOptions, UseInlineScrollReturn } from './composables/useInlineScroll'
+export { useLogicalPlacement } from './composables/useLogicalPlacement'
 
 export { BidiText, RtlProvider } from './components'
 
@@ -56,6 +57,9 @@ export {
   toPhysicalStyle,
 } from './logical'
 export type { LogicalArrow, LogicalStyleOptions, StyleObject } from './logical'
+
+export { resolvePlacement, toLogicalPlacement } from './placement'
+export type { LogicalPlacement, PhysicalPlacement } from './placement'
 
 export {
   getScrollInline,
