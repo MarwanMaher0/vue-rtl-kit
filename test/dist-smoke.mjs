@@ -20,7 +20,7 @@ function check(label, api) {
   for (const name of [
     'createRtl', 'splitBidiRuns', 'isolateRuns', 'logicalArrow', 'toLogicalStyle', 'toPhysicalStyle',
     'getScrollInline', 'getScrollInlineMax', 'scrollToInline', 'scrollByInline', 'scrollInlineEdges',
-    'useInlineScroll', 'formatNumber', 'formatPlural', 'directionOfLocale', 'foldSearchText', 'matchesSearch',
+    'useInlineScroll', 'formatNumber', 'formatPlural', 'formatDisplayName', 'directionOfLocale', 'foldSearchText', 'matchesSearch',
     'findSearchMatches', 'BidiText', 'RtlProvider', 'vRtl',
     'resolvePlacement', 'toLogicalPlacement', 'useLogicalPlacement',
   ]) {
@@ -45,6 +45,10 @@ function check(label, api) {
   assert.deepEqual(api.toPhysicalStyle({ paddingInline: '1px 2px' }, 'rtl'), { paddingRight: '1px', paddingLeft: '2px' }, `${label}: toPhysicalStyle`)
   assert.equal(api.formatPlural(11, { many: '{count} ملفًا', other: '{count} ملف' }, { locale: 'ar', numberingSystem: 'latn' }), '11 ملفًا', `${label}: formatPlural ar many`)
   assert.equal(api.formatPlural(2, { one: '{count} file', other: '{count} files' }), '2 files', `${label}: formatPlural en other`)
+  assert.equal(api.formatDisplayName('ar', { type: 'language', locale: 'ar' }), 'العربية', `${label}: formatDisplayName ar language`)
+  assert.equal(api.formatDisplayName('EG', { type: 'region', locale: 'en' }), 'Egypt', `${label}: formatDisplayName en region`)
+  assert.equal(api.formatDisplayName('zz', { type: 'language', fallback: 'none' }), '', `${label}: formatDisplayName fallback none`)
+  assert.equal(api.formatDisplayName('!!', { type: 'region' }), '!!', `${label}: formatDisplayName invalid code`)
 
   const rtl = api.createRtl({ locales: { en: 'ltr', ar: 'rtl' }, defaultLocale: 'ar' })
   assert.deepEqual(rtl.htmlAttrs(), { dir: 'rtl', lang: 'ar' }, `${label}: htmlAttrs`)

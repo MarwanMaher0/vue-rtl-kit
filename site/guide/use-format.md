@@ -1,6 +1,6 @@
 # useFormat
 
-`useFormat()` binds number, currency, date, list, relative-time, and plural formatters, and the `parseNumber()` number parser, to the current scope's locale and direction. It also applies the `numberingSystem` configured on the root `createRtl()` instance.
+`useFormat()` binds number, currency, date, list, relative-time, and plural formatters, the `formatDisplayName()` display-name helper, and the `parseNumber()` number parser, to the current scope's locale and direction. It also applies the `numberingSystem` configured on the root `createRtl()` instance.
 
 ```ts
 function useFormat(): ComputedRef<BoundFormatters>
@@ -44,6 +44,7 @@ The computed ref is unwrapped in templates. In script, call methods through `for
 | `formatList` | `(items: Iterable<string>, options?: ListFormatOptions) => string` |
 | `formatRelativeTime` | `(value: number, unit: Intl.RelativeTimeFormatUnit, options?: RelativeTimeFormatOptions) => string` |
 | `formatPlural` | `(count: number, forms: PluralForms, options?: FormatPluralOptions) => string` |
+| `formatDisplayName` | `(code: string, options: FormatDisplayNameOptions) => string` |
 | `parseNumber` | `(text: string, options?: ParseNumberOptions) => number` |
 
 Per-call options override the bound locale and numbering system. The bound formatters are recomputed when `setLocale()` changes the scope's locale. `NumberFormatOptions`, `DateFormatOptions`, `ListFormatOptions`, and `RelativeTimeFormatOptions` extend their corresponding `Intl` options with:
@@ -136,6 +137,56 @@ format.value.formatPlural(11, files)
 
 `NaN`, `Infinity`, negative, and fractional counts select the category `Intl.PluralRules` reports (usually `other`) without throwing. An empty `forms.other`, or a runtime without `Intl.PluralRules`, returns an empty string. The rules instances are cached per locale and `type` in the same bounded LRU as the other formatters.
 
+## Display names {#display-names}
+
+`formatDisplayName()` wraps `Intl.DisplayNames` so language and country pickers show names in the page's language instead of English: `العربية` rather than `Arabic`, `مصر` rather than `Egypt`.
+
+```ts
+function formatDisplayName(code: string, options: FormatDisplayNameOptions): string
+
+interface FormatDisplayNameOptions {
+  type: 'language' | 'region' | 'currency' | 'script' | 'calendar' | 'dateTimeField'
+  locale?: string
+  style?: 'long' | 'short' | 'narrow'
+  languageDisplay?: 'dialect' | 'standard'
+  fallback?: 'code' | 'none'
+}
+```
+
+`type` is required and says what the code identifies. `style` shortens the name where the locale has a shorter form; `languageDisplay` applies to `type: 'language'` only — `'dialect'` (the default) prefers dialect names such as "American English", `'standard'` composes "English (United States)".
+
+```ts
+formatDisplayName('ar', { type: 'language', locale: 'ar' }) // 'العربية'
+formatDisplayName('fa', { type: 'language', locale: 'fa' }) // 'فارسی'
+formatDisplayName('he', { type: 'language', locale: 'he' }) // 'עברית'
+formatDisplayName('EG', { type: 'region', locale: 'ar' }) // 'مصر'
+formatDisplayName('EGP', { type: 'currency', locale: 'ar' }) // 'جنيه مصري'
+formatDisplayName('Arab', { type: 'script', locale: 'en' }) // 'Arabic'
+formatDisplayName('ar-EG', { type: 'language', locale: 'en', languageDisplay: 'standard' }) // 'Arabic (Egypt)'
+```
+
+An unknown code returns the code itself (`fallback: 'code'`, the default) or an empty string (`fallback: 'none'`). A structurally invalid code, or a runtime without `Intl.DisplayNames`, returns the same fallback instead of throwing. Locale tags get the same underscore normalization and language-subtag / `en` fallback as the other formatters, and instances are cached per locale and options in the same bounded LRU.
+
+The bound `format.value.formatDisplayName()` follows `setLocale()`, so by default it names codes in the current locale. A language picker usually wants autonyms instead — each option named in its own language, whatever the current locale — so pass `locale: tag` per call. Display names are words, not numbers: the bound `numberingSystem` and `isolate` do not apply.
+
+```vue
+<script setup lang="ts">
+import { useDirection, useFormat } from 'vue-rtl-kit'
+
+const { locale, setLocale } = useDirection()
+const format = useFormat()
+const locales = ['ar', 'en', 'fa', 'he']
+</script>
+
+<template>
+  <select :value="locale" @change="setLocale($event.target.value)">
+    <option v-for="tag in locales" :key="tag" :value="tag">
+      {{ format.formatDisplayName(tag, { type: 'language', locale: tag }) }}
+    </option>
+  </select>
+</template>
+```
+
 ## Parsing numbers {#parsing-numbers}
 
 `parseNumber()` is the inverse of `formatNumber()` for form input. `Number()` returns `NaN` for what `formatNumber()` writes in `ar-EG`, `fa-IR`, `he`, `de`, or `fr`, because of the digits, the separators, or an invisible bidi mark before the minus sign. `parseNumber()` reads that text back, and returns `NaN` instead of throwing when it is not a number.
@@ -206,7 +257,7 @@ const invalid = computed(() => text.value !== '' && Number.isNaN(amount.value))
 
 ## Input fallbacks
 
-Underscores in locale tags are normalized to hyphens, so `ar_EG` formats as `ar-EG`. If a tag is invalid, the formatter tries its language subtag and then falls back to `en`. Numbering systems are inserted before a private-use `-x-` section, so `en-x-foo` with `numberingSystem: 'arab'` produces Arabic-Indic digits; unrecognized or empty `numberingSystem` values safely fall back to `'latn'`. `formatDate()` returns an empty string for invalid dates instead of throwing, and `formatRelativeTime()` does the same for a non-finite value such as `NaN` or `Infinity`. `formatPlural()` uses the same locale fallbacks and returns an empty string when `forms.other` is empty or `Intl.PluralRules` is unavailable. `parseNumber()` uses the same locale and numbering-system fallbacks and returns `NaN` for text it cannot read.
+Underscores in locale tags are normalized to hyphens, so `ar_EG` formats as `ar-EG`. If a tag is invalid, the formatter tries its language subtag and then falls back to `en`. Numbering systems are inserted before a private-use `-x-` section, so `en-x-foo` with `numberingSystem: 'arab'` produces Arabic-Indic digits; unrecognized or empty `numberingSystem` values safely fall back to `'latn'`. `formatDate()` returns an empty string for invalid dates instead of throwing, and `formatRelativeTime()` does the same for a non-finite value such as `NaN` or `Infinity`. `formatPlural()` uses the same locale fallbacks and returns an empty string when `forms.other` is empty or `Intl.PluralRules` is unavailable. `formatDisplayName()` uses the same locale fallbacks and returns the code itself (or `''` with `fallback: 'none'`) for unknown or invalid codes and on runtimes without `Intl.DisplayNames`. `parseNumber()` uses the same locale and numbering-system fallbacks and returns `NaN` for text it cannot read.
 
 ```ts
 formatNumber(12, { locale: 'ar_EG' }) // '١٢'
@@ -215,6 +266,8 @@ formatNumber(12, { locale: 'ar-EG', numberingSystem: 'invalid' }) // '12'
 formatDate('not a date') // ''
 formatRelativeTime(NaN, 'day') // ''
 formatPlural(1, { other: '' }) // ''
+formatDisplayName('zz', { type: 'language' }) // 'zz'
+formatDisplayName('!!', { type: 'region', fallback: 'none' }) // ''
 parseNumber('١٢', { locale: 'ar_EG' }) // 12
 parseNumber('not a number') // NaN
 ```
@@ -227,6 +280,7 @@ The same formatting primitives can be used without a component context:
 import {
   formatCurrency,
   formatDate,
+  formatDisplayName,
   formatList,
   formatNumber,
   formatPlural,
@@ -242,6 +296,7 @@ formatDate('2024-05-12', { locale: 'ar-SA', calendar: 'islamic-umalqura' })
 formatList(['PDF', 'CSV'], { locale: 'en', type: 'disjunction' })
 formatRelativeTime(2, 'hour', { locale: 'ar-EG' })
 formatPlural(2, { one: '{count} يوم', other: '{count} أيام' }, { locale: 'ar' })
+formatDisplayName('ar', { type: 'language', locale: 'ar' })
 parseNumber('١٬٢٣٤٫٥', { locale: 'ar-EG' })
 transliterateDigits('طلب رقم 4821', 'arab')
 withNumberingSystem('ar-EG', 'latn')

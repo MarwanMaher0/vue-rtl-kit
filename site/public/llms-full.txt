@@ -351,7 +351,7 @@ Sources:
 
 ## Locale-aware formatting
 
-useFormat(): ComputedRef<BoundFormatters> binds number, currency, date, list, relative-time, and plural formatters, plus the parseNumber number parser, to the current scope's locale and direction, applying the root instance's configured numberingSystem. The bound formatters follow setLocale(). In templates, use format.formatNumber(...); in script, use format.value.formatNumber(...).
+useFormat(): ComputedRef<BoundFormatters> binds number, currency, date, list, relative-time, and plural formatters, the formatDisplayName display-name helper, and the parseNumber number parser, to the current scope's locale and direction, applying the root instance's configured numberingSystem. The bound formatters follow setLocale(). In templates, use format.formatNumber(...); in script, use format.value.formatNumber(...).
 
 ```ts
 import { useFormat } from 'vue-rtl-kit'
@@ -367,6 +367,7 @@ const date = format.value.formatDate('2024-05-12', {
 const reviewers = format.value.formatList(['Ahmed', 'Sara', 'Omar'], { isolate: true })
 const edited = format.value.formatRelativeTime(-3, 'day')
 const filesLabel = format.value.formatPlural(11, { many: '{count} ملفًا', other: '{count} ملف' }) // '11 ملفًا' when the scope locale is ar
+const languageName = format.value.formatDisplayName('ar', { type: 'language' }) // 'العربية' when the scope locale is ar
 const typed = format.value.parseNumber('١٬٢٣٤٫٥') // 1234.5 when the scope locale is ar-EG
 ```
 
@@ -379,11 +380,12 @@ Standalone functions:
 - formatList(items, options?): Intl.ListFormat with type ('conjunction', 'disjunction', 'unit') and style. formatList(['Ahmed', 'Sara', 'Omar'], { locale: 'ar' }) gives 'Ahmed وSara وOmar'. With isolate set, every item is wrapped in a first-strong isolate and then the whole result is isolated.
 - formatRelativeTime(value, unit, options?): Intl.RelativeTimeFormat with numeric and style; negative values are in the past. formatRelativeTime(-3, 'day', { locale: 'ar-EG' }) gives 'قبل ٣ أيام', and numberingSystem: 'latn' gives 'قبل 3 أيام'. A non-finite value returns an empty string.
 - formatPlural(count, forms, options?): picks the CLDR plural form with Intl.PluralRules and replaces every {count} with formatNumber(count, options). forms is Partial<Record<'zero' | 'one' | 'two' | 'few' | 'many' | 'other', string>> with other required; a missing category falls back to other. Arabic uses all six categories (0 zero, 1 one, 2 two, 3-10 few, 11-99 many, 100 other), so n === 1 ? a : b is wrong for Arabic; Hebrew has two, Persian counts 0 as one. options adds type: 'cardinal' | 'ordinal' (English 1st/2nd/3rd) to locale, numberingSystem, and isolate. NaN, Infinity, negative, and fractional counts select the category the rules report without throwing; an empty forms.other or a runtime without Intl.PluralRules returns an empty string; text without {count} is returned as is.
+- formatDisplayName(code, options): names a language, region, currency, script, calendar, or date-time field code with Intl.DisplayNames, so language and country pickers show 'العربية' instead of 'Arabic' and 'مصر' instead of 'Egypt'. options is FormatDisplayNameOptions: type is required ('language' | 'region' | 'currency' | 'script' | 'calendar' | 'dateTimeField'); locale, style ('long' | 'short' | 'narrow'), languageDisplay ('dialect' | 'standard', for language codes such as ar-EG), and fallback ('code' | 'none') are optional. An unknown code returns the code itself (fallback 'code', the default) or an empty string (fallback 'none'); structurally invalid codes and runtimes without Intl.DisplayNames return the same fallback instead of throwing. The bound format.value.formatDisplayName follows setLocale(); numberingSystem and isolate do not apply to display names.
 - parseNumber(text, options?): number. The inverse of formatNumber for form input; options are { locale?: string; numberingSystem?: NumberingSystem }, with locale defaulting to 'en'. Number() returns NaN for formatNumber output in ar-EG, fa-IR, he, de, or fr; parseNumber reads it back. It returns NaN for empty or invalid text and never throws.
 - transliterateDigits(text, 'latn' | 'arab' | 'arabext'): converts only digits in an existing string.
 - withNumberingSystem(locale, numberingSystem?): adds a Unicode -u-nu- locale extension.
 
-NumberingSystem accepts latn, arab, arabext, hanidec, deva, beng, or another runtime-supported string; unrecognized or empty values safely fall back to latn. Actual Intl behavior depends on the runtime's locale support. Each formatter kind (number, date, list, relative time, plural rules) keeps its own bounded LRU cache of 32 Intl instances.
+NumberingSystem accepts latn, arab, arabext, hanidec, deva, beng, or another runtime-supported string; unrecognized or empty values safely fall back to latn. Actual Intl behavior depends on the runtime's locale support. Each formatter kind (number, date, list, relative time, plural rules, display names) keeps its own bounded LRU cache of 32 Intl instances.
 
 parseNumber rules:
 - Separators: the group separator, decimal separator, and minus sign are read from Intl.NumberFormat formatToParts() for the locale and numbering system and cached per locale tag (32 entries). There is no hardcoded separator table. Parse with the same locale and numberingSystem used for formatting; the bound format.value.parseNumber already uses the scope locale and the configured numberingSystem.
@@ -458,8 +460,9 @@ Core types:
 - RtlOptions configures createRtl; ResolvedRtlOptions represents resolved root options.
 - DirectionContext describes reactive state and actions; RtlInstance adds root/plugin behavior.
 - DirectionState omits isRoot; DirectionStateOptions requires dir and locale and optionally locales and pinned.
-- BoundFormatters exposes locale, dir, formatNumber, formatCurrency, formatDate, formatList, formatRelativeTime, formatPlural, and parseNumber.
+- BoundFormatters exposes locale, dir, formatNumber, formatCurrency, formatDate, formatList, formatRelativeTime, formatPlural, formatDisplayName, and parseNumber.
 - PluralForms maps the CLDR plural categories zero, one, two, few, many, and other to message text, with other required; FormatPluralOptions extends FormatOptionsBase with type ('cardinal' | 'ordinal').
+- FormatDisplayNameOptions requires type ('language' | 'region' | 'currency' | 'script' | 'calendar' | 'dateTimeField') and accepts optional locale, style ('long' | 'short' | 'narrow'), languageDisplay ('dialect' | 'standard'), and fallback ('code' | 'none'). On older runtimes whose Intl.DisplayNames ignores fallback 'none', a name equal to its code (for example 'second' in English, or 'US' with style 'narrow') also returns ''.
 - ParseNumberOptions contains optional locale and numberingSystem.
 - BidiRun contains text, dir, isolated, and hasStrong.
 - LogicalStyleOptions contains optional size, values, and shorthands flags.
@@ -477,7 +480,7 @@ vue-rtl-kit تدير اتجاه الواجهة وتنسيق القيم، ولا 
 
 يتبع اتجاه الجذر اللغة حتى يُثبّت عبر dir الأولي أو setDirection() أو toggleDirection(). بعد التثبيت، تغيّر setLocale() اللغة فقط. تقرأ useDirection() أقرب نطاق، أما useRtl() فتصل إلى الجذر المثبّت وترمي خطأ إن لم تكن الإضافة مثبتة. ينشئ RtlProvider نطاقًا محليًا؛ وعند غياب العنصر الحاوي يجب وضع سمات الاتجاه على الأبناء.
 
-BidiText أداة مبسطة لعزل مقاطع النص العادي، وليس محرّكًا للنص الغني ولا تنفيذًا كاملًا لخوارزمية Unicode ثنائية الاتجاه. لا يعالج الوسوم الغنية داخل الخانة؛ استخدم text لعزل النص العادي. يظل المتصفح مسؤولًا عن التخطيط النهائي. تتكيف أدوات CSS المنطقية مع أقرب dir، وتوحّد useInlineScroll ودوال التمرير السطري إحداثيات scrollLeft الأفقي في LTR وRTL لأوضاع الكتابة الأفقية فقط، وتوحّد دوال البحث foldSearchText وmatchesSearch وfindSearchMatches الحركات والهمزات والتطويل ونقاط التشكيل العبرية والأرقام المحلية مع إرجاع نطاقات UTF-16 الأصلية للتظليل دون اشتقاق صرفي أو مطابقة ضبابية، وتنسّق useFormat الأرقام والعملات والتواريخ والقوائم والأزمنة النسبية عبر Intl، وتختار formatPlural صيغة الجمع بفئات CLDR الست للعربية (صفر، مفرد، مثنى، قليل، كثير، غير ذلك) بدل شرط `n === 1` الخاطئ، وتقرأ parseNumber الأعداد المكتوبة بأرقام اللغة وفواصلها وتعيد NaN للنص غير الصالح.
+BidiText أداة مبسطة لعزل مقاطع النص العادي، وليس محرّكًا للنص الغني ولا تنفيذًا كاملًا لخوارزمية Unicode ثنائية الاتجاه. لا يعالج الوسوم الغنية داخل الخانة؛ استخدم text لعزل النص العادي. يظل المتصفح مسؤولًا عن التخطيط النهائي. تتكيف أدوات CSS المنطقية مع أقرب dir، وتوحّد useInlineScroll ودوال التمرير السطري إحداثيات scrollLeft الأفقي في LTR وRTL لأوضاع الكتابة الأفقية فقط، وتوحّد دوال البحث foldSearchText وmatchesSearch وfindSearchMatches الحركات والهمزات والتطويل ونقاط التشكيل العبرية والأرقام المحلية مع إرجاع نطاقات UTF-16 الأصلية للتظليل دون اشتقاق صرفي أو مطابقة ضبابية، وتنسّق useFormat الأرقام والعملات والتواريخ والقوائم والأزمنة النسبية عبر Intl، وتختار formatPlural صيغة الجمع بفئات CLDR الست للعربية (صفر، مفرد، مثنى، قليل، كثير، غير ذلك) بدل شرط `n === 1` الخاطئ، وتسمّي formatDisplayName رموز اللغات والمناطق والعملات بكلمات اللغة نفسها عبر Intl.DisplayNames فتعرض قوائم اختيار اللغات «العربية» بدل Arabic، وتقرأ parseNumber الأعداد المكتوبة بأرقام اللغة وفواصلها وتعيد NaN للنص غير الصالح.
 
 لتحديد موضع نافذة منبثقة عند نهاية السطر، استخدم `useLogicalPlacement('inline-end', trigger)`. تكون النافذة على يسار زرّ الفتح في RTL وعلى يمينه في LTR. تقرأ الدالة اتجاه الزر المحسوب، وتستخدم اتجاه نطاق Vue عند غياب الزر أو أثناء العرض على الخادم. عند استخدام Floating UI، مرّر محاذاة `top` أو `bottom` المنطقية مباشرةً إذا كان اتجاه العنصر العائم هو المطلوب.
 

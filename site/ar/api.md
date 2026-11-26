@@ -16,7 +16,7 @@ import type { Direction } from 'vue-rtl-kit'
 | `useDirection` | `() => DirectionContext` | الحصول على أقرب نطاق، أو المخزن الجذري، أو القيمة الاحتياطية المنفصلة. |
 | `useRtl` | `() => RtlInstance` | الحصول على المخزن الجذري؛ ويُطلق خطأً عند عدم وجود الإضافة. |
 | `useLogicalStyles` | `() => UseLogicalStylesReturn` | أدوات مساعدة للأنماط المنطقية المرتبطة بالاتجاه. |
-| `useFormat` | `() => ComputedRef<BoundFormatters>` | أدوات تنسيق الأرقام والعملات والتواريخ والقوائم والأزمنة النسبية وصيغ الجمع المرتبطة باللغة، ومعها `parseNumber`. |
+| `useFormat` | `() => ComputedRef<BoundFormatters>` | أدوات تنسيق الأرقام والعملات والتواريخ والقوائم والأزمنة النسبية وصيغ الجمع المرتبطة باللغة، ومعها `formatDisplayName` و`parseNumber`. |
 | `useInlineScroll` | `(target: MaybeRefOrGetter<Element \| null \| undefined>, options?: UseInlineScrollOptions) => UseInlineScrollReturn` | حالة التمرير السطري المنطقي وأوامر التحكم فيه في LTR وRTL، وآمنة مع SSR. |
 | `useLogicalPlacement` | `(placement: MaybeRefOrGetter<LogicalPlacement>, target?: Ref<HTMLElement \| null>) => ComputedRef<PhysicalPlacement>` | تحويل [موضع منطقي](#logical-placement) تفاعلي بحسب اتجاه العنصر المحسوب، أو بحسب نطاق الاتجاه الحالي عند غياب العنصر أو أثناء العرض على الخادم. |
 
@@ -202,6 +202,7 @@ findSearchMatches('مرحبا مُحَمَّدٌ!', 'محمد') // [{ start: 6, 
 | `formatNumber` | `(value: number, options?: NumberFormatOptions) => string` | التنسيق باستخدام `Intl.NumberFormat`. |
 | `formatCurrency` | `(value: number, currency: string, options?: NumberFormatOptions) => string` | تنسيق مبلغ بعملة وفق ISO 4217. |
 | `formatDate` | `(value: Date \| number \| string, options?: DateFormatOptions) => string` | التنسيق باستخدام `Intl.DateTimeFormat`. |
+| `formatDisplayName` | `(code: string, options: FormatDisplayNameOptions) => string` | تسمية رمز لغة أو منطقة أو عملة أو خط كتابة أو تقويم أو حقل تاريخ ووقت عبر `Intl.DisplayNames`. يعيد الرمز نفسه للرموز غير المعروفة أو غير الصالحة، أو `''` مع `fallback: 'none'`؛ ولا يرمي استثناء أبدًا. |
 | `formatList` | `(items: Iterable<string>, options?: ListFormatOptions) => string` | ضم العناصر باستخدام `Intl.ListFormat`؛ ويعزل `isolate` كل عنصر ثم النتيجة كاملة. |
 | `formatRelativeTime` | `(value: number, unit: Intl.RelativeTimeFormatUnit, options?: RelativeTimeFormatOptions) => string` | التنسيق باستخدام `Intl.RelativeTimeFormat`؛ ويعيد `''` للقيم غير المنتهية. |
 | `formatPlural` | `(count: number, forms: PluralForms, options?: FormatPluralOptions) => string` | اختيار صيغة الجمع وفق CLDR عبر `Intl.PluralRules` واستبدال كل `{count}` بقيمة `formatNumber(count, options)`؛ وتعود الفئات غير المزوّدة بصيغة إلى `forms.other`. يعيد `''` حين تكون `forms.other` فارغة أو حين لا تتوفر `Intl.PluralRules`. |
@@ -212,6 +213,7 @@ findSearchMatches('مرحبا مُحَمَّدٌ!', 'محمد') // [{ start: 6, 
 ```ts
 import {
   formatCurrency,
+  formatDisplayName,
   formatList,
   formatNumber,
   formatPlural,
@@ -226,12 +228,16 @@ formatList(['Ahmed', 'Sara', 'Omar'], { locale: 'ar', isolate: true })
 formatRelativeTime(-3, 'day', { locale: 'ar-EG', numberingSystem: 'latn' })
 formatPlural(11, { many: '{count} ملفًا', other: '{count} ملف' }, { locale: 'ar' }) // '11 ملفًا'
 formatPlural(3, { few: '{count}rd', other: '{count}th' }, { type: 'ordinal' }) // '3rd'
+formatDisplayName('ar', { type: 'language', locale: 'ar' }) // 'العربية'
+formatDisplayName('EG', { type: 'region', locale: 'ar' }) // 'مصر'
 parseNumber('١٬٢٣٤٫٥', { locale: 'ar-EG' }) // 1234.5
 parseNumber('12abc') // NaN
 transliterateDigits('طلب رقم 4821', 'arab')
 ```
 
 تختار `formatPlural` الفئة عبر `Intl.PluralRules` بحسب اللغة — وتستخدم العربية الفئات الست جميعها (`zero` و`one` و`two` و`few` و`many` و`other`)، فالعدد `11` فئته `many` لا `few` — ويحوّل `type: 'ordinal'` إلى قواعد الترتيب (الإنجليزية `1st` و`2nd` و`3rd`). وتختار القيم `NaN` و`Infinity` والسالبة والكسرية الفئة التي تعلنها القواعد دون رمي استثناء. راجع [صيغ الجمع](/ar/guide/use-format#plural-forms).
+
+تسمّي `formatDisplayName` الرموز بكلمات اللغة نفسها — `العربية` بدل `Arabic` و`مصر` بدل `Egypt` — فتبقى قوائم اختيار اللغات والبلدان مترجمة. الخيار `type` مطلوب؛ ويمرَّر `style` (`'long' | 'short' | 'narrow'`) و`languageDisplay` (`'dialect' | 'standard'`) إلى `Intl.DisplayNames`. تعيد الرموز غير المعروفة الرمز نفسه (`fallback: 'code'`، وهو الافتراضي) أو `''` (`fallback: 'none'`)؛ والرموز غير الصالحة وبيئات التشغيل بلا `Intl.DisplayNames` تعيد البديل نفسه بدل رمي استثناء. وفي بيئات التشغيل الأقدم التي يتجاهل فيها `Intl.DisplayNames` الخيار `fallback: 'none'`، لا يمكن تمييز اسم يساوي رمزه (مثل `second` بالإنجليزية أو `US` مع `style: 'narrow'`) عن رمز غير معروف، فيعيد هو أيضًا `''`. راجع [أسماء العرض](/ar/guide/use-format#display-names).
 
 تقرأ `parseNumber` فاصل المجموعات والفاصلة العشرية وإشارة السالب من `formatToParts()` في `Intl.NumberFormat` بحسب `locale` و`numberingSystem` (الافتراضي `'en'`)، وتخزّنها مؤقتًا لكل وسم لغة. تقبل الأرقام الغربية والعربية الهندية والفارسية، وتتجاهل علامات الاتجاه ومحارف العزل والمسافات، وتقبل `-` أو U+2212 إشارةً للسالب وعلامة `+` في أول النص، وتقسم على 100 عند وجود `%` أو `٪` في آخره. تُقبل فواصل المجموعات بين أرقام الجزء الصحيح فقط. راجع [تحليل الأرقام](/ar/guide/use-format#parsing-numbers) لمعرفة القواعد كاملة.
 
@@ -394,6 +400,7 @@ interface BoundFormatters {
     options?: RelativeTimeFormatOptions,
   ) => string
   formatPlural: (count: number, forms: PluralForms, options?: FormatPluralOptions) => string
+  formatDisplayName: (code: string, options: FormatDisplayNameOptions) => string
   parseNumber: (text: string, options?: ParseNumberOptions) => number
 }
 ```
@@ -415,6 +422,14 @@ type FormatPluralOptions = FormatOptionsBase & { type?: 'cardinal' | 'ordinal' }
 
 interface PluralForms extends Partial<Record<'zero' | 'one' | 'two' | 'few' | 'many' | 'other', string>> {
   other: string
+}
+
+interface FormatDisplayNameOptions {
+  type: 'language' | 'region' | 'currency' | 'script' | 'calendar' | 'dateTimeField'
+  locale?: string
+  style?: 'long' | 'short' | 'narrow'
+  languageDisplay?: 'dialect' | 'standard'
+  fallback?: 'code' | 'none'
 }
 
 interface ParseNumberOptions {

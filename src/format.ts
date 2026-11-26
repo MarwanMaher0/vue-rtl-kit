@@ -46,6 +46,27 @@ export interface PluralForms extends Partial<Record<Intl.LDMLPluralRule, string>
   other: string
 }
 
+/** Options for {@link formatDisplayName}. */
+export interface FormatDisplayNameOptions {
+  /** What the code identifies. Required. */
+  type: 'language' | 'region' | 'currency' | 'script' | 'calendar' | 'dateTimeField'
+  /** BCP-47 locale tag to name the code in. Defaults to the current context locale. */
+  locale?: string
+  /** Name length: `'long'` (default), `'short'` or `'narrow'`. */
+  style?: 'long' | 'short' | 'narrow'
+  /**
+   * For `type: 'language'`: `'dialect'` (default) prefers dialect names -
+   * `en-US` as "American English"; `'standard'` composes "English (United
+   * States)".
+   */
+  languageDisplay?: 'dialect' | 'standard'
+  /**
+   * What an unknown or invalid code returns: the code itself (`'code'`, the
+   * default) or an empty string (`'none'`).
+   */
+  fallback?: 'code' | 'none'
+}
+
 /** Options for {@link parseNumber}. */
 export interface ParseNumberOptions {
   /** BCP-47 locale tag the text is written in. Defaults to `'en'`. */
@@ -154,6 +175,7 @@ const dateFormatters = /*#__PURE__*/ new LruCache<Intl.DateTimeFormat>(FORMATTER
 const listFormatters = /*#__PURE__*/ new LruCache<Intl.ListFormat>(FORMATTER_CACHE_LIMIT)
 const relativeTimeFormatters = /*#__PURE__*/ new LruCache<Intl.RelativeTimeFormat>(FORMATTER_CACHE_LIMIT)
 const pluralRules = /*#__PURE__*/ new LruCache<Intl.PluralRules>(FORMATTER_CACHE_LIMIT)
+const displayNames = /*#__PURE__*/ new LruCache<Intl.DisplayNames>(FORMATTER_CACHE_LIMIT)
 
 /** What `parseNumber()` needs to know about a locale and numbering system. */
 interface NumberSymbols {
@@ -175,6 +197,7 @@ export function formatterCacheStats(): {
   date: number
   list: number
   relativeTime: number
+  displayName: number
   limit: number
 } {
   return {
@@ -182,6 +205,7 @@ export function formatterCacheStats(): {
     date: dateFormatters.size,
     list: listFormatters.size,
     relativeTime: relativeTimeFormatters.size,
+    displayName: displayNames.size,
     limit: FORMATTER_CACHE_LIMIT,
   }
 }
@@ -197,8 +221,10 @@ export function resetFormatterCaches(): void {
   listFormatters.clear()
   relativeTimeFormatters.clear()
   pluralRules.clear()
+  displayNames.clear()
   numberSymbols.clear()
   supportedNumberingSystems = undefined
+  displayNamesHonorsNone = undefined
 }
 
 function cacheKey(locale: string, options: object): string {
@@ -397,6 +423,75 @@ export function formatPlural(
 }
 
 /**
+ * Whether `Intl.DisplayNames` honours `fallback: 'none'` by returning
+ * `undefined` for a code it cannot name. Some engines ignore the option and
+ * echo the code back; only there does an echoed code mean "unknown". Probed
+ * once with `qaa`, a language subtag reserved for private use that no locale
+ * names, and remembered like the `Intl.supportedValuesOf` result.
+ */
+let displayNamesHonorsNone: boolean | undefined
+
+function honorsNoneFallback(): boolean {
+  if (displayNamesHonorsNone === undefined) {
+    try {
+      displayNamesHonorsNone
+        = new Intl.DisplayNames('en', { type: 'language', fallback: 'none' }).of('qaa') === undefined
+    }
+    catch {
+      displayNamesHonorsNone = true
+    }
+  }
+  return displayNamesHonorsNone
+}
+
+/**
+ * The display name of a language, region, currency, script, calendar or
+ * date-time field code, in the locale's own words - so a language picker on
+ * an Arabic page offers "العربية" instead of "Arabic", and a country picker
+ * shows "مصر" instead of "Egypt".
+ *
+ * Wraps `Intl.DisplayNames` with the same locale fallbacks and bounded
+ * formatter cache as the other helpers. An unknown code returns the code
+ * itself (`fallback: 'code'`, the default) or an empty string
+ * (`fallback: 'none'`); a structurally invalid code, or a runtime without
+ * `Intl.DisplayNames`, returns the same fallback instead of throwing. The
+ * code is read through `String(code)`, so `null`, `undefined` and numbers
+ * fall back to their string form.
+ *
+ * @example
+ * formatDisplayName('ar', { type: 'language', locale: 'ar' }) // 'العربية'
+ * formatDisplayName('EG', { type: 'region', locale: 'ar' }) // 'مصر'
+ * formatDisplayName('EGP', { type: 'currency', locale: 'en' }) // 'Egyptian Pound'
+ * formatDisplayName('ar-EG', { type: 'language', languageDisplay: 'standard' }) // 'Arabic (Egypt)'
+ * formatDisplayName('zz', { type: 'language', fallback: 'none' }) // ''
+ */
+export function formatDisplayName(code: string, options: FormatDisplayNameOptions): string {
+  const { locale = 'en', fallback = 'code', ...intl } = options ?? ({} as FormatDisplayNameOptions)
+  const tag = String(code)
+  const fallbackValue = fallback === 'none' ? '' : tag
+  if (typeof Intl.DisplayNames !== 'function') return fallbackValue
+  const key = cacheKey(locale.replace(/_/g, '-'), intl)
+  try {
+    let names = displayNames.get(key)
+    if (!names) {
+      // Ask Intl for `undefined` on unknown codes so `fallback` is ours alone.
+      names = makeFormatter(locale, undefined, { ...intl, fallback: 'none' }, Intl.DisplayNames)
+      displayNames.set(key, names)
+    }
+    const name = names.of(tag)
+    if (name === undefined) return fallbackValue
+    // On engines that ignore fallback:'none', an echoed code is an unknown
+    // code. Where the option works, a real name equal to its code ('second'
+    // in en, narrow 'US') stays a name.
+    if (fallback === 'none' && name === tag && !honorsNoneFallback()) return ''
+    return name
+  }
+  catch {
+    return fallbackValue
+  }
+}
+
+/**
  * Convert the digits in a string between numbering systems without touching
  * anything else.
  *
@@ -531,6 +626,8 @@ export interface BoundFormatters {
   ) => string
   /** `formatPlural()` for this locale and numbering system: picks the CLDR plural form and fills in `{count}`. */
   formatPlural: (count: number, forms: PluralForms, options?: FormatPluralOptions) => string
+  /** `formatDisplayName()` for this locale: names language, region, currency, script, calendar and date-time field codes in the locale's own words. */
+  formatDisplayName: (code: string, options: FormatDisplayNameOptions) => string
   /** `parseNumber()` for this locale and numbering system: reads back what `formatNumber` writes. */
   parseNumber: (text: string, options?: ParseNumberOptions) => number
 }

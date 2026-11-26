@@ -102,17 +102,17 @@ budgets are set to their measured byte counts plus fixed `+256 B` (`0.25 kB`) ra
 
 | Entry point | Artifact | Raw (current / budget) | Gzip (current / budget) |
 | --- | --- | --- | --- |
-| `vue-rtl-kit` (ESM) | `dist/vue-rtl-kit.js` | 39.93 kB / ≤ 40.18 kB | 12.69 kB / ≤ 12.79 kB |
-| `vue-rtl-kit` (CJS) | `dist/vue-rtl-kit.cjs` | 29.12 kB / ≤ 29.37 kB | 10.75 kB / ≤ 10.85 kB |
+| `vue-rtl-kit` (ESM) | `dist/vue-rtl-kit.js` | 40.83 kB / ≤ 41.08 kB | 12.95 kB / ≤ 13.05 kB |
+| `vue-rtl-kit` (CJS) | `dist/vue-rtl-kit.cjs` | 29.70 kB / ≤ 29.95 kB | 10.96 kB / ≤ 11.06 kB |
 | `vue-rtl-kit/nuxt` | `dist/nuxt/module.js` | 3.08 kB / ≤ 3.25 kB | 1.12 kB / ≤ 1.50 kB |
 | `vue-rtl-kit/nuxt` (runtime plugin) | `dist/nuxt/runtime/plugin.js` | 2.77 kB / ≤ 3.00 kB | 1.02 kB / ≤ 1.20 kB |
 | `vue-rtl-kit/styles.css` | `dist/styles.css` | 7.10 kB / ≤ 8.00 kB | 1.91 kB / ≤ 2.50 kB |
 
-`sideEffects` lists only `*.css`, so a bundler can drop unused helpers. `npm run check:treeshake` bundles each import on its own against `dist/vue-rtl-kit.js` (Rollup, `vue` external, esbuild minify). Vue stays external, so Rollup would otherwise keep a bare `import 'vue'`; the check declares `vue` side-effect free with `treeshake.moduleSideEffects` (the same assumption a consumer bundler makes for an unused Vue import) and fails if `chunk.imports` still includes `vue`. It also fails if `{ isolateRuns }`, `{ toLogicalStyle }`, `{ logicalArrow }`, `{ resolvePlacement }`, `{ getScrollInline }`, `{ scrollToInline }`, `{ directionOfLocale }`, `{ findSearchMatches }` or `{ formatPlural }` exceeds 2 kB gzip, or if `{ formatNumber }` still contains component or directive code:
+`sideEffects` lists only `*.css`, so a bundler can drop unused helpers. `npm run check:treeshake` bundles each import on its own against `dist/vue-rtl-kit.js` (Rollup, `vue` external, esbuild minify). Vue stays external, so Rollup would otherwise keep a bare `import 'vue'`; the check declares `vue` side-effect free with `treeshake.moduleSideEffects` (the same assumption a consumer bundler makes for an unused Vue import) and fails if `chunk.imports` still includes `vue`. It also fails if `{ isolateRuns }`, `{ toLogicalStyle }`, `{ logicalArrow }`, `{ resolvePlacement }`, `{ getScrollInline }`, `{ scrollToInline }`, `{ directionOfLocale }`, `{ findSearchMatches }`, `{ formatPlural }` or `{ formatDisplayName }` exceeds 2 kB gzip, or if `{ formatNumber }` still contains component or directive code:
 
 | Import | Gzip (current / budget) | Must not include |
 | --- | --- | --- |
-| `{ isolateRuns }` | 1.02 kB / ≤ 2.00 kB | `vue` |
+| `{ isolateRuns }` | 1.03 kB / ≤ 2.00 kB | `vue` |
 | `{ toLogicalStyle }` | 1.25 kB / ≤ 2.00 kB | `vue` |
 | `{ logicalArrow }` | 0.18 kB / ≤ 2.00 kB | `vue` |
 | `{ resolvePlacement }` | 0.36 kB / ≤ 2.00 kB | `vue` |
@@ -121,6 +121,7 @@ budgets are set to their measured byte counts plus fixed `+256 B` (`0.25 kB`) ra
 | `{ directionOfLocale }` | 0.62 kB / ≤ 2.00 kB | `vue` |
 | `{ findSearchMatches }` | 0.81 kB / ≤ 2.00 kB | `vue` |
 | `{ formatPlural }` | 0.91 kB / ≤ 2.00 kB | `vue` |
+| `{ formatDisplayName }` | 0.65 kB / ≤ 2.00 kB | `vue` |
 | `{ formatNumber }` | 0.75 kB | components, directives |
 
 ## Quickstart — Vue
@@ -248,7 +249,7 @@ excluded from `ModuleOptions`.
 | `useDirection()` | `DirectionContext` | `dir`, `isRtl`, `isLtr`, `locale`, `startSide`, `endSide`, `sign`, `setDirection()`, `toggleDirection()`, `setLocale()`, `htmlAttrs()`. Resolves to the nearest `<RtlProvider>`, then the app store, then a detached fallback — it never throws. |
 | `useRtl()` | `RtlInstance` | The app-level store, skipping any `<RtlProvider>`. Throws if the plugin is missing. |
 | `useLogicalStyles()` | see below | `toLogical()`, `toPhysical()`, `property()`, `mirror()`, `arrow()`, plus `startSide`, `endSide`, `sign`. |
-| `useFormat()` | `ComputedRef<BoundFormatters>` | `formatNumber` / `formatCurrency` / `formatDate` / `formatList` / `formatRelativeTime` / `formatPlural` / `parseNumber` bound to the current locale and numbering system; they follow `setLocale()` and the `numberingSystem` configured in `createRtl()`. |
+| `useFormat()` | `ComputedRef<BoundFormatters>` | `formatNumber` / `formatCurrency` / `formatDate` / `formatList` / `formatRelativeTime` / `formatPlural` / `formatDisplayName` / `parseNumber` bound to the current locale and numbering system; they follow `setLocale()` and the `numberingSystem` configured in `createRtl()`. |
 | `useInlineScroll(target, options?)` | `UseInlineScrollReturn` | Readonly `offset`, `max`, `atStart`, `atEnd` refs plus `scrollTo()`, `scrollBy()`, `scrollToStart()`, `scrollToEnd()`. Uses a passive `scroll` listener and `ResizeObserver`, re-reads on `target` and `useDirection().dir` changes, cleans up on dispose, and is SSR-safe. Horizontal writing modes only. |
 | `useLogicalPlacement(placement, target?)` | `ComputedRef<PhysicalPlacement>` | Resolve a placement using the target element's computed `direction`, or `useDirection().dir` without a mounted target or during SSR. See [Floating UI example](#floating-ui-example). |
 
@@ -404,6 +405,7 @@ Vue components, use `useInlineScroll(target)`.
 import {
   formatCurrency,
   formatDate,
+  formatDisplayName,
   formatList,
   formatNumber,
   formatPlural,
@@ -436,6 +438,10 @@ formatPlural(3, { few: '{count}rd', other: '{count}th' }, { type: 'ordinal' }) /
 parseNumber('١٬٢٣٤٫٥', { locale: 'ar-EG' })                          // 1234.5
 parseNumber('1.234,5', { locale: 'de' })                             // 1234.5
 parseNumber('12abc')                                                 // NaN
+
+formatDisplayName('ar', { type: 'language', locale: 'ar' })          // 'العربية'
+formatDisplayName('EG', { type: 'region', locale: 'ar' })            // 'مصر'
+formatDisplayName('EGP', { type: 'currency', locale: 'en' })         // 'Egyptian Pound'
 ```
 
 Thin wrappers over `Intl` that add two things RTL products keep needing: an explicit numbering
@@ -463,6 +469,36 @@ a missing category falls back to `other`. Every `{count}` in the chosen form is 
 `options` adds `type: 'cardinal' | 'ordinal'` (English `1st` / `2nd` / `3rd`) to the shared options.
 `NaN`, `Infinity`, negative and fractional counts select the category the rules report without
 throwing; an empty `forms.other` or a runtime without `Intl.PluralRules` returns `''`.
+
+`formatDisplayName(code, options)` wraps `Intl.DisplayNames` so language and country pickers show
+names in the page's language — `العربية` instead of `Arabic`, `مصر` instead of `Egypt`. `type` is
+required (`'language' | 'region' | 'currency' | 'script' | 'calendar' | 'dateTimeField'`); `style`
+(`'long' | 'short' | 'narrow'`) and `languageDisplay` (`'dialect' | 'standard'`, e.g. `en-US` as
+"American English" or "English (United States)") are forwarded to `Intl`. An unknown code returns
+the code itself (`fallback: 'code'`, the default) or `''` (`fallback: 'none'`); invalid codes and
+runtimes without `Intl.DisplayNames` return the same fallback instead of throwing. Instances are
+cached in the same bounded LRU (32 entries) as the other formatters, and
+`useFormat().value.formatDisplayName` follows `setLocale()`. A language picker usually wants
+autonyms instead — each option named in its own language — so pass `locale: tag` per call:
+
+```vue
+<script setup lang="ts">
+import { useDirection, useFormat } from 'vue-rtl-kit'
+
+const { locale, setLocale } = useDirection()
+const format = useFormat()
+const locales = ['ar', 'en', 'fa', 'he']
+</script>
+
+<template>
+  <!-- Autonyms: every option is named in its own language — العربية, English, فارسی, עברית -->
+  <select :value="locale" @change="setLocale($event.target.value)">
+    <option v-for="tag in locales" :key="tag" :value="tag">
+      {{ format.formatDisplayName(tag, { type: 'language', locale: tag }) }}
+    </option>
+  </select>
+</template>
+```
 
 `parseNumber(text, options)` is the inverse of `formatNumber` for form input: `Number()` returns
 `NaN` for what `formatNumber` writes in `ar-EG`, `fa-IR`, `he`, `de` or `fr`. It takes `locale`

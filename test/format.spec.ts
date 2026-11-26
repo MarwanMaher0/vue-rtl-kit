@@ -5,6 +5,7 @@ import {
   FORMATTER_CACHE_LIMIT,
   formatCurrency,
   formatDate,
+  formatDisplayName,
   formatList,
   formatNumber,
   formatPlural,
@@ -513,6 +514,243 @@ describe('formatPlural', () => {
   })
 })
 
+describe('formatDisplayName', () => {
+  type DisplayNameType = 'language' | 'region' | 'currency' | 'script' | 'calendar' | 'dateTimeField'
+  const reference = (
+    locale: string,
+    type: DisplayNameType,
+    code: string,
+    extra: Omit<Intl.DisplayNamesOptions, 'type'> = {},
+  ) => new Intl.DisplayNames([locale], { type, fallback: 'none', ...extra }).of(code)
+
+  // Literal CLDR names pinned for every requested code, not just a comparison
+  // against Intl itself, so a regression in the wrapper cannot hide behind the
+  // same regression in the reference.
+  const languageNames = {
+    ar: { ar: 'العربية', en: 'الإنجليزية', fa: 'الفارسية', he: 'العبرية', ur: 'الأوردية' },
+    fa: { ar: 'عربی', en: 'انگلیسی', fa: 'فارسی', he: 'عبری', ur: 'اردو' },
+    he: { ar: 'ערבית', en: 'אנגלית', fa: 'פרסית', he: 'עברית', ur: 'אורדו' },
+    en: { ar: 'Arabic', en: 'English', fa: 'Persian', he: 'Hebrew', ur: 'Urdu' },
+  } as const
+  const regionNames = {
+    ar: { EG: 'مصر', SA: 'المملكة العربية السعودية', IR: 'إيران', IL: 'إسرائيل', US: 'الولايات المتحدة' },
+    fa: { EG: 'مصر', SA: 'عربستان سعودی', IR: 'ایران', IL: 'اسرائیل', US: 'ایالات متحده' },
+    he: { EG: 'מצרים', SA: 'ערב הסעודית', IR: 'איראן', IL: 'ישראל', US: 'ארצות הברית' },
+    en: { EG: 'Egypt', SA: 'Saudi Arabia', IR: 'Iran', IL: 'Israel', US: 'United States' },
+  } as const
+  const currencyNames = {
+    ar: { EGP: 'جنيه مصري', SAR: 'ريال سعودي', IRR: 'ريال إيراني', USD: 'دولار أمريكي' },
+    fa: { EGP: 'پوند مصر', SAR: 'ریال سعودی', IRR: 'ریال ایران', USD: 'دلار آمریکا' },
+    he: { EGP: 'לירה מצרית', SAR: 'ריאל סעודי', IRR: 'ריאל איראני', USD: 'דולר אמריקאי' },
+    en: { EGP: 'Egyptian Pound', SAR: 'Saudi Riyal', IRR: 'Iranian Rial', USD: 'US Dollar' },
+  } as const
+  const scriptNames = {
+    ar: { Arab: 'العربية', Hebr: 'العبرية', Latn: 'اللاتينية' },
+    fa: { Arab: 'عربی', Hebr: 'عبری', Latn: 'لاتین' },
+    he: { Arab: 'ערבי', Hebr: 'עברי', Latn: 'לטיני' },
+    en: { Arab: 'Arabic', Hebr: 'Hebrew', Latn: 'Latin' },
+  } as const
+
+  it.each(['ar', 'fa', 'he', 'en'] as const)('names languages in %s', (locale) => {
+    for (const code of ['ar', 'en', 'fa', 'he', 'ur'] as const) {
+      expect(formatDisplayName(code, { type: 'language', locale })).toBe(languageNames[locale][code])
+    }
+  })
+
+  it.each(['ar', 'fa', 'he', 'en'] as const)('names regions in %s', (locale) => {
+    for (const code of ['EG', 'SA', 'IR', 'IL', 'US'] as const) {
+      expect(formatDisplayName(code, { type: 'region', locale })).toBe(regionNames[locale][code])
+    }
+  })
+
+  it.each(['ar', 'fa', 'he', 'en'] as const)('names currencies in %s', (locale) => {
+    for (const code of ['EGP', 'SAR', 'IRR', 'USD'] as const) {
+      expect(formatDisplayName(code, { type: 'currency', locale })).toBe(currencyNames[locale][code])
+    }
+  })
+
+  it.each(['ar', 'fa', 'he', 'en'] as const)('names scripts in %s', (locale) => {
+    for (const code of ['Arab', 'Hebr', 'Latn'] as const) {
+      expect(formatDisplayName(code, { type: 'script', locale })).toBe(scriptNames[locale][code])
+    }
+  })
+
+  it('shows Arabic names on Arabic pages instead of English', () => {
+    expect(formatDisplayName('ar', { type: 'language', locale: 'ar' })).toBe('العربية')
+    expect(formatDisplayName('he', { type: 'language', locale: 'ar' })).toBe('العبرية')
+    expect(formatDisplayName('EG', { type: 'region', locale: 'ar' })).toBe('مصر')
+    expect(formatDisplayName('SA', { type: 'region', locale: 'ar' })).toBe('المملكة العربية السعودية')
+    expect(formatDisplayName('EGP', { type: 'currency', locale: 'ar' })).toBe('جنيه مصري')
+    expect(formatDisplayName('Arab', { type: 'script', locale: 'ar' })).toBe('العربية')
+    expect(formatDisplayName('ar', { type: 'language', locale: 'ar' }))
+      .not.toBe(formatDisplayName('ar', { type: 'language', locale: 'en' }))
+  })
+
+  it('shows Persian and Hebrew names in their own languages', () => {
+    expect(formatDisplayName('fa', { type: 'language', locale: 'fa' })).toBe('فارسی')
+    expect(formatDisplayName('IR', { type: 'region', locale: 'fa' })).toBe('ایران')
+    expect(formatDisplayName('IRR', { type: 'currency', locale: 'fa' })).toBe('ریال ایران')
+    expect(formatDisplayName('he', { type: 'language', locale: 'he' })).toBe('עברית')
+    expect(formatDisplayName('IL', { type: 'region', locale: 'he' })).toBe('ישראל')
+    expect(formatDisplayName('Hebr', { type: 'script', locale: 'he' })).toBe('עברי')
+  })
+
+  it('defaults to English names', () => {
+    expect(formatDisplayName('ar', { type: 'language' })).toBe('Arabic')
+    expect(formatDisplayName('US', { type: 'region' })).toBe('United States')
+    expect(formatDisplayName('USD', { type: 'currency' })).toBe('US Dollar')
+    expect(formatDisplayName('Latn', { type: 'script' })).toBe('Latin')
+  })
+
+  it('names calendars and date-time fields', () => {
+    expect(formatDisplayName('islamic-umalqura', { type: 'calendar', locale: 'ar' }))
+      .toBe(reference('ar', 'calendar', 'islamic-umalqura'))
+    expect(formatDisplayName('persian', { type: 'calendar', locale: 'en' })).toBe('Persian Calendar')
+    expect(formatDisplayName('month', { type: 'dateTimeField', locale: 'ar' })).toBe('الشهر')
+    expect(formatDisplayName('day', { type: 'dateTimeField', locale: 'en' })).toBe('day')
+  })
+
+  it('supports languageDisplay dialect and standard for ar-EG', () => {
+    const dialect = formatDisplayName('ar-EG', { type: 'language', locale: 'en', languageDisplay: 'dialect' })
+    const standard = formatDisplayName('ar-EG', { type: 'language', locale: 'en', languageDisplay: 'standard' })
+    expect(dialect).toBe(reference('en', 'language', 'ar-EG', { languageDisplay: 'dialect' }))
+    expect(standard).toBe(reference('en', 'language', 'ar-EG', { languageDisplay: 'standard' }))
+    expect(standard).toBe('Arabic (Egypt)')
+    expect(formatDisplayName('ar-EG', { type: 'language', locale: 'ar', languageDisplay: 'standard' }))
+      .toBe('العربية (مصر)')
+    // Where CLDR has a dialect name, the two modes differ.
+    expect(formatDisplayName('en-US', { type: 'language', languageDisplay: 'dialect' })).toBe('American English')
+    expect(formatDisplayName('en-US', { type: 'language', languageDisplay: 'standard' })).toBe('English (United States)')
+  })
+
+  it('forwards style to Intl.DisplayNames', () => {
+    expect(formatDisplayName('US', { type: 'region', style: 'short' }))
+      .toBe(reference('en', 'region', 'US', { style: 'short' }))
+    expect(formatDisplayName('US', { type: 'region', style: 'narrow' }))
+      .toBe(reference('en', 'region', 'US', { style: 'narrow' }))
+    expect(formatDisplayName('EGP', { type: 'currency', locale: 'ar', style: 'narrow' }))
+      .toBe(reference('ar', 'currency', 'EGP', { style: 'narrow' }))
+  })
+
+  it('returns the code itself for an unknown code by default and with fallback code', () => {
+    expect(formatDisplayName('zz', { type: 'language', locale: 'ar' })).toBe('zz')
+    expect(formatDisplayName('zz', { type: 'language', fallback: 'code' })).toBe('zz')
+    expect(formatDisplayName('AA', { type: 'region', fallback: 'code' })).toBe('AA')
+    expect(formatDisplayName('AAA', { type: 'currency', fallback: 'code' })).toBe('AAA')
+  })
+
+  it('returns an empty string for an unknown code with fallback none', () => {
+    expect(formatDisplayName('zz', { type: 'language', fallback: 'none' })).toBe('')
+    expect(formatDisplayName('AA', { type: 'region', fallback: 'none' })).toBe('')
+    expect(formatDisplayName('AAA', { type: 'currency', locale: 'ar', fallback: 'none' })).toBe('')
+  })
+
+  it.each(['!!', '', 'ar_EG', '123', 'not a code'])('never throws for invalid code %j', (code) => {
+    expect(() => formatDisplayName(code, { type: 'language' })).not.toThrow()
+    expect(formatDisplayName(code, { type: 'language' })).toBe(code)
+    expect(formatDisplayName(code, { type: 'region', fallback: 'none' })).toBe('')
+  })
+
+  it('returns the fallback for an invalid type instead of throwing', () => {
+    expect(formatDisplayName('ar', { type: 'klingon' as 'language' })).toBe('ar')
+    expect(formatDisplayName('ar', { type: 'klingon' as 'language', fallback: 'none' })).toBe('')
+  })
+
+  it('returns the fallback without Intl.DisplayNames', () => {
+    const descriptor = Object.getOwnPropertyDescriptor(Intl, 'DisplayNames')
+    delete (Intl as { DisplayNames?: unknown }).DisplayNames
+    resetFormatterCaches()
+    try {
+      expect('DisplayNames' in Intl).toBe(false)
+      expect(() => formatDisplayName('ar', { type: 'language', locale: 'ar' })).not.toThrow()
+      expect(formatDisplayName('ar', { type: 'language', locale: 'ar' })).toBe('ar')
+      expect(formatDisplayName('ar', { type: 'language', fallback: 'none' })).toBe('')
+    }
+    finally {
+      if (descriptor) Object.defineProperty(Intl, 'DisplayNames', descriptor)
+      resetFormatterCaches()
+    }
+    expect(formatDisplayName('ar', { type: 'language', locale: 'ar' })).toBe('العربية')
+  })
+
+  it('probes fallback none once and returns empty string for unknown codes on engines that ignore it', () => {
+    const descriptor = Object.getOwnPropertyDescriptor(Intl, 'DisplayNames')
+    const known: Record<string, string> = { ar: 'Arabic', en: 'English' }
+    let probeCalls = 0
+    // An engine that echoes the code for anything it cannot name, whatever
+    // `fallback` says.
+    class EchoingDisplayNames {
+      of(code: string): string {
+        if (code === 'qaa') probeCalls++
+        return known[code] ?? code
+      }
+    }
+    const intl = Intl as { DisplayNames?: unknown }
+    intl.DisplayNames = EchoingDisplayNames
+    resetFormatterCaches()
+    try {
+      expect(formatDisplayName('zz', { type: 'language', fallback: 'none' })).toBe('')
+      expect(formatDisplayName('xx', { type: 'language', fallback: 'none' })).toBe('')
+      expect(formatDisplayName('AA', { type: 'region', fallback: 'none' })).toBe('')
+      expect(probeCalls).toBe(1)
+      expect(formatDisplayName('zz', { type: 'language' })).toBe('zz')
+      expect(formatDisplayName('ar', { type: 'language', fallback: 'none' })).toBe('Arabic')
+    }
+    finally {
+      if (descriptor) Object.defineProperty(Intl, 'DisplayNames', descriptor)
+      resetFormatterCaches()
+    }
+    expect(formatDisplayName('zz', { type: 'language', fallback: 'none' })).toBe('')
+  })
+
+  it('keeps a real name equal to its code when the engine honours fallback none', () => {
+    const descriptor = Object.getOwnPropertyDescriptor(Intl, 'DisplayNames')
+    class NarrowDisplayNames {
+      of(code: string): string | undefined {
+        if (code === 'second' || code === 'US') return code
+        return undefined
+      }
+    }
+    const intl = Intl as { DisplayNames?: unknown }
+    intl.DisplayNames = NarrowDisplayNames
+    resetFormatterCaches()
+    try {
+      expect(formatDisplayName('second', { type: 'dateTimeField', fallback: 'none' })).toBe('second')
+      expect(formatDisplayName('US', { type: 'region', style: 'narrow', fallback: 'none' })).toBe('US')
+      expect(formatDisplayName('zz', { type: 'language', fallback: 'none' })).toBe('')
+      expect(formatDisplayName('zz', { type: 'language' })).toBe('zz')
+    }
+    finally {
+      if (descriptor) Object.defineProperty(Intl, 'DisplayNames', descriptor)
+      resetFormatterCaches()
+    }
+  })
+
+  it('keeps real names that equal their code with fallback none on the real runtime', () => {
+    expect(formatDisplayName('second', { type: 'dateTimeField', locale: 'en', fallback: 'none' })).toBe('second')
+    expect(formatDisplayName('US', { type: 'region', locale: 'en', style: 'narrow', fallback: 'none' })).toBe('US')
+  })
+
+  it.each([
+    { code: null, expected: 'null' },
+    { code: undefined, expected: 'undefined' },
+    { code: 123, expected: '123' },
+  ])('coerces non-string code $code through String()', ({ code, expected }) => {
+    expect(formatDisplayName(code as unknown as string, { type: 'language' })).toBe(expected)
+    expect(formatDisplayName(code as unknown as string, { type: 'language', fallback: 'none' })).toBe('')
+  })
+
+  it('falls back from invalid locale tags like the other formatters', () => {
+    expect(formatDisplayName('ar', { type: 'language', locale: 'ar_EG' }))
+      .toBe(formatDisplayName('ar', { type: 'language', locale: 'ar-EG' }))
+    expect(formatDisplayName('EG', { type: 'region', locale: 'ar--EG' }))
+      .toBe(formatDisplayName('EG', { type: 'region', locale: 'ar' }))
+    expect(formatDisplayName('ar', { type: 'language', locale: '123-en' })).toBe('Arabic')
+    expect(formatDisplayName('ar', { type: 'language', locale: '' })).toBe('Arabic')
+    expect(formatDisplayName('ar', { type: 'language', locale: '@' })).toBe('Arabic')
+  })
+})
+
 describe('transliterateDigits', () => {
   it('converts to Arabic-Indic and back', () => {
     expect(transliterateDigits('طلب 4821', 'arab')).toBe('طلب ٤٨٢١')
@@ -611,6 +849,30 @@ describe('useFormat', () => {
     rtl.setLocale('en')
     await nextTick()
     expect(formatters.value.formatPlural(1, days)).toBe('1 day')
+    rtl.dispose()
+  })
+
+  it('binds formatDisplayName to the current locale', async () => {
+    const { rtl, formatters } = setup({ locales: ['en', 'ar-EG', 'he'], defaultLocale: 'en' })
+    expect(formatters.value.formatDisplayName('ar', { type: 'language' })).toBe('Arabic')
+    expect(formatters.value.formatDisplayName('EG', { type: 'region' })).toBe('Egypt')
+
+    rtl.setLocale('ar-EG')
+    await nextTick()
+    expect(formatters.value.formatDisplayName('ar', { type: 'language' })).toBe('العربية')
+    expect(formatters.value.formatDisplayName('EG', { type: 'region' })).toBe('مصر')
+    expect(formatters.value.formatDisplayName('EGP', { type: 'currency' })).toBe('جنيه مصري')
+    expect(formatters.value.formatDisplayName('ar', { type: 'language', locale: 'en' })).toBe('Arabic')
+    expect(formatters.value.formatDisplayName('zz', { type: 'language', fallback: 'none' })).toBe('')
+
+    rtl.setLocale('he')
+    await nextTick()
+    expect(formatters.value.formatDisplayName('he', { type: 'language' })).toBe('עברית')
+    expect(formatters.value.formatDisplayName('IL', { type: 'region' })).toBe('ישראל')
+
+    rtl.setLocale('en')
+    await nextTick()
+    expect(formatters.value.formatDisplayName('ar', { type: 'language' })).toBe('Arabic')
     rtl.dispose()
   })
 
@@ -752,7 +1014,7 @@ describe('useFormat', () => {
 describe('formatter caches', () => {
   // Intl.ListFormat and Intl.RelativeTimeFormat must be called with `new`, so
   // spy through a plain constructor function that forwards to the original.
-  const spyOnConstructor = <K extends 'ListFormat' | 'RelativeTimeFormat' | 'PluralRules'>(name: K) => {
+  const spyOnConstructor = <K extends 'ListFormat' | 'RelativeTimeFormat' | 'PluralRules' | 'DisplayNames'>(name: K) => {
     const Original = Intl[name] as unknown as new (...args: unknown[]) => object
     return vi.spyOn(Intl, name).mockImplementation(function (...args: unknown[]) {
       return new Original(...args)
@@ -873,15 +1135,45 @@ describe('formatter caches', () => {
     ctor.mockRestore()
   })
 
+  it('bounds the Intl.DisplayNames cache the same way and keys type and options apart', () => {
+    resetFormatterCaches()
+    const ctor = spyOnConstructor('DisplayNames')
+    formatDisplayName('ar', { type: 'language', locale: 'en' })
+    formatDisplayName('en', { type: 'language', locale: 'en' })
+    expect(ctor).toHaveBeenCalledTimes(1)
+    expect(formatterCacheStats().displayName).toBe(1)
+
+    ctor.mockClear()
+    formatDisplayName('EG', { type: 'region', locale: 'en' })
+    expect(ctor).toHaveBeenCalledTimes(1)
+    formatDisplayName('ar-EG', { type: 'language', locale: 'en', languageDisplay: 'standard' })
+    expect(ctor).toHaveBeenCalledTimes(2)
+
+    ctor.mockClear()
+    const keys = Array.from({ length: FORMATTER_CACHE_LIMIT * 3 }, (_, i) => `en-x-dn${i}`)
+    for (const locale of keys) formatDisplayName('ar', { type: 'language', locale })
+    expect(formatterCacheStats().displayName).toBe(FORMATTER_CACHE_LIMIT)
+    expect(ctor).toHaveBeenCalledTimes(keys.length)
+
+    ctor.mockClear()
+    formatDisplayName('ar', { type: 'language', locale: keys.at(-1)! })
+    expect(ctor).not.toHaveBeenCalled()
+    formatDisplayName('ar', { type: 'language', locale: keys[0]! })
+    expect(ctor).toHaveBeenCalledTimes(1)
+    expect(formatterCacheStats().displayName).toBe(FORMATTER_CACHE_LIMIT)
+    ctor.mockRestore()
+  })
+
   it('keeps each kind in its own cache and resets them all', () => {
     resetFormatterCaches()
     formatNumber(1, { locale: 'en' })
     formatDate(0, { locale: 'en' })
     formatList(['a'], { locale: 'en' })
     formatRelativeTime(1, 'day', { locale: 'en' })
-    expect(formatterCacheStats()).toEqual({ number: 1, date: 1, list: 1, relativeTime: 1, limit: FORMATTER_CACHE_LIMIT })
+    formatDisplayName('ar', { type: 'language', locale: 'en' })
+    expect(formatterCacheStats()).toEqual({ number: 1, date: 1, list: 1, relativeTime: 1, displayName: 1, limit: FORMATTER_CACHE_LIMIT })
     resetFormatterCaches()
-    expect(formatterCacheStats()).toEqual({ number: 0, date: 0, list: 0, relativeTime: 0, limit: FORMATTER_CACHE_LIMIT })
+    expect(formatterCacheStats()).toEqual({ number: 0, date: 0, list: 0, relativeTime: 0, displayName: 0, limit: FORMATTER_CACHE_LIMIT })
   })
 
   it('refreshes recency on hit so a hot formatter survives churn', () => {

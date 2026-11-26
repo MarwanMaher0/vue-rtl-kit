@@ -1,6 +1,6 @@
 # useFormat
 
-تربط `useFormat()` منسّقات الأرقام والعملات والتواريخ والقوائم والأزمنة النسبية وصيغ الجمع، ومحلّل الأرقام `parseNumber()`، بلغة النطاق الحالي واتجاهه. كما تطبّق إعداد `numberingSystem` المضبوط على نسخة `createRtl()` الجذرية.
+تربط `useFormat()` منسّقات الأرقام والعملات والتواريخ والقوائم والأزمنة النسبية وصيغ الجمع، ومساعد أسماء العرض `formatDisplayName()`، ومحلّل الأرقام `parseNumber()`، بلغة النطاق الحالي واتجاهه. كما تطبّق إعداد `numberingSystem` المضبوط على نسخة `createRtl()` الجذرية.
 
 ```ts
 function useFormat(): ComputedRef<BoundFormatters>
@@ -44,6 +44,7 @@ console.log(format.value.formatNumber(1234.5))
 | `formatList` | `(items: Iterable<string>, options?: ListFormatOptions) => string` |
 | `formatRelativeTime` | `(value: number, unit: Intl.RelativeTimeFormatUnit, options?: RelativeTimeFormatOptions) => string` |
 | `formatPlural` | `(count: number, forms: PluralForms, options?: FormatPluralOptions) => string` |
+| `formatDisplayName` | `(code: string, options: FormatDisplayNameOptions) => string` |
 | `parseNumber` | `(text: string, options?: ParseNumberOptions) => number` |
 
 تتجاوز الخيارات المقدّمة في كل استدعاء اللغة ونظام الأرقام المرتبطين. ويُعاد حساب المنسّقات المرتبطة عندما يغيّر `setLocale()` لغة النطاق. يوسّع كل من `NumberFormatOptions` و`DateFormatOptions` و`ListFormatOptions` و`RelativeTimeFormatOptions` خيارات `Intl` المقابلة بما يلي:
@@ -136,6 +137,56 @@ format.value.formatPlural(11, files)
 
 تختار القيم `NaN` و`Infinity` والسالبة والكسرية الفئة التي تعلنها `Intl.PluralRules` (غالبًا `other`) دون رمي استثناء. وتعيد الدالة سلسلة فارغة حين تكون `forms.other` فارغة أو حين لا تتوفر `Intl.PluralRules` في بيئة التشغيل. وتُخزَّن نسخ القواعد مؤقتًا لكل لغة و`type` في ذاكرة LRU المحدودة نفسها الخاصة بسائر المنسّقات.
 
+## أسماء العرض {#display-names}
+
+تغلّف `formatDisplayName()` الواجهة `Intl.DisplayNames` كي تعرض قوائم اختيار اللغات والبلدان الأسماء بلغة الصفحة بدل الإنجليزية: `العربية` بدل `Arabic`، و`مصر` بدل `Egypt`.
+
+```ts
+function formatDisplayName(code: string, options: FormatDisplayNameOptions): string
+
+interface FormatDisplayNameOptions {
+  type: 'language' | 'region' | 'currency' | 'script' | 'calendar' | 'dateTimeField'
+  locale?: string
+  style?: 'long' | 'short' | 'narrow'
+  languageDisplay?: 'dialect' | 'standard'
+  fallback?: 'code' | 'none'
+}
+```
+
+الخيار `type` مطلوب ويحدد ما يدل عليه الرمز. يقصّر `style` الاسم حين تملك اللغة صيغة أقصر؛ ويخص `languageDisplay` النوع `type: 'language'` وحده — تفضّل القيمة `'dialect'` (الافتراضية) أسماء اللهجات مثل "American English"، وتركّب `'standard'` صيغة "English (United States)".
+
+```ts
+formatDisplayName('ar', { type: 'language', locale: 'ar' }) // 'العربية'
+formatDisplayName('fa', { type: 'language', locale: 'fa' }) // 'فارسی'
+formatDisplayName('he', { type: 'language', locale: 'he' }) // 'עברית'
+formatDisplayName('EG', { type: 'region', locale: 'ar' }) // 'مصر'
+formatDisplayName('EGP', { type: 'currency', locale: 'ar' }) // 'جنيه مصري'
+formatDisplayName('Arab', { type: 'script', locale: 'en' }) // 'Arabic'
+formatDisplayName('ar-EG', { type: 'language', locale: 'en', languageDisplay: 'standard' }) // 'Arabic (Egypt)'
+```
+
+يعيد الرمز غير المعروف الرمز نفسه (`fallback: 'code'`، وهو الافتراضي) أو سلسلة فارغة (`fallback: 'none'`). أما الرمز غير الصالح بنيويًا، أو بيئة تشغيل بلا `Intl.DisplayNames`، فيعيدان البديل نفسه بدل رمي استثناء. وتحصل وسوم اللغة على تحويل الشرطات السفلية وبدائل وسم اللغة الفرعي / `en` نفسها الخاصة بسائر المنسّقات، وتُخزَّن النسخ مؤقتًا لكل لغة وخيارات في ذاكرة LRU المحدودة نفسها.
+
+تتبع `format.value.formatDisplayName()` المرتبطة استدعاءات `setLocale()`، فتسمّي الرموز افتراضيًا بلغة النطاق الحالي. لكن قائمة اختيار اللغات تريد عادةً الأسماء الذاتية — تسمية كل خيار بلغته هو مهما كانت اللغة الحالية — لذا مرّر `locale: tag` في كل استدعاء. أسماء العرض كلمات لا أرقام: لا ينطبق عليها `numberingSystem` المرتبط ولا `isolate`.
+
+```vue
+<script setup lang="ts">
+import { useDirection, useFormat } from 'vue-rtl-kit'
+
+const { locale, setLocale } = useDirection()
+const format = useFormat()
+const locales = ['ar', 'en', 'fa', 'he']
+</script>
+
+<template>
+  <select :value="locale" @change="setLocale($event.target.value)">
+    <option v-for="tag in locales" :key="tag" :value="tag">
+      {{ format.formatDisplayName(tag, { type: 'language', locale: tag }) }}
+    </option>
+  </select>
+</template>
+```
+
 ## تحليل الأرقام {#parsing-numbers}
 
 `parseNumber()` هي معكوس `formatNumber()` لمدخلات النماذج. تعيد `Number()` القيمة `NaN` لما تكتبه `formatNumber()` في `ar-EG` أو `fa-IR` أو `he` أو `de` أو `fr`، بسبب الأرقام أو الفواصل أو علامة اتجاه غير مرئية قبل إشارة السالب. تقرأ `parseNumber()` ذلك النص وتعيده عددًا، وتعيد `NaN` بدلًا من رمي استثناء حين لا يكون النص عددًا.
@@ -206,7 +257,7 @@ const invalid = computed(() => text.value !== '' && Number.isNaN(amount.value))
 
 ## معالجة المدخلات غير الصالحة
 
-تُحوَّل الشرطات السفلية في وسوم اللغة إلى شرطات، لذا تُنسَّق `ar_EG` كما لو كانت `ar-EG`. إذا كان الوسم غير صالح، يحاول المنسّق استخدام وسم اللغة الفرعي ثم يعود إلى `en`. يُدرج نظام الأرقام قبل قسم الاستخدام الخاص `-x-`، لذا ينتج `en-x-foo` مع `numberingSystem: 'arab'` أرقامًا عربية، بينما تعود قيم `numberingSystem` غير المعروفة أو الفارغة بأمان إلى `'latn'`. وتعيد `formatDate()` سلسلة فارغة للتواريخ غير الصالحة بدلًا من رمي استثناء، وكذلك تفعل `formatRelativeTime()` مع القيم غير المنتهية مثل `NaN` و`Infinity`. وتستخدم `formatPlural()` بدائل اللغة نفسها، وتعيد سلسلة فارغة حين تكون `forms.other` فارغة أو حين لا تتوفر `Intl.PluralRules`. تستخدم `parseNumber()` البدائل نفسها للغة ونظام الأرقام، وتعيد `NaN` للنص الذي لا تستطيع قراءته.
+تُحوَّل الشرطات السفلية في وسوم اللغة إلى شرطات، لذا تُنسَّق `ar_EG` كما لو كانت `ar-EG`. إذا كان الوسم غير صالح، يحاول المنسّق استخدام وسم اللغة الفرعي ثم يعود إلى `en`. يُدرج نظام الأرقام قبل قسم الاستخدام الخاص `-x-`، لذا ينتج `en-x-foo` مع `numberingSystem: 'arab'` أرقامًا عربية، بينما تعود قيم `numberingSystem` غير المعروفة أو الفارغة بأمان إلى `'latn'`. وتعيد `formatDate()` سلسلة فارغة للتواريخ غير الصالحة بدلًا من رمي استثناء، وكذلك تفعل `formatRelativeTime()` مع القيم غير المنتهية مثل `NaN` و`Infinity`. وتستخدم `formatPlural()` بدائل اللغة نفسها، وتعيد سلسلة فارغة حين تكون `forms.other` فارغة أو حين لا تتوفر `Intl.PluralRules`. وتستخدم `formatDisplayName()` بدائل اللغة نفسها، وتعيد الرمز نفسه (أو `''` مع `fallback: 'none'`) للرموز غير المعروفة أو غير الصالحة وفي بيئات التشغيل بلا `Intl.DisplayNames`. تستخدم `parseNumber()` البدائل نفسها للغة ونظام الأرقام، وتعيد `NaN` للنص الذي لا تستطيع قراءته.
 
 ```ts
 formatNumber(12, { locale: 'ar_EG' }) // '١٢'
@@ -215,6 +266,8 @@ formatNumber(12, { locale: 'ar-EG', numberingSystem: 'invalid' }) // '12'
 formatDate('not a date') // ''
 formatRelativeTime(NaN, 'day') // ''
 formatPlural(1, { other: '' }) // ''
+formatDisplayName('zz', { type: 'language' }) // 'zz'
+formatDisplayName('!!', { type: 'region', fallback: 'none' }) // ''
 parseNumber('١٢', { locale: 'ar_EG' }) // 12
 parseNumber('not a number') // NaN
 ```
@@ -227,6 +280,7 @@ parseNumber('not a number') // NaN
 import {
   formatCurrency,
   formatDate,
+  formatDisplayName,
   formatList,
   formatNumber,
   formatPlural,
@@ -242,6 +296,7 @@ formatDate('2024-05-12', { locale: 'ar-SA', calendar: 'islamic-umalqura' })
 formatList(['PDF', 'CSV'], { locale: 'en', type: 'disjunction' })
 formatRelativeTime(2, 'hour', { locale: 'ar-EG' })
 formatPlural(2, { one: '{count} يوم', other: '{count} أيام' }, { locale: 'ar' })
+formatDisplayName('ar', { type: 'language', locale: 'ar' })
 parseNumber('١٬٢٣٤٫٥', { locale: 'ar-EG' })
 transliterateDigits('طلب رقم 4821', 'arab')
 withNumberingSystem('ar-EG', 'latn')

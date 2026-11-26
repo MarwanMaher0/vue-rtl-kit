@@ -748,7 +748,7 @@ describe('parseNumber', () => {
       resetFormatterCaches()
       parseNumber('1', { locale: 'ar-EG' })
       parseNumber('1', { locale: 'de' })
-      expect(formatterCacheStats()).toEqual({ number: 0, date: 0, list: 0, relativeTime: 0, limit: FORMATTER_CACHE_LIMIT })
+      expect(formatterCacheStats()).toEqual({ number: 0, date: 0, list: 0, relativeTime: 0, displayName: 0, limit: FORMATTER_CACHE_LIMIT })
     })
   })
 

@@ -16,7 +16,7 @@ import type { Direction } from 'vue-rtl-kit'
 | `useDirection` | `() => DirectionContext` | Resolve the nearest scope, root store, or detached fallback. |
 | `useRtl` | `() => RtlInstance` | Resolve the root store; throws when the plugin is absent. |
 | `useLogicalStyles` | `() => UseLogicalStylesReturn` | Direction-bound logical style helpers. |
-| `useFormat` | `() => ComputedRef<BoundFormatters>` | Locale-bound number, currency, date, list, relative-time, and plural formatters, plus `parseNumber`. |
+| `useFormat` | `() => ComputedRef<BoundFormatters>` | Locale-bound number, currency, date, list, relative-time, and plural formatters, plus `formatDisplayName` and `parseNumber`. |
 | `useInlineScroll` | `(target: MaybeRefOrGetter<Element \| null \| undefined>, options?: UseInlineScrollOptions) => UseInlineScrollReturn` | Logical inline scroll state and controls for horizontal scrollers in LTR and RTL; SSR-safe. |
 | `useLogicalPlacement` | `(placement: MaybeRefOrGetter<LogicalPlacement>, target?: Ref<HTMLElement \| null>) => ComputedRef<PhysicalPlacement>` | Resolve a reactive [logical placement](#logical-placement) against the target's computed direction, or the current direction scope when no target is mounted or during SSR. |
 
@@ -202,6 +202,7 @@ findSearchMatches('مرحبا مُحَمَّدٌ!', 'محمد') // [{ start: 6, 
 | `formatNumber` | `(value: number, options?: NumberFormatOptions) => string` | Format with `Intl.NumberFormat`. |
 | `formatCurrency` | `(value: number, currency: string, options?: NumberFormatOptions) => string` | Format an ISO 4217 currency amount. |
 | `formatDate` | `(value: Date \| number \| string, options?: DateFormatOptions) => string` | Format with `Intl.DateTimeFormat`. |
+| `formatDisplayName` | `(code: string, options: FormatDisplayNameOptions) => string` | Name a language, region, currency, script, calendar, or date-time field code with `Intl.DisplayNames`. Unknown or invalid codes return the code itself, or `''` with `fallback: 'none'`; never throws. |
 | `formatList` | `(items: Iterable<string>, options?: ListFormatOptions) => string` | Join items with `Intl.ListFormat`; `isolate` wraps each item and the result. |
 | `formatRelativeTime` | `(value: number, unit: Intl.RelativeTimeFormatUnit, options?: RelativeTimeFormatOptions) => string` | Format with `Intl.RelativeTimeFormat`; returns `''` for a non-finite value. |
 | `formatPlural` | `(count: number, forms: PluralForms, options?: FormatPluralOptions) => string` | Pick the CLDR plural form with `Intl.PluralRules` and replace every `{count}` with `formatNumber(count, options)`; missing categories fall back to `forms.other`. Returns `''` for an empty `forms.other` or when `Intl.PluralRules` is unavailable. |
@@ -212,6 +213,7 @@ findSearchMatches('مرحبا مُحَمَّدٌ!', 'محمد') // [{ start: 6, 
 ```ts
 import {
   formatCurrency,
+  formatDisplayName,
   formatList,
   formatNumber,
   formatPlural,
@@ -226,12 +228,16 @@ formatList(['Ahmed', 'Sara', 'Omar'], { locale: 'ar', isolate: true })
 formatRelativeTime(-3, 'day', { locale: 'ar-EG', numberingSystem: 'latn' })
 formatPlural(11, { many: '{count} ملفًا', other: '{count} ملف' }, { locale: 'ar' }) // '11 ملفًا'
 formatPlural(3, { few: '{count}rd', other: '{count}th' }, { type: 'ordinal' }) // '3rd'
+formatDisplayName('ar', { type: 'language', locale: 'ar' }) // 'العربية'
+formatDisplayName('EG', { type: 'region', locale: 'ar' }) // 'مصر'
 parseNumber('١٬٢٣٤٫٥', { locale: 'ar-EG' }) // 1234.5
 parseNumber('12abc') // NaN
 transliterateDigits('طلب رقم 4821', 'arab')
 ```
 
 `formatPlural` selects the category with `Intl.PluralRules` for the locale — Arabic uses all six (`zero`, `one`, `two`, `few`, `many`, `other`), so `11` is `many`, not `few` — and `type: 'ordinal'` switches to ordinal rules (English `1st`, `2nd`, `3rd`). `NaN`, `Infinity`, negative, and fractional counts select the category the rules report without throwing. See [Plural forms](/guide/use-format#plural-forms).
+
+`formatDisplayName` names codes in the locale's own words — `العربية` instead of `Arabic`, `مصر` instead of `Egypt` — so language and country pickers stay localized. `type` is required; `style` (`'long' | 'short' | 'narrow'`) and `languageDisplay` (`'dialect' | 'standard'`) are forwarded to `Intl.DisplayNames`. Unknown codes return the code itself (`fallback: 'code'`, the default) or `''` (`fallback: 'none'`); invalid codes and runtimes without `Intl.DisplayNames` return the same fallback instead of throwing. On older runtimes whose `Intl.DisplayNames` ignores `fallback: 'none'`, a name that equals its code (for example `second` in English or `US` with `style: 'narrow'`) cannot be told apart from an unknown code, so it also returns `''`. See [Display names](/guide/use-format#display-names).
 
 `parseNumber` reads its group separator, decimal separator, and minus sign from `Intl.NumberFormat` `formatToParts()` for `locale` and `numberingSystem` (default `'en'`), cached per locale tag. It accepts Western, Arabic-Indic, and Persian digits, ignores bidi marks, isolates, and spaces, accepts `-` or U+2212 as minus and a leading `+`, and divides by 100 for a trailing `%` or `٪`. Group separators are accepted only between digits of the integer part. See [Parsing numbers](/guide/use-format#parsing-numbers) for the full rules.
 
@@ -394,6 +400,7 @@ interface BoundFormatters {
     options?: RelativeTimeFormatOptions,
   ) => string
   formatPlural: (count: number, forms: PluralForms, options?: FormatPluralOptions) => string
+  formatDisplayName: (code: string, options: FormatDisplayNameOptions) => string
   parseNumber: (text: string, options?: ParseNumberOptions) => number
 }
 ```
@@ -415,6 +422,14 @@ type FormatPluralOptions = FormatOptionsBase & { type?: 'cardinal' | 'ordinal' }
 
 interface PluralForms extends Partial<Record<'zero' | 'one' | 'two' | 'few' | 'many' | 'other', string>> {
   other: string
+}
+
+interface FormatDisplayNameOptions {
+  type: 'language' | 'region' | 'currency' | 'script' | 'calendar' | 'dateTimeField'
+  locale?: string
+  style?: 'long' | 'short' | 'narrow'
+  languageDisplay?: 'dialect' | 'standard'
+  fallback?: 'code' | 'none'
 }
 
 interface ParseNumberOptions {

@@ -81,6 +81,7 @@ export {
 export {
   formatCurrency,
   formatDate,
+  formatDisplayName,
   formatList,
   formatNumber,
   formatPlural,
@@ -92,6 +93,7 @@ export {
 export type {
   BoundFormatters,
   DateFormatOptions,
+  FormatDisplayNameOptions,
   FormatOptionsBase,
   FormatPluralOptions,
   ListFormatOptions,

@@ -318,4 +318,33 @@ describe('SSR environment', () => {
     expect(await renderToString(app)).toBe('<p dir="rtl">11 ملفًا</p>')
     rtl.dispose()
   })
+
+  it('renders bound display names on the server with no window or document', async () => {
+    expect(typeof window).toBe('undefined')
+    expect(typeof document).toBe('undefined')
+
+    const rtl = createRtl({ locales: { en: 'ltr', ar: 'rtl' }, defaultLocale: 'ar' })
+    const renderPicker = async () => {
+      const app = createSSRApp(
+        defineComponent({
+          setup() {
+            const { dir } = useDirection()
+            const fmt = useFormat()
+            return () => h(
+              'p',
+              { dir: dir.value },
+              `${fmt.value.formatDisplayName('ar', { type: 'language' })} / ${fmt.value.formatDisplayName('EG', { type: 'region' })} / ${fmt.value.formatDisplayName('en', { type: 'language', locale: 'en' })}`,
+            )
+          },
+        }),
+      )
+      app.use(rtl)
+      return renderToString(app)
+    }
+
+    expect(await renderPicker()).toBe('<p dir="rtl">العربية / مصر / English</p>')
+    rtl.setLocale('en')
+    expect(await renderPicker()).toBe('<p dir="ltr">Arabic / Egypt / English</p>')
+    rtl.dispose()
+  })
 })

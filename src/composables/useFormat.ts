@@ -3,6 +3,7 @@ import { computed, hasInjectionContext, inject } from 'vue'
 import type {
   BoundFormatters,
   DateFormatOptions,
+  FormatDisplayNameOptions,
   FormatPluralOptions,
   ListFormatOptions,
   NumberFormatOptions,
@@ -13,6 +14,7 @@ import type {
 import {
   formatCurrency,
   formatDate,
+  formatDisplayName,
   formatList,
   formatNumber,
   formatPlural,
@@ -25,8 +27,9 @@ import { useDirection } from './useDirection'
 
 /**
  * `formatNumber` / `formatDate` / `formatCurrency` / `formatList` /
- * `formatRelativeTime` / `formatPlural` / `parseNumber`, pre-bound to the
- * current locale and to the numbering system configured in `createRtl()`.
+ * `formatRelativeTime` / `formatPlural` / `formatDisplayName` / `parseNumber`,
+ * pre-bound to the current locale and to the numbering system configured in
+ * `createRtl()`.
  *
  * Saves threading `locale` through every call site, and means switching the app
  * from Arabic-Indic to Western digits is one option change rather than a
@@ -68,6 +71,10 @@ export function useFormat(): ComputedRef<BoundFormatters> {
       ) => formatRelativeTime(value, unit, { ...defaults, ...options }),
       formatPlural: (count: number, forms: PluralForms, options: FormatPluralOptions = {}) =>
         formatPlural(count, forms, { ...defaults, ...options }),
+      // Display names are words, not numbers: only the locale binds, not the
+      // numbering system.
+      formatDisplayName: (code: string, options: FormatDisplayNameOptions) =>
+        formatDisplayName(code, { locale: locale.value, ...options }),
       parseNumber: (text: string, options: ParseNumberOptions = {}) =>
         parseNumber(text, { ...defaults, ...options }),
     }
