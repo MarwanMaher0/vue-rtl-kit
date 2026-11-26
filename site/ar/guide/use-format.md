@@ -1,6 +1,6 @@
 # useFormat
 
-تربط `useFormat()` منسّقات الأرقام والعملات والتواريخ والقوائم والأزمنة النسبية وصيغ الجمع، ومساعد أسماء العرض `formatDisplayName()`، ومحلّل الأرقام `parseNumber()`، بلغة النطاق الحالي واتجاهه. كما تطبّق إعداد `numberingSystem` المضبوط على نسخة `createRtl()` الجذرية.
+تربط `useFormat()` منسّقات الأرقام والعملات والتواريخ والقوائم والأزمنة النسبية وصيغ الجمع، ومساعد أسماء العرض `formatDisplayName()`، ومحلّل الأرقام `parseNumber()`، بلغة النطاق الحالي واتجاهه. كما تطبّق إعداد `numberingSystem` المضبوط على نسخة `createRtl()` الجذرية. ويتبع التابعان `compareText()` و`sortByLocale()` لغة النطاق عند المقارنة والفرز.
 
 ```ts
 function useFormat(): ComputedRef<BoundFormatters>
@@ -46,6 +46,8 @@ console.log(format.value.formatNumber(1234.5))
 | `formatPlural` | `(count: number, forms: PluralForms, options?: FormatPluralOptions) => string` |
 | `formatDisplayName` | `(code: string, options: FormatDisplayNameOptions) => string` |
 | `parseNumber` | `(text: string, options?: ParseNumberOptions) => number` |
+| `compareText` | `(a: string, b: string, options?: CompareOptions) => number` |
+| `sortByLocale` | `<T>(items: readonly T[], options?: CompareOptions & { key?: (item: T) => string }) => T[]` |
 
 تتجاوز الخيارات المقدّمة في كل استدعاء اللغة ونظام الأرقام المرتبطين. ويُعاد حساب المنسّقات المرتبطة عندما يغيّر `setLocale()` لغة النطاق. يوسّع كل من `NumberFormatOptions` و`DateFormatOptions` و`ListFormatOptions` و`RelativeTimeFormatOptions` خيارات `Intl` المقابلة بما يلي:
 
@@ -254,6 +256,25 @@ const invalid = computed(() => text.value !== '' && Number.isNaN(amount.value))
   <input v-model="text" inputmode="decimal" :aria-invalid="invalid">
 </template>
 ```
+
+## الفرز حسب اللغة {#locale-aware-sorting}
+
+يتبع التابعان `format.value.compareText()` و`format.value.sortByLocale()` لغة النطاق الحالي. استدعِهما عبر `format.value` داخل دالة `computed()` لإعادة الفرز عند تغيير اللغة باستخدام `setLocale()`. وللفرز بحسب لغة أخرى دون تغيير لغة النطاق، مرّر وسم لغة أو مصفوفة وسوم مرتّبة حسب الأولوية لذلك الاستدعاء.
+
+```ts
+import { computed } from 'vue'
+import { useFormat } from 'vue-rtl-kit'
+
+const format = useFormat()
+const contacts = [{ name: 'سارة' }, { name: 'بدر' }, { name: 'ليلى' }]
+const sortedContacts = computed(() =>
+  format.value.sortByLocale(contacts, { key: (contact) => contact.name }),
+)
+
+format.value.compareText('طلب ٢', 'طلب ١٠', { locale: ['ar-EG', 'ar', 'en'] }) < 0 // true
+```
+
+يعتمد التابعان على اللغة، لا على اتجاه العرض أو إعداد `numberingSystem`. افتراضيًا يحذفان التشكيل العربي والتطويل فقط قبل المقارنة، وتظلّ أشكال الهمزة والمدّة خاضعة لقواعد الفرز في اللغة المحدّدة. راجع [الفرز حسب اللغة في دوال النص](/ar/guide/text-helpers#locale-aware-sorting) لمعرفة طريقة مقارنة الأرقام والتعامل مع المفاتيح الفارغة واستخدام الدالتين المستقلتين.
 
 ## معالجة المدخلات غير الصالحة
 

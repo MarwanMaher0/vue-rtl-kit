@@ -1,6 +1,6 @@
 # Text helpers
 
-These standalone helpers handle Unicode isolates, locale direction, and client-side RTL search without a component or a DOM. They are safe in a server render, a utility module, or a string that is about to be copied.
+These standalone helpers handle Unicode isolates, locale direction, client-side RTL search, and locale-aware sorting without a component or a DOM. They are safe in a server render, a utility module, or a string that is about to be copied.
 
 ```ts
 import {
@@ -160,3 +160,50 @@ title.slice(ranges[0].start, ranges[0].end) // 'مُحَمَّدٌ'
 findSearchMatches(title, 'لاهور') // [{ start: 22, end: 26 }]
 findSearchMatches(title, '') // []
 ```
+
+## Locale-aware sorting {#locale-aware-sorting}
+
+Use `compareText()` and `sortByLocale()` to order display text, rather than sorting keys from `foldSearchText()`. By default, `ignoreDiacritics` strips only Arabic tashkeel (vowel marks, shadda, sukun, and superscript alef) and tatweel before comparison. Plain alef (`ا`), alef with hamza (`أ`, `إ`), and alef with madda (`آ`) are not folded together. They follow the locale's collation rules, as do Latin accents and letter case. The original text is left intact.
+
+### `compareText(a, b, options?)`
+
+Use the result as a comparator: negative if `a` comes before `b`, zero if they compare equally, positive if `a` comes after `b`. Only the sign is guaranteed, not the exact values `-1` and `1`.
+
+```ts
+import { compareText, sortByLocale } from 'vue-rtl-kit'
+
+compareText('مُحَمَّد', 'مـحمد', { locale: 'ar' }) // 0
+compareText('مُحَمَّد', 'محمد', { locale: 'ar', ignoreDiacritics: false }) !== 0 // true
+compareText('احمد', 'أحمد', { locale: 'ar' }) !== 0 // true
+compareText('طلب ٢', 'طلب ۲', { locale: 'ar' }) // 0
+compareText('طلب 2', 'طلب ٢', { locale: 'ar' }) // 0
+compareText('طلب ٢', 'طلب ١٠', { locale: 'ar' }) < 0 // true
+compareText('طلب ٢', 'طلب ١٠', { locale: 'ar', numeric: false }) > 0 // true
+```
+
+### `sortByLocale(items, options?)`
+
+For strings, the item is its own key. For objects, pass a `key` callback. The result is a new array, and items with equal keys keep their original order.
+
+```ts
+sortByLocale(['طلب ١٠', 'طلب ٢', 'طلب ۲', 'طلب ۳'], { locale: 'ar' })
+// ['طلب ٢', 'طلب ۲', 'طلب ۳', 'طلب ١٠']
+
+const orders = [
+  { id: 1, title: 'طلب ٢' },
+  { id: 2, title: '' },
+  { id: 3, title: 'طلب ١٠' },
+]
+const sorted = sortByLocale(orders, {
+  locale: ['ar-EG', 'ar', 'en'],
+  key: (order) => order.title,
+  direction: 'desc',
+})
+sorted.map((order) => order.id) // [2, 3, 1]
+```
+
+An actual empty string (`''`) comes first in both ascending and descending order. A `null` or `undefined` key is different: it throws `TypeError` in development and always sorts last in production, even when descending.
+
+`direction: 'desc'` works with either helper; the default is `'asc'`. With mixed Arabic and Latin text, `caseFirst: 'upper'` puts `ملف A` ahead of `ملف a` in ascending order. Use `'lower'` for the opposite. The default `'false'` sets no case priority, but case still affects the comparison.
+
+Both standalone helpers default to `'en'`; pass a BCP-47 locale tag or an array of tags in order of preference. In Nuxt, import the standalone functions explicitly from `vue-rtl-kit`. To follow the current Vue locale instead, use the [methods on `useFormat()`](/guide/use-format#locale-aware-sorting). See the [API reference](/api#locale-aware-sorting) for all options.

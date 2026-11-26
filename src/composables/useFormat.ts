@@ -1,5 +1,6 @@
 import type { ComputedRef } from 'vue'
 import { computed, hasInjectionContext, inject } from 'vue'
+import { compareText, sortByLocale } from '../collate'
 import type {
   BoundFormatters,
   DateFormatOptions,
@@ -29,7 +30,8 @@ import { useDirection } from './useDirection'
  * `formatNumber` / `formatDate` / `formatCurrency` / `formatList` /
  * `formatRelativeTime` / `formatPlural` / `formatDisplayName` / `parseNumber`,
  * pre-bound to the current locale and to the numbering system configured in
- * `createRtl()`.
+ * `createRtl()`, plus `compareText` / `sortByLocale`, which share the locale
+ * but not the display numbering system.
  *
  * Saves threading `locale` through every call site, and means switching the app
  * from Arabic-Indic to Western digits is one option change rather than a
@@ -77,6 +79,10 @@ export function useFormat(): ComputedRef<BoundFormatters> {
         formatDisplayName(code, { locale: locale.value, ...options }),
       parseNumber: (text: string, options: ParseNumberOptions = {}) =>
         parseNumber(text, { ...defaults, ...options }),
+      compareText: (a, b, options) =>
+        compareText(a, b, { ...options, locale: options?.locale ?? defaults.locale }),
+      sortByLocale: (items, options) =>
+        sortByLocale(items, { ...options, locale: options?.locale ?? defaults.locale }),
     }
   })
 }

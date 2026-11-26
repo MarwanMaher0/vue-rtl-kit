@@ -16,7 +16,7 @@ import type { Direction } from 'vue-rtl-kit'
 | `useDirection` | `() => DirectionContext` | Resolve the nearest scope, root store, or detached fallback. |
 | `useRtl` | `() => RtlInstance` | Resolve the root store; throws when the plugin is absent. |
 | `useLogicalStyles` | `() => UseLogicalStylesReturn` | Direction-bound logical style helpers. |
-| `useFormat` | `() => ComputedRef<BoundFormatters>` | Locale-bound number, currency, date, list, relative-time, and plural formatters, plus `formatDisplayName` and `parseNumber`. |
+| `useFormat` | `() => ComputedRef<BoundFormatters>` | Locale-bound number, currency, date, list, relative-time, and plural formatters, plus `formatDisplayName`, `parseNumber`, `compareText`, and `sortByLocale`. |
 | `useInlineScroll` | `(target: MaybeRefOrGetter<Element \| null \| undefined>, options?: UseInlineScrollOptions) => UseInlineScrollReturn` | Logical inline scroll state and controls for horizontal scrollers in LTR and RTL; SSR-safe. |
 | `useLogicalPlacement` | `(placement: MaybeRefOrGetter<LogicalPlacement>, target?: Ref<HTMLElement \| null>) => ComputedRef<PhysicalPlacement>` | Resolve a reactive [logical placement](#logical-placement) against the target's computed direction, or the current direction scope when no target is mounted or during SSR. |
 
@@ -194,6 +194,37 @@ matchesSearch('فاطمة مصطفى', 'فاطمه مصطفي') // true
 matchesSearch('فاطمة', 'فاطمه', { taMarbuta: false }) // false
 findSearchMatches('مرحبا مُحَمَّدٌ!', 'محمد') // [{ start: 6, end: 15 }]
 ```
+
+## Locale-aware sorting {#locale-aware-sorting}
+
+Pure helpers for comparing or sorting display text with a bounded cache of `Intl.Collator` instances. They preserve the locale's letter ordering instead of applying [search folding](#search-helpers). Import the standalone helpers explicitly in Nuxt.
+
+| Export | Signature | Description |
+| --- | --- | --- |
+| `compareText` | `(a: string, b: string, options?: CompareOptions) => number` | Negative if `a` comes before `b`, zero if they compare equally, and positive otherwise. Only the sign is guaranteed, not exact values such as `-1` or `1`. |
+| `sortByLocale` | `<T>(items: readonly T[], options?: CompareOptions & { key?: (item: T) => string }) => T[]` | Return a new array without modifying the input. Equal keys keep their input order. A string item is its own key; for objects pass a `key` callback. |
+
+### CompareOptions
+
+| Option | Type | Default | Effect |
+| --- | --- | --- | --- |
+| `locale` | `string \| string[]` | `'en'` for standalone calls | A BCP-47 tag or an ordered list of preferred tags. The methods on `useFormat().value` default to the current scope locale; pass either form to override it for one call. |
+| `numeric` | `boolean` | `true` | Compare digit runs by value, treating Western (`0`–`9`), Arabic-Indic (`٠`–`٩`), and Persian (`۰`–`۹`) digits with the same value as equal. Set `false` to use text ordering rather than numeric ordering. |
+| `ignoreDiacritics` | `boolean` | `true` | Strip only Arabic tashkeel (`U+064B`–`U+0652`, `U+0670`) and tatweel (`U+0640`) before comparing. Set `false` to skip stripping. Plain alef, hamza forms, madda, Latin accents, and case all follow the locale's rules in either mode. |
+| `caseFirst` | `'upper' \| 'lower' \| 'false'` | `'false'` | Give uppercase or lowercase priority when letters otherwise compare equally. `'false'` sets no case priority but still compares case. |
+| `direction` | `'asc' \| 'desc'` | `'asc'` | Ascending or descending comparison. Actual empty strings (`''`) always come first. `null` or `undefined` keys throw `TypeError` in development and always come last in production, even when descending. |
+
+```ts
+import { compareText, sortByLocale } from 'vue-rtl-kit'
+
+compareText('مُحَمَّد', 'مـحمد', { locale: 'ar' }) // 0
+compareText('احمد', 'أحمد', { locale: 'ar' }) !== 0 // true
+compareText('طلب 2', 'طلب ۲', { locale: 'ar' }) // 0
+sortByLocale(['طلب ٢', '', 'طلب ١٠'], { locale: ['ar-EG', 'ar', 'en'], direction: 'desc' })
+// ['', 'طلب ١٠', 'طلب ٢']
+```
+
+See [Text helpers](/guide/text-helpers#locale-aware-sorting) for examples with object keys and [useFormat](/guide/use-format#locale-aware-sorting) for reactive sorting.
 
 ## Formatting
 
@@ -402,6 +433,8 @@ interface BoundFormatters {
   formatPlural: (count: number, forms: PluralForms, options?: FormatPluralOptions) => string
   formatDisplayName: (code: string, options: FormatDisplayNameOptions) => string
   parseNumber: (text: string, options?: ParseNumberOptions) => number
+  compareText: typeof compareText
+  sortByLocale: typeof sortByLocale
 }
 ```
 

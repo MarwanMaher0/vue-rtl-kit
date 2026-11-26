@@ -1171,9 +1171,9 @@ describe('formatter caches', () => {
     formatList(['a'], { locale: 'en' })
     formatRelativeTime(1, 'day', { locale: 'en' })
     formatDisplayName('ar', { type: 'language', locale: 'en' })
-    expect(formatterCacheStats()).toEqual({ number: 1, date: 1, list: 1, relativeTime: 1, displayName: 1, limit: FORMATTER_CACHE_LIMIT })
+    expect(formatterCacheStats()).toEqual({ number: 1, date: 1, list: 1, relativeTime: 1, displayName: 1, collator: 0, limit: FORMATTER_CACHE_LIMIT })
     resetFormatterCaches()
-    expect(formatterCacheStats()).toEqual({ number: 0, date: 0, list: 0, relativeTime: 0, displayName: 0, limit: FORMATTER_CACHE_LIMIT })
+    expect(formatterCacheStats()).toEqual({ number: 0, date: 0, list: 0, relativeTime: 0, displayName: 0, collator: 0, limit: FORMATTER_CACHE_LIMIT })
   })
 
   it('refreshes recency on hit so a hot formatter survives churn', () => {

@@ -1,6 +1,6 @@
 # useFormat
 
-`useFormat()` binds number, currency, date, list, relative-time, and plural formatters, the `formatDisplayName()` display-name helper, and the `parseNumber()` number parser, to the current scope's locale and direction. It also applies the `numberingSystem` configured on the root `createRtl()` instance.
+`useFormat()` binds number, currency, date, list, relative-time, and plural formatters, the `formatDisplayName()` display-name helper, and the `parseNumber()` number parser, to the current scope's locale and direction. It also applies the `numberingSystem` configured on the root `createRtl()` instance. The `compareText()` and `sortByLocale()` methods follow the scope locale for comparison and sorting.
 
 ```ts
 function useFormat(): ComputedRef<BoundFormatters>
@@ -46,6 +46,8 @@ The computed ref is unwrapped in templates. In script, call methods through `for
 | `formatPlural` | `(count: number, forms: PluralForms, options?: FormatPluralOptions) => string` |
 | `formatDisplayName` | `(code: string, options: FormatDisplayNameOptions) => string` |
 | `parseNumber` | `(text: string, options?: ParseNumberOptions) => number` |
+| `compareText` | `(a: string, b: string, options?: CompareOptions) => number` |
+| `sortByLocale` | `<T>(items: readonly T[], options?: CompareOptions & { key?: (item: T) => string }) => T[]` |
 
 Per-call options override the bound locale and numbering system. The bound formatters are recomputed when `setLocale()` changes the scope's locale. `NumberFormatOptions`, `DateFormatOptions`, `ListFormatOptions`, and `RelativeTimeFormatOptions` extend their corresponding `Intl` options with:
 
@@ -254,6 +256,25 @@ const invalid = computed(() => text.value !== '' && Number.isNaN(amount.value))
   <input v-model="text" inputmode="decimal" :aria-invalid="invalid">
 </template>
 ```
+
+## Locale-aware sorting {#locale-aware-sorting}
+
+`format.value.compareText()` and `format.value.sortByLocale()` follow the current scope locale. Read them through `format.value` inside a computed getter to re-sort when `setLocale()` changes that locale. To sort for a different locale without changing the scope, pass a locale tag or an ordered locale array for that call.
+
+```ts
+import { computed } from 'vue'
+import { useFormat } from 'vue-rtl-kit'
+
+const format = useFormat()
+const contacts = [{ name: 'سارة' }, { name: 'بدر' }, { name: 'ليلى' }]
+const sortedContacts = computed(() =>
+  format.value.sortByLocale(contacts, { key: (contact) => contact.name }),
+)
+
+format.value.compareText('طلب ٢', 'طلب ١٠', { locale: ['ar-EG', 'ar', 'en'] }) < 0 // true
+```
+
+These methods use the locale, not the layout direction or configured `numberingSystem`. By default, they strip only Arabic tashkeel and tatweel before comparing; hamza and madda forms still follow the locale's rules. See [Locale-aware sorting in Text helpers](/guide/text-helpers#locale-aware-sorting) for numeric comparison, empty keys, and standalone usage.
 
 ## Input fallbacks
 

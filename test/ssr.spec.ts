@@ -12,7 +12,7 @@ import { BidiText, RtlProvider } from '../src/components'
 import { useDirection, useRtl } from '../src/composables/useDirection'
 import { useFormat } from '../src/composables/useFormat'
 import { useInlineScroll } from '../src/composables/useInlineScroll'
-import { resolvePlacement, toLogicalPlacement, useLogicalPlacement } from '../src'
+import { compareText, resolvePlacement, sortByLocale, toLogicalPlacement, useLogicalPlacement } from '../src'
 import { useLogicalStyles } from '../src/composables/useLogicalStyles'
 import { createRtl } from '../src/core'
 import { vRtl } from '../src/directives/vRtl'
@@ -280,6 +280,36 @@ describe('SSR environment', () => {
       }),
     )
     expect(await renderToString(app)).toBe('<p dir="rtl">مرحبا <mark>مُحَمَّدٌ</mark> في القاهرة ١٢٣</p>')
+  })
+
+  it('renders locale-aware sorted labels on the server without a DOM', async () => {
+    expect(typeof window).toBe('undefined')
+    expect(typeof document).toBe('undefined')
+
+    const labels = ['بَيْت ١0', 'أَحْمَد', 'بَيْت ۲', 'Alice'] as const
+    expect(compareText('بَيْت ۲', 'بَيْت ١0', { locale: 'ar' })).toBeLessThan(0)
+    expect(sortByLocale(labels, { locale: 'ar' })).toEqual(['أَحْمَد', 'بَيْت ۲', 'بَيْت ١0', 'Alice'])
+
+    const rtl = createRtl({ locales: ['ar', 'en'], defaultLocale: 'ar' })
+    const root = defineComponent({
+      setup() {
+        const fmt = useFormat()
+        return () => h('ul', { dir: fmt.value.dir, lang: fmt.value.locale },
+          fmt.value.sortByLocale(labels).map(label => h('li', { key: label }, label)),
+        )
+      },
+    })
+
+    try {
+      expect(await renderToString(createSSRApp(root).use(rtl)))
+        .toBe('<ul dir="rtl" lang="ar"><li>أَحْمَد</li><li>بَيْت ۲</li><li>بَيْت ١0</li><li>Alice</li></ul>')
+      rtl.setLocale('en')
+      expect(await renderToString(createSSRApp(root).use(rtl)))
+        .toBe('<ul dir="ltr" lang="en"><li>Alice</li><li>أَحْمَد</li><li>بَيْت ۲</li><li>بَيْت ١0</li></ul>')
+    }
+    finally {
+      rtl.dispose()
+    }
   })
 
   it('selects Arabic plural categories on the server with no window or document', async () => {

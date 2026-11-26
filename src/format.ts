@@ -9,6 +9,7 @@
  * the supported way to ask for that, rather than transliterating by hand.
  */
 import { isolate } from './bidi'
+import type { compareText, sortByLocale } from './collate'
 import type { Direction, DirectionOrAuto, NumberingSystem } from './types'
 
 export interface FormatOptionsBase {
@@ -176,6 +177,7 @@ const listFormatters = /*#__PURE__*/ new LruCache<Intl.ListFormat>(FORMATTER_CAC
 const relativeTimeFormatters = /*#__PURE__*/ new LruCache<Intl.RelativeTimeFormat>(FORMATTER_CACHE_LIMIT)
 const pluralRules = /*#__PURE__*/ new LruCache<Intl.PluralRules>(FORMATTER_CACHE_LIMIT)
 const displayNames = /*#__PURE__*/ new LruCache<Intl.DisplayNames>(FORMATTER_CACHE_LIMIT)
+export const collators = /*#__PURE__*/ new LruCache<Intl.Collator>(FORMATTER_CACHE_LIMIT)
 
 /** What `parseNumber()` needs to know about a locale and numbering system. */
 interface NumberSymbols {
@@ -198,6 +200,7 @@ export function formatterCacheStats(): {
   list: number
   relativeTime: number
   displayName: number
+  collator: number
   limit: number
 } {
   return {
@@ -206,6 +209,7 @@ export function formatterCacheStats(): {
     list: listFormatters.size,
     relativeTime: relativeTimeFormatters.size,
     displayName: displayNames.size,
+    collator: collators.size,
     limit: FORMATTER_CACHE_LIMIT,
   }
 }
@@ -222,6 +226,7 @@ export function resetFormatterCaches(): void {
   relativeTimeFormatters.clear()
   pluralRules.clear()
   displayNames.clear()
+  collators.clear()
   numberSymbols.clear()
   supportedNumberingSystems = undefined
   displayNamesHonorsNone = undefined
@@ -630,4 +635,6 @@ export interface BoundFormatters {
   formatDisplayName: (code: string, options: FormatDisplayNameOptions) => string
   /** `parseNumber()` for this locale and numbering system: reads back what `formatNumber` writes. */
   parseNumber: (text: string, options?: ParseNumberOptions) => number
+  compareText: typeof compareText
+  sortByLocale: typeof sortByLocale
 }

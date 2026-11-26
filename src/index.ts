@@ -103,6 +103,9 @@ export type {
   RelativeTimeFormatOptions,
 } from './format'
 
+export { compareText, sortByLocale } from './collate'
+export type { CompareOptions } from './collate'
+
 export {
   findSearchMatches,
   foldSearchText,

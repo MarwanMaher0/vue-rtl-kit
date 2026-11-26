@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import {
+  compareText,
   getScrollInline,
   getScrollInlineMax,
   logicalArrow,
@@ -9,6 +10,7 @@ import {
   scrollByInline,
   scrollInlineEdges,
   scrollToInline,
+  sortByLocale,
   toLogicalPlacement,
   useFormat,
   useInlineScroll,
@@ -16,6 +18,7 @@ import {
   useLogicalStyles,
 } from 'vue-rtl-kit'
 import type {
+  CompareOptions,
   LogicalPlacement,
   ParseNumberOptions,
   PhysicalPlacement,
@@ -40,6 +43,17 @@ scrollByInline(scroller.value, 50, _scrollOptions)
 const _parseOptions: ParseNumberOptions = { locale: 'ar-EG', numberingSystem: 'arab' }
 const _parsed: number = parseNumber('١٬٢٣٤٫٥', _parseOptions)
 const _boundParsed: number = useFormat().value.parseNumber('1,234.5')
+const _compareOptions: CompareOptions = { locale: ['ar', 'en'], caseFirst: 'upper', direction: 'desc' }
+const _comparison: number = compareText('بَيْت ۲', 'بيت ١0', _compareOptions)
+const _boundComparison: number = useFormat().value.compareText('بَيْت ۲', 'بيت ١0')
+const readonlyLabels = [{ id: 1, label: 'بيت' }, { id: 2, label: 'تمر' }] as const
+const _sorted: Array<(typeof readonlyLabels)[number]> = sortByLocale(readonlyLabels, {
+  ..._compareOptions,
+  key: item => item.label,
+})
+const _boundSorted: Array<(typeof readonlyLabels)[number]> = useFormat().value.sortByLocale(readonlyLabels, {
+  key: item => item.label,
+})
 const logicalPlacement = ref<LogicalPlacement>('inline-start-end')
 const _physical: PhysicalPlacement = resolvePlacement(logicalPlacement.value, 'rtl')
 const _logical: LogicalPlacement = toLogicalPlacement(_physical, 'rtl')
@@ -51,6 +65,12 @@ useLogicalPlacement('left-start')
 _placement.value = 'right'
 // @ts-expect-error parseNumber reads text, not a number
 parseNumber(1234.5)
+// @ts-expect-error compareText compares strings, not numbers
+compareText(1, '2')
+// @ts-expect-error a collation key must return a string
+sortByLocale(readonlyLabels, { key: item => item.id })
+// @ts-expect-error bound sorting also requires a string key
+useFormat().value.sortByLocale(readonlyLabels, { key: () => undefined })
 // @ts-expect-error offset is readonly on useInlineScroll
 _scrollState.offset.value = 10
 </script>

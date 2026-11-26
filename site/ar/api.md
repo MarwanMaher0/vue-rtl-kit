@@ -16,7 +16,7 @@ import type { Direction } from 'vue-rtl-kit'
 | `useDirection` | `() => DirectionContext` | الحصول على أقرب نطاق، أو المخزن الجذري، أو القيمة الاحتياطية المنفصلة. |
 | `useRtl` | `() => RtlInstance` | الحصول على المخزن الجذري؛ ويُطلق خطأً عند عدم وجود الإضافة. |
 | `useLogicalStyles` | `() => UseLogicalStylesReturn` | أدوات مساعدة للأنماط المنطقية المرتبطة بالاتجاه. |
-| `useFormat` | `() => ComputedRef<BoundFormatters>` | أدوات تنسيق الأرقام والعملات والتواريخ والقوائم والأزمنة النسبية وصيغ الجمع المرتبطة باللغة، ومعها `formatDisplayName` و`parseNumber`. |
+| `useFormat` | `() => ComputedRef<BoundFormatters>` | أدوات تنسيق الأرقام والعملات والتواريخ والقوائم والأزمنة النسبية وصيغ الجمع المرتبطة باللغة، ومعها `formatDisplayName` و`parseNumber` و`compareText` و`sortByLocale`. |
 | `useInlineScroll` | `(target: MaybeRefOrGetter<Element \| null \| undefined>, options?: UseInlineScrollOptions) => UseInlineScrollReturn` | حالة التمرير السطري المنطقي وأوامر التحكم فيه في LTR وRTL، وآمنة مع SSR. |
 | `useLogicalPlacement` | `(placement: MaybeRefOrGetter<LogicalPlacement>, target?: Ref<HTMLElement \| null>) => ComputedRef<PhysicalPlacement>` | تحويل [موضع منطقي](#logical-placement) تفاعلي بحسب اتجاه العنصر المحسوب، أو بحسب نطاق الاتجاه الحالي عند غياب العنصر أو أثناء العرض على الخادم. |
 
@@ -194,6 +194,37 @@ matchesSearch('فاطمة مصطفى', 'فاطمه مصطفي') // true
 matchesSearch('فاطمة', 'فاطمه', { taMarbuta: false }) // false
 findSearchMatches('مرحبا مُحَمَّدٌ!', 'محمد') // [{ start: 6, end: 15 }]
 ```
+
+## الفرز حسب اللغة {#locale-aware-sorting}
+
+دوال نقية لمقارنة النص المعروض أو فرزه، تستخدم ذاكرة مؤقتة محدودة لنسخ `Intl.Collator`. تحافظ على ترتيب الحروف بحسب اللغة بدلًا من [طيّها كما في البحث](#search-helpers). في Nuxt، استورد الدالتين المستقلتين صراحةً.
+
+| التصدير | التوقيع | الوصف |
+| --- | --- | --- |
+| `compareText` | `(a: string, b: string, options?: CompareOptions) => number` | قيمة سالبة إذا سبق `a` القيمة `b`، وصفر إذا تساويا في الترتيب، وقيمة موجبة خلاف ذلك. الإشارة وحدها مضمونة، لا القيمتان `-1` و`1` بعينهما. |
+| `sortByLocale` | `<T>(items: readonly T[], options?: CompareOptions & { key?: (item: T) => string }) => T[]` | تعيد مصفوفة جديدة دون تعديل المدخلات. وتحافظ العناصر ذات المفاتيح المتساوية على ترتيبها الأصلي. السلسلة النصية هي مفتاحها، وللكائنات مرّر دالة `key`. |
+
+### CompareOptions
+
+| الخيار | النوع | الافتراضي | الأثر |
+| --- | --- | --- | --- |
+| `locale` | `string \| string[]` | `'en'` للدالتين المستقلتين | وسم لغة وفق BCP-47 أو مصفوفة وسوم مرتّبة حسب الأولوية. يتبع التابعان في `useFormat().value` لغة النطاق الحالي افتراضيًا؛ مرّر وسمًا أو مصفوفة لتجاوزها في استدعاء واحد. |
+| `numeric` | `boolean` | `true` | يقارن تتابعات الأرقام بقيمتها العددية، فتتساوى الأرقام الغربية (`0`–`9`) والعربية الهندية (`٠`–`٩`) والفارسية (`۰`–`۹`) إذا تساوت قيمتها. استخدم `false` للترتيب النصي بدلًا من العددي. |
+| `ignoreDiacritics` | `boolean` | `true` | يحذف قبل المقارنة التشكيل العربي (`U+064B`–`U+0652`، `U+0670`) والتطويل (`U+0640`) فقط. استخدم `false` لتخطّي الحذف. في الحالتين، تتبع الألف المجرّدة وأشكال الهمزة والمدّة وعلامات النبر اللاتينية وحالة الحروف قواعد الفرز في اللغة المحدّدة. |
+| `caseFirst` | `'upper' \| 'lower' \| 'false'` | `'false'` | يعطي الحروف الكبيرة أو الصغيرة الأولوية عند تساوي الحروف في ما عدا حالتها. لا تعطي `'false'` الأولوية لأيٍّ منهما، لكن حالة الحروف تظلّ مؤثّرة في المقارنة. |
+| `direction` | `'asc' \| 'desc'` | `'asc'` | مقارنة تصاعدية أو تنازلية. تأتي السلسلة الفارغة فعليًا (`''`) أولًا دائمًا. ترمي المفاتيح `null` أو `undefined` خطأ `TypeError` في التطوير، وتأتي دائمًا في النهاية في الإنتاج حتى عند الفرز التنازلي. |
+
+```ts
+import { compareText, sortByLocale } from 'vue-rtl-kit'
+
+compareText('مُحَمَّد', 'مـحمد', { locale: 'ar' }) // 0
+compareText('احمد', 'أحمد', { locale: 'ar' }) !== 0 // true
+compareText('طلب 2', 'طلب ۲', { locale: 'ar' }) // 0
+sortByLocale(['طلب ٢', '', 'طلب ١٠'], { locale: ['ar-EG', 'ar', 'en'], direction: 'desc' })
+// ['', 'طلب ١٠', 'طلب ٢']
+```
+
+راجع [دوال النص](/ar/guide/text-helpers#locale-aware-sorting) لأمثلة على مفاتيح الكائنات، و[useFormat](/ar/guide/use-format#locale-aware-sorting) لإعادة الفرز عند تغيير اللغة.
 
 ## التنسيق
 
@@ -402,6 +433,8 @@ interface BoundFormatters {
   formatPlural: (count: number, forms: PluralForms, options?: FormatPluralOptions) => string
   formatDisplayName: (code: string, options: FormatDisplayNameOptions) => string
   parseNumber: (text: string, options?: ParseNumberOptions) => number
+  compareText: typeof compareText
+  sortByLocale: typeof sortByLocale
 }
 ```
 

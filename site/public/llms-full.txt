@@ -419,6 +419,39 @@ Sources:
 - [useFormat](https://marwanmaher0.github.io/vue-rtl-kit/guide/use-format)
 - [useFormat بالعربية](https://marwanmaher0.github.io/vue-rtl-kit/ar/guide/use-format)
 
+## Locale-aware comparison and sorting
+
+Import compareText and sortByLocale from vue-rtl-kit. The standalone functions are pure, default to locale: 'en', and are not auto-imported in Nuxt. They use a bounded cache of Intl.Collator instances and retain locale-specific letter ordering rather than applying foldSearchText.
+
+- compareText(a: string, b: string, options?: CompareOptions): number. Use the sign: negative if a comes before b, zero if they compare equally, and positive if a comes after b. Do not check for exactly -1 or 1.
+- sortByLocale<T>(items: readonly T[], options?: CompareOptions & { key?: (item: T) => string }): T[]. Returns a stable new array, without changing the input or its text. A string item is its own key; use a key callback for objects. Equal keys preserve input order.
+- CompareOptions.locale: a BCP-47 tag or an ordered array of tags in order of preference.
+- CompareOptions.numeric: true by default. Western (0–9), Arabic-Indic (٠–٩), and Persian (۰–۹) digit runs compare by numeric value. Set false for text ordering.
+- CompareOptions.ignoreDiacritics: true by default. Strips only Arabic tashkeel (U+064B–U+0652, U+0670) and tatweel (U+0640) before comparing. Plain alef, hamza forms, madda, Latin accents, and case still follow the locale's rules.
+- CompareOptions.caseFirst: 'upper' or 'lower' gives upper- or lowercase priority when letters otherwise compare equally; 'false' (default) sets no case priority but still compares case.
+- CompareOptions.direction: 'asc' (default) or 'desc'. An actual empty string ('') always comes first. Null or undefined keys throw TypeError in development and always come last in production, even in descending order.
+
+```ts
+import { compareText, sortByLocale } from 'vue-rtl-kit'
+
+compareText('مُحَمَّد', 'مـحمد', { locale: 'ar' }) // 0
+compareText('طلب ٢', 'طلب ۲', { locale: 'ar' }) // 0
+compareText('طلب ٢', 'طلب ١٠', { locale: 'ar' }) < 0 // true
+sortByLocale(['طلب ٢', '', 'طلب ١٠'], { locale: ['ar-EG', 'ar', 'en'], direction: 'desc' })
+// ['', 'طلب ١٠', 'طلب ٢']
+
+const contacts = [{ name: 'سارة' }, { name: 'بدر' }]
+sortByLocale(contacts, { locale: 'ar', key: (contact) => contact.name })
+// [{ name: 'بدر' }, { name: 'سارة' }]
+```
+
+useFormat().value.compareText and useFormat().value.sortByLocale default to the current scope locale (not its layout direction or display numberingSystem). Read them inside a computed getter to follow setLocale(). Pass a locale tag or an ordered array of tags to override that locale for one call.
+
+Sources:
+- [Text helpers — Locale-aware sorting](https://marwanmaher0.github.io/vue-rtl-kit/guide/text-helpers#locale-aware-sorting)
+- [دوال النص — الفرز حسب اللغة](https://marwanmaher0.github.io/vue-rtl-kit/ar/guide/text-helpers#locale-aware-sorting)
+- [Locale-aware sorting API](https://marwanmaher0.github.io/vue-rtl-kit/api#locale-aware-sorting)
+
 ## Nuxt 3 and 4 module
 
 Add the module to nuxt.config.ts. Options use the rtl key:
@@ -460,7 +493,8 @@ Core types:
 - RtlOptions configures createRtl; ResolvedRtlOptions represents resolved root options.
 - DirectionContext describes reactive state and actions; RtlInstance adds root/plugin behavior.
 - DirectionState omits isRoot; DirectionStateOptions requires dir and locale and optionally locales and pinned.
-- BoundFormatters exposes locale, dir, formatNumber, formatCurrency, formatDate, formatList, formatRelativeTime, formatPlural, formatDisplayName, and parseNumber.
+- BoundFormatters exposes locale, dir, formatNumber, formatCurrency, formatDate, formatList, formatRelativeTime, formatPlural, formatDisplayName, parseNumber, compareText, and sortByLocale.
+- CompareOptions includes optional locale (string or string[]), numeric, ignoreDiacritics, caseFirst, and direction. sortByLocale also accepts a key callback.
 - PluralForms maps the CLDR plural categories zero, one, two, few, many, and other to message text, with other required; FormatPluralOptions extends FormatOptionsBase with type ('cardinal' | 'ordinal').
 - FormatDisplayNameOptions requires type ('language' | 'region' | 'currency' | 'script' | 'calendar' | 'dateTimeField') and accepts optional locale, style ('long' | 'short' | 'narrow'), languageDisplay ('dialect' | 'standard'), and fallback ('code' | 'none'). On older runtimes whose Intl.DisplayNames ignores fallback 'none', a name equal to its code (for example 'second' in English, or 'US' with style 'narrow') also returns ''.
 - ParseNumberOptions contains optional locale and numberingSystem.
@@ -481,6 +515,8 @@ vue-rtl-kit تدير اتجاه الواجهة وتنسيق القيم، ولا 
 يتبع اتجاه الجذر اللغة حتى يُثبّت عبر dir الأولي أو setDirection() أو toggleDirection(). بعد التثبيت، تغيّر setLocale() اللغة فقط. تقرأ useDirection() أقرب نطاق، أما useRtl() فتصل إلى الجذر المثبّت وترمي خطأ إن لم تكن الإضافة مثبتة. ينشئ RtlProvider نطاقًا محليًا؛ وعند غياب العنصر الحاوي يجب وضع سمات الاتجاه على الأبناء.
 
 BidiText أداة مبسطة لعزل مقاطع النص العادي، وليس محرّكًا للنص الغني ولا تنفيذًا كاملًا لخوارزمية Unicode ثنائية الاتجاه. لا يعالج الوسوم الغنية داخل الخانة؛ استخدم text لعزل النص العادي. يظل المتصفح مسؤولًا عن التخطيط النهائي. تتكيف أدوات CSS المنطقية مع أقرب dir، وتوحّد useInlineScroll ودوال التمرير السطري إحداثيات scrollLeft الأفقي في LTR وRTL لأوضاع الكتابة الأفقية فقط، وتوحّد دوال البحث foldSearchText وmatchesSearch وfindSearchMatches الحركات والهمزات والتطويل ونقاط التشكيل العبرية والأرقام المحلية مع إرجاع نطاقات UTF-16 الأصلية للتظليل دون اشتقاق صرفي أو مطابقة ضبابية، وتنسّق useFormat الأرقام والعملات والتواريخ والقوائم والأزمنة النسبية عبر Intl، وتختار formatPlural صيغة الجمع بفئات CLDR الست للعربية (صفر، مفرد، مثنى، قليل، كثير، غير ذلك) بدل شرط `n === 1` الخاطئ، وتسمّي formatDisplayName رموز اللغات والمناطق والعملات بكلمات اللغة نفسها عبر Intl.DisplayNames فتعرض قوائم اختيار اللغات «العربية» بدل Arabic، وتقرأ parseNumber الأعداد المكتوبة بأرقام اللغة وفواصلها وتعيد NaN للنص غير الصالح.
+
+للمقارنة والفرز بحسب اللغة، استخدم `compareText` و`sortByLocale`؛ فمثلًا يتساوى `طلب ٢` و`طلب ۲` ويسبقان `طلب ١٠` افتراضيًا. تحافظ الدالتان على ترتيب الحروف بحسب اللغة دون طيّها كما في البحث، ويتبع تابعاهما في `useFormat()` لغة النطاق الحالي.
 
 لتحديد موضع نافذة منبثقة عند نهاية السطر، استخدم `useLogicalPlacement('inline-end', trigger)`. تكون النافذة على يسار زرّ الفتح في RTL وعلى يمينه في LTR. تقرأ الدالة اتجاه الزر المحسوب، وتستخدم اتجاه نطاق Vue عند غياب الزر أو أثناء العرض على الخادم. عند استخدام Floating UI، مرّر محاذاة `top` أو `bottom` المنطقية مباشرةً إذا كان اتجاه العنصر العائم هو المطلوب.
 

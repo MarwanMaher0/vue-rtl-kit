@@ -102,27 +102,32 @@ budgets are set to their measured byte counts plus fixed `+256 B` (`0.25 kB`) ra
 
 | Entry point | Artifact | Raw (current / budget) | Gzip (current / budget) |
 | --- | --- | --- | --- |
-| `vue-rtl-kit` (ESM) | `dist/vue-rtl-kit.js` | 40.83 kB / ≤ 41.08 kB | 12.95 kB / ≤ 13.05 kB |
-| `vue-rtl-kit` (CJS) | `dist/vue-rtl-kit.cjs` | 29.70 kB / ≤ 29.95 kB | 10.96 kB / ≤ 11.06 kB |
+| `vue-rtl-kit` (ESM) | `dist/vue-rtl-kit.js` | 42.91 kB / ≤ 43.16 kB | 13.56 kB / ≤ 13.66 kB |
+| `vue-rtl-kit` (CJS) | `dist/vue-rtl-kit.cjs` | 31.21 kB / ≤ 31.46 kB | 11.49 kB / ≤ 11.59 kB |
 | `vue-rtl-kit/nuxt` | `dist/nuxt/module.js` | 3.08 kB / ≤ 3.25 kB | 1.12 kB / ≤ 1.50 kB |
 | `vue-rtl-kit/nuxt` (runtime plugin) | `dist/nuxt/runtime/plugin.js` | 2.77 kB / ≤ 3.00 kB | 1.02 kB / ≤ 1.20 kB |
 | `vue-rtl-kit/styles.css` | `dist/styles.css` | 7.10 kB / ≤ 8.00 kB | 1.91 kB / ≤ 2.50 kB |
 
-`sideEffects` lists only `*.css`, so a bundler can drop unused helpers. `npm run check:treeshake` bundles each import on its own against `dist/vue-rtl-kit.js` (Rollup, `vue` external, esbuild minify). Vue stays external, so Rollup would otherwise keep a bare `import 'vue'`; the check declares `vue` side-effect free with `treeshake.moduleSideEffects` (the same assumption a consumer bundler makes for an unused Vue import) and fails if `chunk.imports` still includes `vue`. It also fails if `{ isolateRuns }`, `{ toLogicalStyle }`, `{ logicalArrow }`, `{ resolvePlacement }`, `{ getScrollInline }`, `{ scrollToInline }`, `{ directionOfLocale }`, `{ findSearchMatches }`, `{ formatPlural }` or `{ formatDisplayName }` exceeds 2 kB gzip, or if `{ formatNumber }` still contains component or directive code:
+`sideEffects` lists only `*.css`, so a bundler can drop unused helpers. `npm run check:treeshake`
+bundles each import below on its own against `dist/vue-rtl-kit.js` (Rollup, `vue` external,
+esbuild minify). It treats Vue as side-effect free, like a consumer bundler, then checks the
+result against the size and dependency limits below:
 
 | Import | Gzip (current / budget) | Must not include |
 | --- | --- | --- |
 | `{ isolateRuns }` | 1.03 kB / ≤ 2.00 kB | `vue` |
 | `{ toLogicalStyle }` | 1.25 kB / ≤ 2.00 kB | `vue` |
 | `{ logicalArrow }` | 0.18 kB / ≤ 2.00 kB | `vue` |
-| `{ resolvePlacement }` | 0.36 kB / ≤ 2.00 kB | `vue` |
+| `{ resolvePlacement }` | 0.36 kB / ≤ 2.00 kB | `vue`, collation |
 | `{ getScrollInline }` | 0.36 kB / ≤ 2.00 kB | `vue` |
 | `{ scrollToInline }` | 0.41 kB / ≤ 2.00 kB | `vue` |
 | `{ directionOfLocale }` | 0.62 kB / ≤ 2.00 kB | `vue` |
 | `{ findSearchMatches }` | 0.81 kB / ≤ 2.00 kB | `vue` |
 | `{ formatPlural }` | 0.91 kB / ≤ 2.00 kB | `vue` |
 | `{ formatDisplayName }` | 0.65 kB / ≤ 2.00 kB | `vue` |
-| `{ formatNumber }` | 0.75 kB | components, directives |
+| `{ formatNumber }` | 0.75 kB | components, directives, collation |
+| `{ compareText }` | 0.95 kB / ≤ 2.00 kB | `vue` |
+| `{ sortByLocale }` | 1.00 kB / ≤ 2.00 kB | `vue` |
 
 ## Quickstart — Vue
 
@@ -249,7 +254,7 @@ excluded from `ModuleOptions`.
 | `useDirection()` | `DirectionContext` | `dir`, `isRtl`, `isLtr`, `locale`, `startSide`, `endSide`, `sign`, `setDirection()`, `toggleDirection()`, `setLocale()`, `htmlAttrs()`. Resolves to the nearest `<RtlProvider>`, then the app store, then a detached fallback — it never throws. |
 | `useRtl()` | `RtlInstance` | The app-level store, skipping any `<RtlProvider>`. Throws if the plugin is missing. |
 | `useLogicalStyles()` | see below | `toLogical()`, `toPhysical()`, `property()`, `mirror()`, `arrow()`, plus `startSide`, `endSide`, `sign`. |
-| `useFormat()` | `ComputedRef<BoundFormatters>` | `formatNumber` / `formatCurrency` / `formatDate` / `formatList` / `formatRelativeTime` / `formatPlural` / `formatDisplayName` / `parseNumber` bound to the current locale and numbering system; they follow `setLocale()` and the `numberingSystem` configured in `createRtl()`. |
+| `useFormat()` | `ComputedRef<BoundFormatters>` | `formatNumber` / `formatCurrency` / `formatDate` / `formatList` / `formatRelativeTime` / `formatPlural` / `formatDisplayName` / `parseNumber` bound to the current locale and numbering system, plus `compareText` / `sortByLocale` bound to the current locale; they follow `setLocale()`, and the formatters and parser also use the `numberingSystem` configured in `createRtl()`. |
 | `useInlineScroll(target, options?)` | `UseInlineScrollReturn` | Readonly `offset`, `max`, `atStart`, `atEnd` refs plus `scrollTo()`, `scrollBy()`, `scrollToStart()`, `scrollToEnd()`. Uses a passive `scroll` listener and `ResizeObserver`, re-reads on `target` and `useDirection().dir` changes, cleans up on dispose, and is SSR-safe. Horizontal writing modes only. |
 | `useLogicalPlacement(placement, target?)` | `ComputedRef<PhysicalPlacement>` | Resolve a placement using the target element's computed `direction`, or `useDirection().dir` without a mounted target or during SSR. See [Floating UI example](#floating-ui-example). |
 
@@ -582,6 +587,47 @@ text.slice(ranges[0].start, ranges[0].end)            // 'مُحَمَّدٌ' (t
 `digits` (Arabic-Indic and Persian digits → ASCII). None of the three helpers ever throws. **No
 stemming, root extraction, morphological analysis or fuzzy matching is performed** — only
 character-level folding and exact folded substring matching.
+
+### Locale-aware comparison and sorting
+
+Use `compareText` for a comparator and `sortByLocale` for a new, stably sorted array. Both use a
+bounded cache of `Intl.Collator` instances. Unlike the search helpers, they keep the locale’s
+letter ordering instead of folding spelling variants.
+
+```ts
+import { compareText, sortByLocale } from 'vue-rtl-kit'
+
+compareText('مُحَمَّد', 'مـحمد', { locale: 'ar' }) // 0
+compareText('احمد', 'أحمد', { locale: 'ar' }) !== 0 // true
+compareText('طلب ٢', 'طلب ۲', { locale: 'ar' }) // 0
+compareText('طلب ٢', 'طلب 10', { locale: 'ar' }) < 0 // true
+
+sortByLocale(['طلب ١٠', 'طلب ٢', 'طلب ۳'], { locale: 'ar' })
+// ['طلب ٢', 'طلب ۳', 'طلب ١٠']
+
+const contacts = [{ name: 'سارة' }, { name: 'بدر' }]
+sortByLocale(contacts, { locale: 'ar', key: (contact) => contact.name })
+// [{ name: 'بدر' }, { name: 'سارة' }]; contacts is unchanged
+```
+
+`compareText` returns a negative number, zero, or a positive number; don’t rely on exactly `-1` or
+`1`. Numeric ordering is on by default: Western, Arabic-Indic, and Persian digits compare by
+value. `ignoreDiacritics` defaults to `true` and strips only Arabic tashkeel (vowel marks,
+shadda, sukun, and superscript alef) and tatweel before comparing. Plain alef, hamza forms, madda,
+Latin accents, and letter case still follow the locale's collation rules. `caseFirst` accepts
+`'upper'` or `'lower'` to prioritize case; `'false'` (the default) sets no case priority but still compares case.
+
+`sortByLocale` uses each string as its own key; pass `key` to select a string from each object.
+For both helpers, `direction` defaults to `'asc'`; use `'desc'` for descending order. Actual empty
+strings (`''`) always come first. A `null` or `undefined` key throws `TypeError` in development and
+always sorts last in production, even in descending order. Equal keys keep their input order
+when sorting.
+
+The standalone functions default to `locale: 'en'` and must be imported explicitly in Nuxt.
+`useFormat().value.compareText` and `useFormat().value.sortByLocale` use the current scope locale.
+Pass a locale tag or an ordered array such as `['ar-EG', 'ar', 'en']` to override it for one call.
+See [Locale-aware sorting](https://marwanmaher0.github.io/vue-rtl-kit/guide/text-helpers#locale-aware-sorting)
+for more examples.
 
 ---
 

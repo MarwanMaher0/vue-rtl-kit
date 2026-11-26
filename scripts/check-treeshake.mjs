@@ -22,14 +22,16 @@ const CASES = [
   { spec: 'isolateRuns', maxGzip: MAX_GZIP, forbidVue: true },
   { spec: 'toLogicalStyle', maxGzip: MAX_GZIP, forbidVue: true },
   { spec: 'logicalArrow', maxGzip: MAX_GZIP, forbidVue: true },
-  { spec: 'resolvePlacement', maxGzip: MAX_GZIP, forbidVue: true },
+  { spec: 'resolvePlacement', maxGzip: MAX_GZIP, forbidVue: true, forbidCollation: true },
   { spec: 'getScrollInline', maxGzip: MAX_GZIP, forbidVue: true },
   { spec: 'scrollToInline', maxGzip: MAX_GZIP, forbidVue: true },
   { spec: 'directionOfLocale', maxGzip: MAX_GZIP, forbidVue: true },
   { spec: 'findSearchMatches', maxGzip: MAX_GZIP, forbidVue: true },
   { spec: 'formatPlural', maxGzip: MAX_GZIP, forbidVue: true },
   { spec: 'formatDisplayName', maxGzip: MAX_GZIP, forbidVue: true },
-  { spec: 'formatNumber', forbidComponents: true },
+  { spec: 'formatNumber', forbidComponents: true, forbidCollation: true },
+  { spec: 'compareText', maxGzip: MAX_GZIP, forbidVue: true },
+  { spec: 'sortByLocale', maxGzip: MAX_GZIP, forbidVue: true },
 ]
 
 function formatKb(bytes) {
@@ -97,10 +99,12 @@ async function main() {
     const gzipBytes = gzipSync(code, { level: 9 }).length
     const vue = pullsVue(imports)
     const markers = COMPONENT_OR_DIRECTIVE.filter(marker => code.includes(marker))
+    const collationLeak = entry.forbidCollation && code.includes('Intl.Collator')
     const ok = gzipBytes > 0
       && (!entry.maxGzip || gzipBytes <= entry.maxGzip)
       && (!entry.forbidVue || !vue)
       && (!entry.forbidComponents || markers.length === 0)
+      && !collationLeak
     console.log(
       `${ok ? 'PASS' : 'FAIL'}  { ${entry.spec} }`.padEnd(28)
       + `gzip: ${formatKb(gzipBytes)}${entry.maxGzip ? ` / ${formatKb(entry.maxGzip)}` : ''}`
@@ -115,6 +119,7 @@ async function main() {
     if (entry.forbidComponents && markers.length) {
       failures.push(`{ ${entry.spec} } still contains component or directive code: ${markers.join(', ')}`)
     }
+    if (collationLeak) failures.push(`{ ${entry.spec} } still contains collation code`)
   }
 
   if (failures.length) {
