@@ -145,6 +145,25 @@ oppositeDirection('rtl') // ltr
 resolveDirection('ar-EG', { ar: 'rtl' }) // rtl
 ```
 
+## Search helpers {#search-helpers}
+
+Pure, Vue-free helpers for client-side search across Arabic, Persian, Hebrew, and mixed-script text. Stored strings with hamza variants, harakat, tatweel, Hebrew points, presentation ligatures, or local digits match queries typed with bare letters and ASCII digits. None of the functions ever throws, and **no stemming, root extraction, or fuzzy matching** is performed. See [Text helpers](/guide/text-helpers#search-helpers) for full mapping rules.
+
+| Export | Signature | Description |
+| --- | --- | --- |
+| `foldSearchText` | `(text: string \| null \| undefined, options?: SearchOptions) => string` | Return the normalised search key (`NFKC`, strip harakat, tatweel, Hebrew points, and bidi controls, fold orthography variants and digits, lowercase Latin, collapse whitespace runs to `' '`). |
+| `matchesSearch` | `(text: string \| null \| undefined, query: string \| null \| undefined, options?: SearchOptions) => boolean` | Return `true` when folded `text` contains folded `query`. An empty or marks-only `query` returns `true`; `null` or `undefined` `text` returns `false`. |
+| `findSearchMatches` | `(text: string \| null \| undefined, query: string \| null \| undefined, options?: SearchOptions) => SearchMatch[]` | Sorted, non-overlapping UTF-16 `{ start, end }` ranges in the original `text`, with `end` extended over trailing combining marks so `<mark>` never splits a letter from its harakat or niqqud. |
+
+```ts
+import { findSearchMatches, foldSearchText, matchesSearch } from 'vue-rtl-kit'
+
+foldSearchText('أَحْمَد عـبـدالله ١٢٣') // 'احمد عبدالله 123'
+matchesSearch('فاطمة مصطفى', 'فاطمه مصطفي') // true
+matchesSearch('فاطمة', 'فاطمه', { taMarbuta: false }) // false
+findSearchMatches('مرحبا مُحَمَّدٌ!', 'محمد') // [{ start: 6, end: 15 }]
+```
+
 ## Formatting
 
 | Export | Signature | Description |
@@ -396,6 +415,21 @@ interface ScrollInlineOptions {
 interface ScrollInlineEdges {
   atStart: boolean
   atEnd: boolean
+}
+```
+
+## Search types
+
+```ts
+interface SearchOptions {
+  taMarbuta?: boolean
+  alefMaqsura?: boolean
+  digits?: boolean
+}
+
+interface SearchMatch {
+  start: number
+  end: number
 }
 ```
 

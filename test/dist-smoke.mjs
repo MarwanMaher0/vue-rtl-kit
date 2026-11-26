@@ -20,7 +20,8 @@ function check(label, api) {
   for (const name of [
     'createRtl', 'splitBidiRuns', 'isolateRuns', 'logicalArrow', 'toLogicalStyle', 'toPhysicalStyle',
     'getScrollInline', 'getScrollInlineMax', 'scrollToInline', 'scrollByInline', 'scrollInlineEdges',
-    'useInlineScroll', 'formatNumber', 'directionOfLocale', 'BidiText', 'RtlProvider', 'vRtl',
+    'useInlineScroll', 'formatNumber', 'directionOfLocale', 'foldSearchText', 'matchesSearch',
+    'findSearchMatches', 'BidiText', 'RtlProvider', 'vRtl',
   ]) {
     assert.equal(typeof api[name], name === 'BidiText' || name === 'RtlProvider' || name === 'vRtl' ? 'object' : 'function', `${label}: missing export ${name}`)
   }
@@ -34,6 +35,9 @@ function check(label, api) {
     api.scrollByInline(null, 50)
   }, `${label}: scroll setters on server`)
   assert.equal(api.splitBidiRuns('مرحبا abc', 'rtl').map(run => run.text).join(''), 'مرحبا abc', `${label}: splitBidiRuns`)
+  assert.equal(api.foldSearchText('أَحْمَد ١٢٣'), 'احمد 123', `${label}: foldSearchText`)
+  assert.equal(api.matchesSearch('مُحَمَّد', 'محمد'), true, `${label}: matchesSearch`)
+  assert.deepEqual(api.findSearchMatches('مرحبا مُحَمَّدٌ!', 'محمد'), [{ start: 6, end: 15 }], `${label}: findSearchMatches`)
   assert.deepEqual(api.toLogicalStyle({ marginLeft: '8px' }), { marginInlineStart: '8px' }, `${label}: toLogicalStyle`)
   assert.deepEqual(api.toPhysicalStyle({ paddingInline: '1px 2px' }, 'rtl'), { paddingRight: '1px', paddingLeft: '2px' }, `${label}: toPhysicalStyle`)
 

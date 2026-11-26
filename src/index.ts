@@ -94,6 +94,13 @@ export type {
   RelativeTimeFormatOptions,
 } from './format'
 
+export {
+  findSearchMatches,
+  foldSearchText,
+  matchesSearch,
+} from './search'
+export type { SearchMatch, SearchOptions } from './search'
+
 export { isClient, isServer } from './env'
 
 export type {

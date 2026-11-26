@@ -102,13 +102,13 @@ budgets are set to their measured byte counts plus fixed `+256 B` (`0.25 kB`) ra
 
 | Entry point | Artifact | Raw (current / budget) | Gzip (current / budget) |
 | --- | --- | --- | --- |
-| `vue-rtl-kit` (ESM) | `dist/vue-rtl-kit.js` | 34.26 kB / ≤ 34.51 kB | 11.09 kB / ≤ 11.19 kB |
-| `vue-rtl-kit` (CJS) | `dist/vue-rtl-kit.cjs` | 24.98 kB / ≤ 25.23 kB | 9.29 kB / ≤ 9.39 kB |
+| `vue-rtl-kit` (ESM) | `dist/vue-rtl-kit.js` | 36.87 kB / ≤ 37.12 kB | 11.91 kB / ≤ 12.01 kB |
+| `vue-rtl-kit` (CJS) | `dist/vue-rtl-kit.cjs` | 26.86 kB / ≤ 27.11 kB | 10.04 kB / ≤ 10.14 kB |
 | `vue-rtl-kit/nuxt` | `dist/nuxt/module.js` | 3.08 kB / ≤ 3.25 kB | 1.12 kB / ≤ 1.50 kB |
 | `vue-rtl-kit/nuxt` (runtime plugin) | `dist/nuxt/runtime/plugin.js` | 2.77 kB / ≤ 3.00 kB | 1.02 kB / ≤ 1.20 kB |
 | `vue-rtl-kit/styles.css` | `dist/styles.css` | 7.10 kB / ≤ 8.00 kB | 1.91 kB / ≤ 2.50 kB |
 
-`sideEffects` lists only `*.css`, so a bundler can drop unused helpers. `npm run check:treeshake` bundles each import on its own against `dist/vue-rtl-kit.js` (Rollup, `vue` external, esbuild minify). Vue stays external, so Rollup would otherwise keep a bare `import 'vue'`; the check declares `vue` side-effect free with `treeshake.moduleSideEffects` (the same assumption a consumer bundler makes for an unused Vue import) and fails if `chunk.imports` still includes `vue`. It also fails if `{ isolateRuns }`, `{ toLogicalStyle }`, `{ logicalArrow }`, `{ getScrollInline }`, `{ scrollToInline }` or `{ directionOfLocale }` exceeds 2 kB gzip, or if `{ formatNumber }` still contains component or directive code:
+`sideEffects` lists only `*.css`, so a bundler can drop unused helpers. `npm run check:treeshake` bundles each import on its own against `dist/vue-rtl-kit.js` (Rollup, `vue` external, esbuild minify). Vue stays external, so Rollup would otherwise keep a bare `import 'vue'`; the check declares `vue` side-effect free with `treeshake.moduleSideEffects` (the same assumption a consumer bundler makes for an unused Vue import) and fails if `chunk.imports` still includes `vue`. It also fails if `{ isolateRuns }`, `{ toLogicalStyle }`, `{ logicalArrow }`, `{ getScrollInline }`, `{ scrollToInline }`, `{ directionOfLocale }` or `{ findSearchMatches }` exceeds 2 kB gzip, or if `{ formatNumber }` still contains component or directive code:
 
 | Import | Gzip (current / budget) | Must not include |
 | --- | --- | --- |
@@ -118,6 +118,7 @@ budgets are set to their measured byte counts plus fixed `+256 B` (`0.25 kB`) ra
 | `{ getScrollInline }` | 0.36 kB / ≤ 2.00 kB | `vue` |
 | `{ scrollToInline }` | 0.41 kB / ≤ 2.00 kB | `vue` |
 | `{ directionOfLocale }` | 0.62 kB / ≤ 2.00 kB | `vue` |
+| `{ findSearchMatches }` | 0.82 kB / ≤ 2.00 kB | `vue` |
 | `{ formatNumber }` | 0.75 kB | components, directives |
 
 ## Quickstart — Vue
@@ -443,6 +444,39 @@ inside an RTL parent unless its direction is explicitly set. Explicit map overri
 directions remain authoritative.
 
 Also exported: `normaliseLocales`, `oppositeDirection`, `RTL_LANGUAGES`.
+
+### Search helpers
+
+Stored Arabic, Persian and Hebrew names routinely carry hamza variants (`أحمد`), harakat
+(`مُحَمَّدٌ`), tatweel (`عـبـدالله`), Hebrew points (`שָׁלוֹם`) or presentation ligatures (`سﻼم`), while
+visitors type bare letters and ASCII digits (`احمد`, `محمد`, `عبدالله`, `فاطمه`, `مصطفي`, `שלום`,
+`123`) — so `name.includes(query)` returns `false`. These pure helpers (zero Vue imports) fold text
+for client-side filtering and return UTF-16 highlight offsets against the **original** string:
+
+```ts
+import { findSearchMatches, foldSearchText, matchesSearch } from 'vue-rtl-kit'
+
+foldSearchText('أَحْمَد عـبـدالله ١٢٣')              // 'احمد عبدالله 123'
+matchesSearch('فاطمة مصطفى', 'فاطمه مصطفي')          // true
+matchesSearch('فاطمة', 'فاطمه', { taMarbuta: false }) // false
+matchesSearch('שָׁלוֹם עֲלֵיכֶם', 'שלום עליכם')        // true
+
+const text = 'مرحبا مُحَمَّدٌ في القاهرة'
+const ranges = findSearchMatches(text, 'محمد')       // [{ start: 6, end: 15 }]
+text.slice(ranges[0].start, ranges[0].end)            // 'مُحَمَّدٌ' (trailing marks stay inside <mark>)
+```
+
+| Function | Description |
+| --- | --- |
+| `foldSearchText(text, options?)` | Return the normalised search key: apply `NFKC` (unfolding presentation forms and lam-alef ligatures), strip Arabic harakat (`U+064B`–`U+065F`, `U+0670`, `U+06D6`–`U+06ED`), tatweel (`U+0640`), Hebrew points (`U+0591`–`U+05C7`) and Unicode bidi controls, map `آ`/`أ`/`إ`/`ٱ` → `ا`, `ؤ` → `و`, `ئ`/`ى`/`ی` → `ي`, `ک` → `ك`, `ة` → `ه`, and Arabic-Indic / Persian digits → ASCII `0`–`9`, lowercase Latin, and collapse whitespace runs to `' '`. |
+| `matchesSearch(text, query, options?)` | `true` when folded `text` contains folded `query`. An empty or marks-only `query` matches (`true`); `null` or `undefined` `text` returns `false`. |
+| `findSearchMatches(text, query, options?)` | Sorted, non-overlapping `{ start, end }` UTF-16 code-unit ranges in the **original** `text`, with `end` extended over trailing combining marks so `<mark>` never splits a letter from its harakat or niqqud. Preserves offsets across surrogate pairs (emoji) and lam-alef ligatures. Empty or marks-only `query` and `null` `text` return `[]`. |
+
+`SearchOptions` flags all default to `true`: `taMarbuta` (`U+0629` → `U+0647`), `alefMaqsura`
+(`U+0649` → `U+064A`; `ئ` `U+0626` and Persian `ی` `U+06CC` always fold to `ي` `U+064A`), and
+`digits` (Arabic-Indic and Persian digits → ASCII). None of the three helpers ever throws. **No
+stemming, root extraction, morphological analysis or fuzzy matching is performed** — only
+character-level folding and exact folded substring matching.
 
 ---
 

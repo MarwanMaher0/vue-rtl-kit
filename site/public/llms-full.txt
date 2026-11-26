@@ -187,6 +187,35 @@ Sources:
 - [BidiText بالعربية](https://marwanmaher0.github.io/vue-rtl-kit/ar/guide/bidi-text)
 - [Bidirectional API](https://marwanmaher0.github.io/vue-rtl-kit/api#bidirectional-text)
 
+## Client-side RTL search helpers
+
+Plain `name.includes(query)` fails on Arabic, Persian, and Hebrew text when stored strings contain hamza variants (`أحمد`), harakat (`مُحَمَّدٌ`), tatweel (`عـبـدالله`), Hebrew points (`שָׁלוֹם`), presentation ligatures (`سﻼم`), or local digits (`١٢٣`, `۱۲۳`) while users type bare letters and ASCII digits (`احمد`, `محمد`, `فاطمه`, `مصطفي`, `שלום`, `123`). Pure Vue-free exports from `vue-rtl-kit` handle folding, matching, and UTF-16 highlight offsets:
+
+- foldSearchText(text, options?): string. Applies Unicode NFKC (unfolding presentation forms and lam-alef ligatures), strips Arabic harakat (U+064B to U+065F, U+0670, U+06D6 to U+06ED), tatweel (U+0640), Hebrew points (U+0591 to U+05C7), and Unicode bidi controls, maps U+0622/U+0623/U+0625/U+0671 to U+0627, U+0624 to U+0648, U+0626/U+06CC to U+064A, and U+06A9 to U+0643, lowercases Latin letters, and collapses whitespace runs to a single space ' '.
+- matchesSearch(text, query, options?): boolean. Tests whether folded text contains folded query. An empty or marks-only query returns true for any string text; null, undefined, or non-string text (or query) returns false.
+- findSearchMatches(text, query, options?): SearchMatch[]. Returns sorted, non-overlapping `{ start, end }` UTF-16 code-unit offsets in the original text. Each `end` offset is extended over trailing combining marks so wrapping slices in `<mark>` never splits a letter from its harakat or niqqud. Preserves exact UTF-16 offsets across surrogate pairs (emoji) and presentation ligatures (`ﻻ`, `ﻷ`). Empty or marks-only queries and null/undefined text return `[]`.
+
+SearchOptions flags all default to true:
+- taMarbuta: folds U+0629 (`ة`) to U+0647 (`ه`) when true.
+- alefMaqsura: folds U+0649 (`ى`) to U+064A (`ي`) when true (`ئ` U+0626 and Persian `ی` U+06CC always fold to U+064A).
+- digits: folds Arabic-Indic (U+0660 to U+0669) and Persian (U+06F0 to U+06F9) digits to ASCII 0-9 when true.
+
+None of the helpers ever throws. Scope is deterministic character folding and exact folded substring matching only — no stemming, root extraction, morphological analysis, or fuzzy matching.
+
+```ts
+import { findSearchMatches, foldSearchText, matchesSearch } from 'vue-rtl-kit'
+
+foldSearchText('أَحْمَد عـبـدالله ١٢٣') // 'احمد عبدالله 123'
+matchesSearch('فاطمة مصطفى', 'فاطمه مصطفي') // true
+matchesSearch('فاطمة', 'فاطمه', { taMarbuta: false }) // false
+findSearchMatches('مرحبا مُحَمَّدٌ!', 'محمد') // [{ start: 6, end: 15 }]
+```
+
+Sources:
+- [Text helpers — Search helpers](https://marwanmaher0.github.io/vue-rtl-kit/guide/text-helpers#search-helpers)
+- [دوال النص — دوال البحث](https://marwanmaher0.github.io/vue-rtl-kit/ar/guide/text-helpers#search-helpers)
+- [Search helpers API](https://marwanmaher0.github.io/vue-rtl-kit/api#search-helpers)
+
 ## v-rtl: element-level direction
 
 v-rtl sets an element's direction; it does not pin the root store. It supports reactive updates, SSR attributes, optional Unicode isolation, and restoration of previous DOM values on unmount.
@@ -398,6 +427,7 @@ Core types:
 - BidiRun contains text, dir, isolated, and hasStrong.
 - LogicalStyleOptions contains optional size, values, and shorthands flags.
 - ScrollInlineOptions contains optional behavior; ScrollInlineEdges contains atStart and atEnd; UseInlineScrollOptions contains optional tolerance; UseInlineScrollReturn exposes readonly offset, max, atStart, atEnd plus scrollTo, scrollBy, scrollToStart, and scrollToEnd.
+- SearchOptions contains optional taMarbuta, alefMaqsura, and digits booleans (all defaulting to true); SearchMatch contains start and end UTF-16 offsets in the original string.
 - RtlDirectiveValue accepts DirectionOrAuto, boolean, undefined, null, or { dir?, isolate? }.
 
 The reference includes signatures for every export and complete type shapes:
@@ -410,6 +440,6 @@ vue-rtl-kit تدير اتجاه الواجهة وتنسيق القيم، ولا 
 
 يتبع اتجاه الجذر اللغة حتى يُثبّت عبر dir الأولي أو setDirection() أو toggleDirection(). بعد التثبيت، تغيّر setLocale() اللغة فقط. تقرأ useDirection() أقرب نطاق، أما useRtl() فتصل إلى الجذر المثبّت وترمي خطأ إن لم تكن الإضافة مثبتة. ينشئ RtlProvider نطاقًا محليًا؛ وعند غياب العنصر الحاوي يجب وضع سمات الاتجاه على الأبناء.
 
-BidiText أداة مبسطة لعزل مقاطع النص العادي، وليس محرّكًا للنص الغني ولا تنفيذًا كاملًا لخوارزمية Unicode ثنائية الاتجاه. لا يعالج الوسوم الغنية داخل الخانة؛ استخدم text لعزل النص العادي. يظل المتصفح مسؤولًا عن التخطيط النهائي. تتكيف أدوات CSS المنطقية مع أقرب dir، وتوحّد useInlineScroll ودوال التمرير السطري إحداثيات scrollLeft الأفقي في LTR وRTL لأوضاع الكتابة الأفقية فقط، وتنسّق useFormat الأرقام والعملات والتواريخ والقوائم والأزمنة النسبية عبر Intl، وتقرأ parseNumber الأعداد المكتوبة بأرقام اللغة وفواصلها وتعيد NaN للنص غير الصالح.
+BidiText أداة مبسطة لعزل مقاطع النص العادي، وليس محرّكًا للنص الغني ولا تنفيذًا كاملًا لخوارزمية Unicode ثنائية الاتجاه. لا يعالج الوسوم الغنية داخل الخانة؛ استخدم text لعزل النص العادي. يظل المتصفح مسؤولًا عن التخطيط النهائي. تتكيف أدوات CSS المنطقية مع أقرب dir، وتوحّد useInlineScroll ودوال التمرير السطري إحداثيات scrollLeft الأفقي في LTR وRTL لأوضاع الكتابة الأفقية فقط، وتوحّد دوال البحث foldSearchText وmatchesSearch وfindSearchMatches الحركات والهمزات والتطويل ونقاط التشكيل العبرية والأرقام المحلية مع إرجاع نطاقات UTF-16 الأصلية للتظليل دون اشتقاق صرفي أو مطابقة ضبابية، وتنسّق useFormat الأرقام والعملات والتواريخ والقوائم والأزمنة النسبية عبر Intl، وتقرأ parseNumber الأعداد المكتوبة بأرقام اللغة وفواصلها وتعيد NaN للنص غير الصالح.
 
 تدعم وحدة Nuxt سمات dir وlang في العرض على الخادم. تعطيل components يوقف تسجيل Nuxt وقت البناء فقط؛ اضبط registerGlobals: false أيضًا لإيقاف التسجيل العام من إضافة التشغيل. راجع الدليل العربي لكل واجهة قبل افتراض سلوك غير موثق.

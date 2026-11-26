@@ -145,6 +145,25 @@ oppositeDirection('rtl') // ltr
 resolveDirection('ar-EG', { ar: 'rtl' }) // rtl
 ```
 
+## دوال البحث {#search-helpers}
+
+دوال نقية دون أي استيراد من Vue للبحث النصي من جهة العميل في النصوص العربية والفارسية والعبرية والمختلطة. تطابق النصوص المخزّنة بأشكال الهمزة أو الحركات أو التطويل أو نقاط التشكيل العبرية أو وصلات العرض أو الأرقام المحلية استعلامات البحث المكتوبة بحروف مجرّدة وأرقام ASCII. لا ترمي أيٌّ من هذه الدوال استثناءً أبدًا، **ولا تُجري اشتقاقًا صرفيًا أو استخراجًا للجذور أو مطابقة ضبابية**. راجع [دوال النص](/ar/guide/text-helpers#search-helpers) للاطلاع على قواعد الطيّ كاملة.
+
+| التصدير | التوقيع | الوصف |
+| --- | --- | --- |
+| `foldSearchText` | `(text: string \| null \| undefined, options?: SearchOptions) => string` | إرجاع مفتاح البحث الموحّد (`NFKC`، وحذف الحركات والتطويل ونقاط التشكيل العبرية ومحارف التحكم ثنائية الاتجاه، وطيّ المتغيرات الإملائية والأرقام، وتصغير الحروف اللاتينية، ودمج المسافات البيضاء في `' '`). |
+| `matchesSearch` | `(text: string \| null \| undefined, query: string \| null \| undefined, options?: SearchOptions) => boolean` | إرجاع `true` عند احتواء `text` المطوي على `query` المطوي. يعيد الاستعلام الفارغ أو المكوّن من علامات فقط `true`؛ ويعيد `null` أو `undefined` لـ `text` القيمة `false`. |
+| `findSearchMatches` | `(text: string \| null \| undefined, query: string \| null \| undefined, options?: SearchOptions) => SearchMatch[]` | نطاقات `{ start, end }` مرتّبة وغير متداخلة بوحدات UTF-16 في النص الأصلي `text`، مع مدّ `end` عبر علامات التشكيل اللاحقة حتى لا يفصل `<mark>` الحرف عن حركته. |
+
+```ts
+import { findSearchMatches, foldSearchText, matchesSearch } from 'vue-rtl-kit'
+
+foldSearchText('أَحْمَد عـبـدالله ١٢٣') // 'احمد عبدالله 123'
+matchesSearch('فاطمة مصطفى', 'فاطمه مصطفي') // true
+matchesSearch('فاطمة', 'فاطمه', { taMarbuta: false }) // false
+findSearchMatches('مرحبا مُحَمَّدٌ!', 'محمد') // [{ start: 6, end: 15 }]
+```
+
 ## التنسيق
 
 | التصدير | التوقيع | الوصف |
@@ -396,6 +415,21 @@ interface ScrollInlineOptions {
 interface ScrollInlineEdges {
   atStart: boolean
   atEnd: boolean
+}
+```
+
+## أنواع البحث
+
+```ts
+interface SearchOptions {
+  taMarbuta?: boolean
+  alefMaqsura?: boolean
+  digits?: boolean
+}
+
+interface SearchMatch {
+  start: number
+  end: number
 }
 ```
 

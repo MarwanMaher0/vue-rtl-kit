@@ -25,6 +25,7 @@ import {
   scrollInlineEdges,
   scrollToInline,
 } from '../src/scroll'
+import { findSearchMatches, foldSearchText, matchesSearch } from '../src/search'
 
 describe('SSR environment', () => {
   it('reports a server environment', () => {
@@ -222,5 +223,36 @@ describe('SSR environment', () => {
     app.use(rtl)
     expect(await renderToString(app)).toBe('<div>0:0:true:true</div>')
     rtl.dispose()
+  })
+
+  it('folds, matches, and highlights RTL search queries on the server with no window or document', async () => {
+    expect(typeof window).toBe('undefined')
+    expect(typeof document).toBe('undefined')
+
+    const text = 'مرحبا مُحَمَّدٌ في القاهرة ١٢٣'
+    expect(foldSearchText(text)).toBe('مرحبا محمد في القاهره 123')
+    expect(matchesSearch(text, 'محمد في القاهره 123')).toBe(true)
+    expect(matchesSearch(null, 'محمد')).toBe(false)
+    expect(findSearchMatches(null, 'محمد')).toEqual([])
+
+    const ranges = findSearchMatches(text, 'محمد')
+    expect(ranges).toEqual([{ start: 6, end: 15 }])
+
+    const app = createSSRApp(
+      defineComponent({
+        render() {
+          const children: Array<string | ReturnType<typeof h>> = []
+          let cursor = 0
+          for (const { start, end } of ranges) {
+            if (start > cursor) children.push(text.slice(cursor, start))
+            children.push(h('mark', text.slice(start, end)))
+            cursor = end
+          }
+          if (cursor < text.length) children.push(text.slice(cursor))
+          return h('p', { dir: 'rtl' }, children)
+        },
+      }),
+    )
+    expect(await renderToString(app)).toBe('<p dir="rtl">مرحبا <mark>مُحَمَّدٌ</mark> في القاهرة ١٢٣</p>')
   })
 })

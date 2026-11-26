@@ -1,14 +1,17 @@
 # Text helpers
 
-These standalone helpers handle Unicode isolates and locale direction without a component or a DOM. They are safe in a server render, a utility module, or a string that is about to be copied.
+These standalone helpers handle Unicode isolates, locale direction, and client-side RTL search without a component or a DOM. They are safe in a server render, a utility module, or a string that is about to be copied.
 
 ```ts
 import {
   detectDirection,
   directionOfLocale,
+  findSearchMatches,
+  foldSearchText,
   hasRtlCharacters,
   isolate,
   isolateRuns,
+  matchesSearch,
   resolveDirection,
   splitBidiRuns,
   stripBidiControls,
@@ -101,4 +104,59 @@ Check an explicit locale map first, matching the exact tag and then the language
 resolveDirection('ar-EG', { ar: 'rtl' }) // → 'rtl'
 resolveDirection('fr', {}) // → 'ltr'
 resolveDirection('ku-Arab', { ku: 'ltr' }, 'rtl') // → 'ltr'
+```
+
+## Search helpers {#search-helpers}
+
+Stored Arabic, Persian, and Hebrew strings often include hamza variants, harakat, tatweel, Hebrew points, presentation ligatures, or local digits that visitors omit when typing a query, causing `name.includes(query)` to return `false`. `foldSearchText()`, `matchesSearch()`, and `findSearchMatches()` normalise both sides without touching Vue or the DOM, and never throw.
+
+These helpers perform deterministic character folding and exact folded substring matching only — **no stemming, root extraction, morphological analysis, or fuzzy matching**.
+
+### `foldSearchText(text, options?)`
+
+Return the normalised search key for indexing or comparison:
+
+- Apply Unicode `NFKC` so Arabic and Hebrew presentation forms (including `ﻻ`, `ﻷ`, `ﷲ`, and `שּ`) unfold to standard letters and marks before folding.
+- Strip Arabic harakat (`U+064B`–`U+065F`, `U+0670`, `U+06D6`–`U+06ED`), tatweel (`U+0640`), Hebrew points (`U+0591`–`U+05C7`), and Unicode bidi controls.
+- Map `آ` (`U+0622`), `أ` (`U+0623`), `إ` (`U+0625`), and `ٱ` (`U+0671`) to `ا` (`U+0627`); `ؤ` (`U+0624`) to `و` (`U+0648`); `ئ` (`U+0626`) and Persian `ی` (`U+06CC`) to `ي` (`U+064A`); and Persian `ک` (`U+06A9`) to `ك` (`U+0643`).
+- Lowercase Latin letters and collapse runs of whitespace to a single space `' '`.
+- Optionally fold `ة` (`U+0629`) to `ه` (`U+0647`), `ى` (`U+0649`) to `ي` (`U+064A`), and Arabic-Indic (`٠`–`٩`) and Persian (`۰`–`۹`) digits to ASCII `0`–`9` (all enabled by default).
+
+| Option | Default | Effect when `true` |
+| --- | --- | --- |
+| `taMarbuta` | `true` | Fold `ة` (`U+0629`) to `ه` (`U+0647`). |
+| `alefMaqsura` | `true` | Fold `ى` (`U+0649`) to `ي` (`U+064A`). (`ئ` and Persian `ی` always fold to `ي`.) |
+| `digits` | `true` | Fold Arabic-Indic (`U+0660`–`U+0669`) and Persian (`U+06F0`–`U+06F9`) digits to `0`–`9`. |
+
+```ts
+foldSearchText('أَحْمَد عـبـدالله ١٢٣') // 'احمد عبدالله 123'
+foldSearchText('فاطمة مصطفى', { taMarbuta: false }) // 'فاطمة مصطفي'
+foldSearchText('مُصْطَفَىٰ', { alefMaqsura: false }) // 'مصطفى'
+foldSearchText('طلب ۱۲۳', { digits: false }) // 'طلب ۱۲۳'
+foldSearchText('שָׁלוֹם עֲלֵיכֶם') // 'שלום עליכם'
+foldSearchText(null) // ''
+```
+
+### `matchesSearch(text, query, options?)`
+
+Test whether folded `text` contains folded `query`. An empty or marks-only `query` matches any string (`true`); passing `null` or `undefined` as `text` returns `false`.
+
+```ts
+matchesSearch('مُحَمَّد أحمد', 'محمد احمد') // true
+matchesSearch('کتابخانه علی', 'كتابخانه علي') // true
+matchesSearch('فاطمة', 'فاطمه', { taMarbuta: false }) // false
+matchesSearch('أحمد', '') // true
+matchesSearch(null, '') // false
+```
+
+### `findSearchMatches(text, query, options?)`
+
+Return sorted, non-overlapping `{ start, end }` ranges in UTF-16 code units of the **original** `text`. Each `end` offset extends across trailing combining marks on the final matched letter so wrapping slices in `<mark>` never splits a letter from its harakat or niqqud. Surrogate pairs (emoji) and presentation ligatures (`ﻻ`, `ﻷ`) keep exact UTF-16 offsets. An empty or marks-only `query`, `null` `text`, or a non-matching query returns `[]`.
+
+```ts
+const title = '😀 مرحبا مُحَمَّدٌ في ﻻهور'
+const ranges = findSearchMatches(title, 'محمد') // [{ start: 9, end: 18 }]
+title.slice(ranges[0].start, ranges[0].end) // 'مُحَمَّدٌ'
+findSearchMatches(title, 'لاهور') // [{ start: 22, end: 26 }]
+findSearchMatches(title, '') // []
 ```
