@@ -44,6 +44,7 @@ export async function renderShell() {
 - تكون `isServer` مساوية `true` و`isClient` مساوية `false` أثناء العرض على الخادم.
 - تكتب `<BidiText>` و`<RtlProvider>` عزلَهما وسمات اتجاههما في HTML الخادم.
 - يوفّر `v-rtl` التابع `getSSRProps`، لذلك تظهر سماته في HTML الخادم أيضًا.
+- يعمل التوجيه [`v-digits`](/ar/guide/v-digits) عند تعديل الحقل، ولا يغيّر قيمته الأولية عند العرض على الخادم أو عند تركيبه في المتصفّح.
 
 ## v-rtl وgetSSRProps
 

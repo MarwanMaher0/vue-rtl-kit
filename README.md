@@ -102,8 +102,8 @@ budgets are set to their measured byte counts plus fixed `+256 B` (`0.25 kB`) ra
 
 | Entry point | Artifact | Raw (current / budget) | Gzip (current / budget) |
 | --- | --- | --- | --- |
-| `vue-rtl-kit` (ESM) | `dist/vue-rtl-kit.js` | 42.91 kB / ≤ 43.16 kB | 13.56 kB / ≤ 13.66 kB |
-| `vue-rtl-kit` (CJS) | `dist/vue-rtl-kit.cjs` | 31.21 kB / ≤ 31.46 kB | 11.49 kB / ≤ 11.59 kB |
+| `vue-rtl-kit` (ESM) | `dist/vue-rtl-kit.js` | 43.29 kB / ≤ 43.54 kB | 13.68 kB / ≤ 13.78 kB |
+| `vue-rtl-kit` (CJS) | `dist/vue-rtl-kit.cjs` | 31.63 kB / ≤ 31.88 kB | 11.63 kB / ≤ 11.73 kB |
 | `vue-rtl-kit/nuxt` | `dist/nuxt/module.js` | 3.08 kB / ≤ 3.25 kB | 1.12 kB / ≤ 1.50 kB |
 | `vue-rtl-kit/nuxt` (runtime plugin) | `dist/nuxt/runtime/plugin.js` | 2.77 kB / ≤ 3.00 kB | 1.02 kB / ≤ 1.20 kB |
 | `vue-rtl-kit/styles.css` | `dist/styles.css` | 7.10 kB / ≤ 8.00 kB | 1.91 kB / ≤ 2.50 kB |
@@ -115,7 +115,7 @@ result against the size and dependency limits below:
 
 | Import | Gzip (current / budget) | Must not include |
 | --- | --- | --- |
-| `{ isolateRuns }` | 1.03 kB / ≤ 2.00 kB | `vue` |
+| `{ isolateRuns }` | 1.02 kB / ≤ 2.00 kB | `vue` |
 | `{ toLogicalStyle }` | 1.25 kB / ≤ 2.00 kB | `vue` |
 | `{ logicalArrow }` | 0.18 kB / ≤ 2.00 kB | `vue` |
 | `{ resolvePlacement }` | 0.36 kB / ≤ 2.00 kB | `vue`, collation |
@@ -125,6 +125,7 @@ result against the size and dependency limits below:
 | `{ findSearchMatches }` | 0.81 kB / ≤ 2.00 kB | `vue` |
 | `{ formatPlural }` | 0.91 kB / ≤ 2.00 kB | `vue` |
 | `{ formatDisplayName }` | 0.65 kB / ≤ 2.00 kB | `vue` |
+| `{ vDigits }` | 0.99 kB / ≤ 2.00 kB | `vue` |
 | `{ formatNumber }` | 0.75 kB | components, directives, collation |
 | `{ compareText }` | 0.95 kB / ≤ 2.00 kB | `vue` |
 | `{ sortByLocale }` | 1.00 kB / ≤ 2.00 kB | `vue` |
@@ -151,9 +152,9 @@ createApp(App).use(rtl).mount('#app')
 ```
 
 `createRtl` keeps `<html dir>` and `<html lang>` in sync, and registers `<BidiText>`,
-`<RtlProvider>` and `v-rtl` globally. The globals are typed: the package augments Vue's
+`<RtlProvider>`, `v-rtl` and `v-digits` globally. The globals are typed: the package augments Vue's
 `GlobalComponents` and `GlobalDirectives`, so once a file imports `vue-rtl-kit`, `vue-tsc` and
-the Vue language tools check their props, slot props and the `v-rtl` value in every template
+the Vue language tools check their props, slot props and directive values in every template
 without a per-file import. With `registerGlobals: false` they still type-check but are not
 registered, so import them where you use them.
 
@@ -203,7 +204,7 @@ direction and there is no flash of LTR before hydration.
 | `cookie` | `false` | persist locale/direction — see below |
 
 `registerGlobals` is forwarded to the runtime store. `components: false` only turns off Nuxt's
-component auto-registration; `createRtl()` still registers `<RtlProvider>`, `<BidiText>`, and `v-rtl`
+component auto-registration; `createRtl()` still registers `<RtlProvider>`, `<BidiText>`, `v-rtl` and `v-digits`
 globally unless `registerGlobals` is also `false`.
 
 Persistence is opt-in. Set `rtl.cookie` to a cookie name, or to
@@ -230,7 +231,7 @@ called. Cookie values that are not a configured locale, `'rtl'`/`'ltr'`, or a
 | `syncDocument` | `boolean` | `true` | Keep `<html dir>` / `<html lang>` in sync. No-op on the server. |
 | `htmlClass` | `boolean \| { rtl, ltr }` | `false` | Also toggle `rtl` / `ltr` class names on `<html>`. |
 | `numberingSystem` | `NumberingSystem \| Record<string, NumberingSystem>` | — | Default digits for the formatters — `'latn'`, `'arab'`, … |
-| `registerGlobals` | `boolean` | `true` | Register the components and the directive globally. |
+| `registerGlobals` | `boolean` | `true` | Register the components and directives globally. |
 | `persist` | `false \| 'localStorage' \| 'cookie'` | `false` | Save the locale in the browser and restore it on the next `createRtl()`. Browser-only; see below. |
 | `persistKey` | `string` | `'rtl-locale'` | Storage key used by `persist` — the localStorage item name or cookie name. |
 
@@ -265,7 +266,9 @@ excluded from `ModuleOptions`.
 | `<BidiText>` | `text`, `as` (`'span'`), `dir` (`'rtl' \| 'ltr' \| 'auto'`), `strategy` (`'element' \| 'chars'`), `enabled` (`true`) | Isolates mixed-direction runs after stripping embedded bidi control characters. `strategy="element"` emits `<bdi>`; `strategy="chars"` emits `U+2066`/`U+2067` … `U+2069`. `:enabled="false"` renders raw text untouched, for A/B-ing the fix. |
 | `<RtlProvider>` | `dir`, `locale`, `tag` (`'div'`, `null` for renderless), `isolate` (`true`) | Scopes a subtree to its own direction. Slot props: `{ dir, isRtl, setDirection, toggleDirection }`. |
 
-### Directive
+### Directives
+
+#### `v-rtl`
 
 ```vue
 <pre v-rtl:ltr>…</pre>              <!-- dir="ltr" -->
@@ -277,6 +280,24 @@ excluded from `ModuleOptions`.
 `v-rtl` with no value means `dir="rtl"`. It restores the element's previous `dir` on unbind, so it
 is safe on server-rendered markup that already carried one, and it implements `getSSRProps`, so the
 attribute is present in the server-rendered HTML too.
+
+#### `v-digits`
+
+```vue
+<label>Order reference <input v-model="reference" v-digits></label>
+<label>Amount <input v-model.number="amount" v-digits="{ decimal: true }" inputmode="decimal"></label>
+```
+
+`v-digits` converts Western, Arabic-Indic and Persian digits as you type or paste. By default a
+reference like `٠۰٤۲` becomes `'0042'`, preserving leading zeros. The optional binding is
+`{ to?: 'latn' | 'arab' | 'arabext'; decimal?: boolean }`. By default punctuation is unchanged.
+With `decimal: true`, `٫` becomes `.` and `٬` is removed, so Vue can read `١٬٢٣٤٫٥` as `1234.5`
+with `v-model.number`; `v-model.lazy` still updates only on `change`.
+
+Use a native text field or `<textarea>`; `type="number"` may reject localized digits before the
+directive sees them. Editing preserves the caret or selection where supported and waits for IME
+composition to finish. The initial value is untouched during SSR and on mount. For local use,
+import `vDigits` in `<script setup>` (alias: `digitsDirective`). See the [v-digits guide](./site/guide/v-digits.md).
 
 ### Bidi utilities
 

@@ -12,7 +12,7 @@ import { BidiText, RtlProvider } from '../src/components'
 import { useDirection, useRtl } from '../src/composables/useDirection'
 import { useFormat } from '../src/composables/useFormat'
 import { useInlineScroll } from '../src/composables/useInlineScroll'
-import { compareText, resolvePlacement, sortByLocale, toLogicalPlacement, useLogicalPlacement } from '../src'
+import { compareText, digitsDirective, resolvePlacement, sortByLocale, toLogicalPlacement, useLogicalPlacement, vDigits } from '../src'
 import { useLogicalStyles } from '../src/composables/useLogicalStyles'
 import { createRtl } from '../src/core'
 import { vRtl } from '../src/directives/vRtl'
@@ -97,6 +97,18 @@ describe('SSR environment', () => {
     const html = await renderToString(app)
     expect(html).toContain('dir="ltr"')
     expect(html).toContain('unicode-bidi:isolate')
+  })
+
+  it('imports v-digits without a DOM and leaves the server-rendered value alone', async () => {
+    expect(typeof window).toBe('undefined')
+    expect(typeof document).toBe('undefined')
+    expect(vDigits).toBeDefined()
+    expect(digitsDirective).toBe(vDigits)
+
+    const app = createSSRApp({
+      render: () => withDirectives(h('input', { value: '٠۱۲' }), [[vDigits]]),
+    })
+    expect(await renderToString(app)).toBe('<input value="٠۱۲">')
   })
 
   it('isolates text identically on server and client', () => {

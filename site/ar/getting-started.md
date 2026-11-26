@@ -30,7 +30,7 @@ const rtl = createRtl({
 createApp(App).use(rtl).mount('#app')
 ```
 
-تسجّل الإضافة المكوّنين `<BidiText>` و`<RtlProvider>` والتوجيه `v-rtl` عالميًا، وتحافظ على تزامن السمتين `<html dir>` و`<html lang>` في المتصفح.
+تسجّل الإضافة المكوّنين `<BidiText>` و`<RtlProvider>` والتوجيهين `v-rtl` و[`v-digits`](/ar/guide/v-digits) على مستوى التطبيق، وتحافظ على تزامن السمتين `<html dir>` و`<html lang>` في المتصفح.
 
 ```vue
 <script setup lang="ts">

@@ -250,10 +250,11 @@ describe('built nuxt module with registerGlobals: false', () => {
     fixture?.server.kill()
   })
 
-  it('keeps Nuxt components but does not register v-rtl globally', async () => {
+  it('keeps Nuxt components but does not register either directive globally', async () => {
     const html = await fetchFixture(fixture!.baseUrl, fixture!.logs)
     expect(html).toContain('<bdi dir="ltr">12-05-2024</bdi>')
     expect(html).toMatch(/id="rtl-directive"[^>]*>false</)
+    expect(html).toMatch(/id="digits-directive"[^>]*>false</)
   })
 })
 

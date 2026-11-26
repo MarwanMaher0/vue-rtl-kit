@@ -34,7 +34,7 @@ createApp(App).use(rtl).mount('#app')
 
 ```ts
 // Nuxt — nuxt.config.ts. The module registers the plugin, auto-imports
-// useDirection / useRtl / useLogicalStyles / useFormat / useInlineScroll,
+// useDirection / useRtl / useLogicalStyles / useFormat,
 // registers <BidiText> and <RtlProvider>, and injects the stylesheet.
 import { defineNuxtConfig } from 'nuxt/config'
 
@@ -47,10 +47,10 @@ export default defineNuxtConfig({
 })
 ```
 
-`createRtl` also registers `<BidiText>`, `<RtlProvider>` and `v-rtl` globally in a plain Vue app,
-and the Nuxt module registers and auto-imports them too. The snippets below still import every
-component, directive and composable they use, so each one compiles on its own and you can see
-where every name comes from.
+`createRtl` registers `<BidiText>`, `<RtlProvider>`, `v-rtl` and `v-digits` globally by default.
+Nuxt installs the same plugin at runtime; its separate `autoImports` option is for composables.
+The snippets below import every component, directive and composable they use, so you can see
+where each name comes from.
 
 To reproduce any bug here: render the broken snippet in a page whose `<html>` (or nearest wrapper)
 has `dir="rtl"` and an Arabic, Hebrew or Persian locale, then compare with `dir="ltr"`. Most of them
@@ -842,7 +842,9 @@ configured default, so one screen can still ask for `numberingSystem: 'arab'`.
 For text you did not format yourself — a server-rendered invoice number, a pasted reference —
 `transliterateDigits(text, 'latn' | 'arab' | 'arabext')` converts only the digits and leaves the
 rest of the string untouched. Prefer reformatting through `Intl` whenever the value is still a
-number or a `Date`; transliteration is for strings that are already strings.
+number or a `Date`; transliteration is for strings that are already strings. For an editable order
+reference, use [`v-digits`](../site/guide/v-digits.md) instead: pasting `٠۰٤۲` produces the string
+`'0042'` without dropping its leading zeros.
 
 ---
 

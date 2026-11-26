@@ -16,6 +16,7 @@ const COMPONENT_OR_DIRECTIVE = [
   '__rtlStopWatch',
   'data-rtl-scope',
   'unicode-bidi',
+  'v-digits requires',
 ]
 
 const CASES = [
@@ -29,6 +30,7 @@ const CASES = [
   { spec: 'findSearchMatches', maxGzip: MAX_GZIP, forbidVue: true },
   { spec: 'formatPlural', maxGzip: MAX_GZIP, forbidVue: true },
   { spec: 'formatDisplayName', maxGzip: MAX_GZIP, forbidVue: true },
+  { spec: 'vDigits', maxGzip: MAX_GZIP, forbidVue: true },
   { spec: 'formatNumber', forbidComponents: true, forbidCollation: true },
   { spec: 'compareText', maxGzip: MAX_GZIP, forbidVue: true },
   { spec: 'sortByLocale', maxGzip: MAX_GZIP, forbidVue: true },

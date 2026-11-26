@@ -30,6 +30,8 @@ See [createRtl](/guide/create-rtl), [useDirection](/guide/use-direction), [useLo
 | `RtlProvider` | `const RtlProvider: DefineComponent` | Component that provides a nested direction scope. |
 | `vRtl` | `const vRtl: ObjectDirective<HTMLElement, RtlDirectiveValue>` | SSR-aware `v-rtl` implementation. |
 | `rtlDirective` | `const rtlDirective: ObjectDirective<HTMLElement, RtlDirectiveValue>` | Alias of `vRtl`. |
+| `vDigits` | `v-digits` or `v-digits="{ to, decimal }"` | Convert digits on input and paste before `v-model` reads the field. See the [v-digits guide](/guide/v-digits). |
+| `digitsDirective` | `typeof vDigits` | Alias of `vDigits`. |
 
 The `DefineComponent` values expose the props documented under [BidiText](/guide/bidi-text#props) and [RtlProvider](/guide/rtl-provider#props).
 
@@ -524,7 +526,7 @@ interface SearchMatch {
 }
 ```
 
-## Directive type
+## Directive types {#directive-type}
 
 ```ts
 type RtlDirectiveValue =
@@ -533,7 +535,11 @@ type RtlDirectiveValue =
   | undefined
   | null
   | { dir?: DirectionOrAuto, isolate?: boolean }
+
+type DigitsDirectiveValue = { to?: 'latn' | 'arab' | 'arabext'; decimal?: boolean } | undefined
 ```
+
+`v-digits` defaults to `to: 'latn'` and `decimal: false`. With `decimal: true`, `١٬٢٣٤٫٥` becomes `'1234.5'` with the default target. Other text, including leading zeros, is preserved; use `v-model.number` only if you want Vue to coerce the result.
 
 ## Vue global property
 

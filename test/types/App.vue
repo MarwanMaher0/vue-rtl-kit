@@ -86,6 +86,11 @@ _scrollState.offset.value = 10
   <BidiText as="p" dir="auto" strategy="chars" :enabled="false" text="v1.2.3" />
   <BidiText strategy="element">الإصدار v1.2.3</BidiText>
 
+  <input v-digits type="tel">
+  <textarea v-digits="{ to: 'arabext', decimal: true }"></textarea>
+  <!-- @vue-expect-error v-digits only supports latn, arab and arabext -->
+  <input v-digits="{ to: 'deva' }">
+
   <p v-rtl>نص</p>
   <pre v-rtl:ltr><code>npm install vue-rtl-kit</code></pre>
   <span v-rtl.ltr.isolate>feature/rtl</span>

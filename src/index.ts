@@ -10,6 +10,7 @@
  */
 
 import type { BidiText, RtlProvider } from './components'
+import type { vDigits } from './directives/vDigits'
 import type { vRtl } from './directives/vRtl'
 import type { RtlInstance } from './types'
 
@@ -29,6 +30,8 @@ export { useLogicalPlacement } from './composables/useLogicalPlacement'
 
 export { BidiText, RtlProvider } from './components'
 
+export { digitsDirective, vDigits } from './directives/vDigits'
+export type { DigitsDirectiveValue } from './directives/vDigits'
 export { rtlDirective, vRtl } from './directives/vRtl'
 export type { RtlDirectiveValue } from './directives/vRtl'
 
@@ -142,5 +145,7 @@ declare module 'vue' {
   interface GlobalDirectives {
     /** `v-rtl`, registered by `createRtl()` unless `registerGlobals` is `false`. */
     vRtl: typeof vRtl
+    /** `v-digits`, registered alongside `v-rtl`. */
+    vDigits: typeof vDigits
   }
 }

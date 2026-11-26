@@ -31,7 +31,7 @@ createApp(App).use(rtl).mount('#app')
 | `syncDocument` | `boolean` | `true` | Keep `<html dir>` and `<html lang>` synchronized in the browser. |
 | `htmlClass` | `boolean \| { rtl: string, ltr: string }` | `false` | Toggle `rtl` and `ltr` classes, or the provided class names, on `<html>`. |
 | `numberingSystem` | `NumberingSystem \| Record<string, NumberingSystem>` | `undefined` | Default numbering system for `useFormat()`, globally or per locale. |
-| `registerGlobals` | `boolean` | `true` | Register `RtlProvider`, `BidiText`, and `v-rtl` when installed. |
+| `registerGlobals` | `boolean` | `true` | Register `RtlProvider`, `BidiText`, `v-rtl`, and [`v-digits`](/guide/v-digits) when installed. |
 | `persist` | `false \| 'localStorage' \| 'cookie'` | `false` | Save the locale in the browser and restore it on the next `createRtl()`. Browser-only; see [Persistence](#persistence). |
 | `persistKey` | `string` | `'rtl-locale'` | Storage key used by `persist`: the localStorage item name or the cookie name. |
 
@@ -81,7 +81,7 @@ An unpinned `RtlProvider` with `locale="fr"` inside an RTL parent likewise uses 
 
 ## Typed globals
 
-The package's type declarations add `BidiText` and `RtlProvider` to Vue's `GlobalComponents` and `vRtl` to `GlobalDirectives`. Once any file in the project imports `vue-rtl-kit` — the `createRtl` import in `main.ts` is enough — `vue-tsc` and the Vue language tools check the registered globals in every template, with no per-file import:
+The package's type declarations add `BidiText` and `RtlProvider` to Vue's `GlobalComponents` and `vRtl` and `vDigits` to `GlobalDirectives`. Once any file in the project imports `vue-rtl-kit` — the `createRtl` import in `main.ts` is enough — `vue-tsc` and the Vue language tools check the registered globals in every template, with no per-file import:
 
 ```vue
 <template>
@@ -95,6 +95,7 @@ The package's type declarations add `BidiText` and `RtlProvider` to Vue's `Globa
   <BidiText text="v1.2.3" strategy="inline" />
   <RtlProvider dir="auto" />
   <p v-rtl="42" />
+  <input v-digits="{ to: 'en' }"> <!-- use a digit set such as 'latn', not a locale -->
 </template>
 ```
 
@@ -121,7 +122,7 @@ import { BidiText, vRtl } from 'vue-rtl-kit'
 </template>
 ```
 
-The global types are declared unconditionally, so they cannot see this option. With `registerGlobals: false`, a template that uses `<BidiText>`, `<RtlProvider>`, or `v-rtl` without importing it still type-checks, but Vue cannot resolve it at runtime — keep the local imports.
+The global types are declared unconditionally, so they cannot see this option. With `registerGlobals: false`, a template that uses a global component or directive without importing it still type-checks, but Vue cannot resolve it at runtime — keep the local imports.
 
 ## Persistence
 

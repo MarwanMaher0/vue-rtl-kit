@@ -30,6 +30,8 @@ import type { Direction } from 'vue-rtl-kit'
 | `RtlProvider` | `const RtlProvider: DefineComponent` | مكوّن يوفّر نطاق اتجاه متداخلًا. |
 | `vRtl` | `const vRtl: ObjectDirective<HTMLElement, RtlDirectiveValue>` | تنفيذ `v-rtl` متوافق مع العرض من جهة الخادم. |
 | `rtlDirective` | `const rtlDirective: ObjectDirective<HTMLElement, RtlDirectiveValue>` | اسم بديل لـ `vRtl`. |
+| `vDigits` | `v-digits` أو `v-digits="{ to, decimal }"` | يحوّل الأرقام عند الكتابة واللصق قبل أن يقرأ `v-model` قيمة الحقل. راجع [دليل توحيد الأرقام](/ar/guide/v-digits). |
+| `digitsDirective` | `typeof vDigits` | اسم بديل لـ `vDigits`. |
 
 تعرض قيم `DefineComponent` الخصائص الموثقة في [BidiText](/ar/guide/bidi-text) و[RtlProvider](/ar/guide/rtl-provider).
 
@@ -524,7 +526,7 @@ interface SearchMatch {
 }
 ```
 
-## نوع التوجيه
+## أنواع التوجيهات {#نوع-التوجيه}
 
 ```ts
 type RtlDirectiveValue =
@@ -533,7 +535,11 @@ type RtlDirectiveValue =
   | undefined
   | null
   | { dir?: DirectionOrAuto, isolate?: boolean }
+
+type DigitsDirectiveValue = { to?: 'latn' | 'arab' | 'arabext'; decimal?: boolean } | undefined
 ```
+
+الإعدادان الافتراضيان للتوجيه `v-digits` هما `to: 'latn'` و`decimal: false`. إذا فعّلت `decimal: true` مع الإبقاء على الأرقام الغربية، تحوّلت `١٬٢٣٤٫٥` إلى النص `'1234.5'`. يحافظ التوجيه على الأصفار في بداية النص؛ لا تستخدم `v-model.number` إلا إذا أردت أن تحوّل Vue الناتج إلى عدد.
 
 ## الخاصية العامة في Vue
 

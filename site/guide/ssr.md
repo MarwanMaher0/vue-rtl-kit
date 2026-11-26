@@ -44,6 +44,7 @@ Keep the same attrs on the client shell before hydration. The components and dir
 - `isServer` is `true` and `isClient` is `false` during server rendering.
 - `<BidiText>` and `<RtlProvider>` write their isolates and direction attributes into the server HTML.
 - `v-rtl` implements `getSSRProps`, so its attributes are in the server HTML too.
+- [`v-digits`](/guide/v-digits) acts on edits, not on initial values. It leaves a field's value unchanged on the server and when the field mounts in the browser.
 
 ## v-rtl getSSRProps
 

@@ -5,6 +5,7 @@ import type { App, EffectScope } from 'vue'
 import { effectScope, watch } from 'vue'
 import { BidiText, RtlProvider } from './components'
 import { createDirectionState } from './context'
+import { vDigits } from './directives/vDigits'
 import { vRtl } from './directives/vRtl'
 import { isClient } from './env'
 import { directionScopeKey, rtlInstanceKey } from './keys'
@@ -192,6 +193,7 @@ export function createRtl(options: RtlOptions = {}): RtlInstance {
       if (!app.component('RtlProvider')) app.component('RtlProvider', RtlProvider)
       if (!app.component('BidiText')) app.component('BidiText', BidiText)
       if (!app.directive('rtl')) app.directive('rtl', vRtl)
+      if (!app.directive('digits')) app.directive('digits', vDigits)
     },
   }
 

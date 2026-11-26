@@ -239,7 +239,7 @@ parseNumber(text, { locale: 'ar-EG' }) // -1234567.89
 
 An Arabic locale formatted with Arabic-Indic digits separates with `٬` and `٫`, so `1,234.5` is not a number there. Integers typed with Western digits still parse. If the field should accept Western-style separators, parse with `numberingSystem: 'latn'`, or set it once in `createRtl()` so that formatting and parsing agree.
 
-Bind the text of an input and read the number from a computed value:
+For digit conversion as the user types, see [`v-digits`](/guide/v-digits). To keep the original text in the field and parse a number separately, bind the text and read the number from a computed value:
 
 ```vue
 <script setup lang="ts">

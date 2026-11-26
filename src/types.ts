@@ -59,7 +59,7 @@ export interface RtlOptions {
    * @example { ar: 'latn' } // Arabic UI, Western digits
    */
   numberingSystem?: NumberingSystem | Record<string, NumberingSystem>
-  /** Register `<RtlProvider>`, `<BidiText>` and `v-rtl` globally. Default `true`. */
+  /** Register `<RtlProvider>`, `<BidiText>`, `v-rtl` and `v-digits` globally. Default `true`. */
   registerGlobals?: boolean
   /**
    * Persist the locale in the browser and restore it the next time the store

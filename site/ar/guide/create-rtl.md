@@ -31,7 +31,7 @@ createApp(App).use(rtl).mount('#app')
 | `syncDocument` | `boolean` | `true` | يحافظ على تزامن `<html dir>` و`<html lang>` في المتصفح. |
 | `htmlClass` | `boolean \| { rtl: string, ltr: string }` | `false` | يبدّل الصنفين `rtl` و`ltr`، أو أسماء الأصناف المقدّمة، على `<html>`. |
 | `numberingSystem` | `NumberingSystem \| Record<string, NumberingSystem>` | `undefined` | نظام الأرقام الافتراضي لـ`useFormat()`، على مستوى عام أو لكل لغة. |
-| `registerGlobals` | `boolean` | `true` | يسجّل `RtlProvider` و`BidiText` و`v-rtl` عند التثبيت. |
+| `registerGlobals` | `boolean` | `true` | يسجّل `RtlProvider` و`BidiText` و`v-rtl` و[`v-digits`](/ar/guide/v-digits) عند التثبيت. |
 | `persist` | `false \| 'localStorage' \| 'cookie'` | `false` | يحفظ اللغة في المتصفح ويستعيدها عند إنشاء `createRtl()` التالي. في المتصفح فقط؛ انظر قسم الحفظ أدناه. |
 | `persistKey` | `string` | `'rtl-locale'` | مفتاح التخزين الذي يستخدمه `persist`: اسم عنصر localStorage أو اسم ملف تعريف الارتباط. |
 
@@ -81,7 +81,7 @@ const rtl = createRtl({
 
 ## أنواع العناصر العامة
 
-تضيف تعريفات الأنواع في الحزمة `BidiText` و`RtlProvider` إلى `GlobalComponents` في Vue، و`vRtl` إلى `GlobalDirectives`. بمجرد أن يستورد أي ملف في المشروع `vue-rtl-kit` — ويكفي استيراد `createRtl` في `main.ts` — يتحقق `vue-tsc` وأدوات لغة Vue من العناصر العامة المسجّلة في كل القوالب، دون استيراد في كل ملف:
+تضيف تعريفات الأنواع في الحزمة `BidiText` و`RtlProvider` إلى `GlobalComponents` في Vue، و`vRtl` و`vDigits` إلى `GlobalDirectives`. بمجرد أن يستورد أي ملف في المشروع `vue-rtl-kit` — ويكفي استيراد `createRtl` في `main.ts` — يتحقق `vue-tsc` وأدوات لغة Vue من العناصر العامة المسجّلة في كل القوالب، دون استيراد في كل ملف:
 
 ```vue
 <template>
@@ -95,6 +95,7 @@ const rtl = createRtl({
   <BidiText text="v1.2.3" strategy="inline" />
   <RtlProvider dir="auto" />
   <p v-rtl="42" />
+  <input v-digits="{ to: 'en' }"> <!-- المطلوب نظام أرقام مثل latn لا رمز لغة -->
 </template>
 ```
 
@@ -121,7 +122,7 @@ import { BidiText, vRtl } from 'vue-rtl-kit'
 </template>
 ```
 
-تُعرَّف الأنواع العامة دون شرط، فلا يمكنها أن تتبع هذا الخيار. مع `registerGlobals: false` يبقى القالب الذي يستخدم `<BidiText>` أو `<RtlProvider>` أو `v-rtl` دون استيراد سليمًا من ناحية الأنواع، لكن Vue لا يستطيع إيجاد العنصر وقت التشغيل؛ لذا أبقِ الاستيراد المحلي.
+تُعرَّف الأنواع العامة دون شرط، فلا يمكنها أن تتبع هذا الخيار. مع `registerGlobals: false` يبقى القالب الذي يستخدم مكوّنًا أو توجيهًا عامًا دون استيراد سليمًا من ناحية الأنواع، لكن Vue لا يستطيع إيجاد العنصر وقت التشغيل؛ لذا أبقِ الاستيراد المحلي.
 
 ## الحفظ
 

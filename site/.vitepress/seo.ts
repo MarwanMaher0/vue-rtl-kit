@@ -72,6 +72,10 @@ const metadata: Record<string, { en: [string, string], ar: [string, string] }> =
     en: ['v-rtl: element direction directive', 'Set element direction with v-rtl arguments, modifiers, or reactive bindings, add Unicode isolation, and preserve SSR attributes and unmount cleanup.'],
     ar: ['تحديد اتجاه العناصر بالتوجيه v-rtl', 'حدّد اتجاه العناصر بمعاملات v-rtl أو معدّلاته أو قيمه التفاعلية، وأضف عزل Unicode مع دعم سمات SSR واستعادة القيم عند الإزالة.'],
   },
+  'guide/v-digits': {
+    en: ['v-digits: normalize digits in form fields', 'Accept Western, Arabic-Indic, and Persian digits in Vue form fields. Choose the digits v-model receives and preserve the caret during editing.'],
+    ar: ['توحيد الأرقام في حقول الإدخال باستخدام v-digits', 'اقبل الأرقام الغربية والهندية والفارسية في حقول Vue. اختر شكل الأرقام التي تصل إلى v-model مع الحفاظ على موضع المؤشر أثناء الكتابة.'],
+  },
   'guide/css-utilities': {
     en: ['CSS utilities for logical RTL and LTR layouts', 'Use optional logical spacing, alignment, border, position, bidi, and directional icon utilities without swapping stylesheets when direction changes.'],
     ar: ['أدوات CSS لتخطيطات RTL وLTR المنطقية', 'استخدم أدوات اختيارية للتباعد والمحاذاة والحدود والمواضع المنطقية وعزل النص والأيقونات الاتجاهية دون تبديل ملف CSS عند تغيير الاتجاه.'],

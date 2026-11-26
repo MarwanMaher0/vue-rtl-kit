@@ -5,7 +5,8 @@ const app = getCurrentInstance()?.appContext.app
 const hasGlobals = Boolean(
   app?.component('RtlProvider')
   && app.component('BidiText')
-  && app.directive('rtl'),
+  && app.directive('rtl')
+  && app.directive('digits'),
 )
 </script>
 

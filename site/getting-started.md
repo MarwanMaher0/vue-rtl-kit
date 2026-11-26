@@ -31,7 +31,7 @@ const rtl = createRtl({
 createApp(App).use(rtl).mount('#app')
 ```
 
-The plugin registers `<BidiText>`, `<RtlProvider>`, and `v-rtl` globally. It also synchronizes `<html dir>` and `<html lang>` in the browser.
+The plugin registers `<BidiText>`, `<RtlProvider>`, `v-rtl`, and [`v-digits`](/guide/v-digits) globally. It also synchronizes `<html dir>` and `<html lang>` in the browser.
 
 ```vue
 <script setup lang="ts">

@@ -26,7 +26,7 @@ export default defineNuxtConfig({
 | `syncDocument` | `boolean` | `true` | مزامنة `<html dir>` و`<html lang>` في العميل بعد التثبيت. |
 | `htmlClass` | `boolean \| { rtl: string, ltr: string }` | `false` | تبديل أصناف الاتجاه الافتراضية أو المخصصة على `<html>`. |
 | `numberingSystem` | `NumberingSystem \| Record<string, NumberingSystem>` | `undefined`؛ القيمة الافتراضية للغة | الأرقام الافتراضية لـ `useFormat()`، عالميًا أو لكل لغة. |
-| `registerGlobals` | `boolean` | `true` | تسجيل `<RtlProvider>` و`<BidiText>` و`v-rtl` عالميًا عبر مخزن التشغيل. يُمرَّر إلى إعدادات التشغيل، لذا تعطّل القيمة `false` التسجيل العام حتى عند تفعيل تسجيل مكوّنات Nuxt. |
+| `registerGlobals` | `boolean` | `true` | تسجيل `<RtlProvider>` و`<BidiText>` و`v-rtl` و`v-digits` عالميًا عبر مخزن التشغيل. يُمرَّر إلى إعدادات التشغيل، لذا تعطّل القيمة `false` التسجيل العام حتى عند تفعيل تسجيل مكوّنات Nuxt. |
 | `autoImports` | `boolean` | `true` | استيراد `useDirection` و`useRtl` و`useLogicalStyles` و`useFormat` تلقائيًا. |
 | `components` | `boolean` | `true` | تسجيل `<RtlProvider>` و`<BidiText>` عبر التسجيل التلقائي لمكوّنات Nuxt. ويظل مخزن التشغيل يسجّلها عالميًا ما لم تكن `registerGlobals` مساوية لـ `false`. |
 | `css` | `boolean` | `true` | حقن `vue-rtl-kit/styles.css`. |
@@ -51,7 +51,7 @@ export default defineNuxtConfig({
 
 تُحذف `dir` و`syncDocument` و`htmlClass` و`numberingSystem` و`registerGlobals` من إعدادات التشغيل عند عدم توفيرها، مما يسمح لـ `createRtl()` بتطبيق قواعد الحسم الخاصة به.
 
-يعطّل `components: false` تسجيل مكوّنات Nuxt فقط. وتمرر إضافة التشغيل `registerGlobals` إلى `createRtl()`، وقيمتها الافتراضية `true`، لذلك تظل `<RtlProvider>` و`<BidiText>` و`v-rtl` مسجلة عالميًا ما لم تضبط أيضًا `registerGlobals: false`.
+يعطّل `components: false` تسجيل مكوّنات Nuxt فقط. وتمرر إضافة التشغيل `registerGlobals` إلى `createRtl()`، وقيمتها الافتراضية `true`، لذلك تظل `<RtlProvider>` و`<BidiText>` و`v-rtl` و`v-digits` مسجلة عالميًا ما لم تضبط أيضًا `registerGlobals: false`.
 
 ## سمات مستند SSR
 
@@ -102,4 +102,4 @@ const { dir } = useDirection()
 </template>
 ```
 
-تُثبَّت إضافة اتجاه التشغيل دائمًا. وتتحكم الخيارات `autoImports` و`components` و`css` فقط في تكاملات Nuxt المقابلة لها أثناء البناء. اضبط `registerGlobals: false` لمنع مخزن التشغيل من تسجيل `<RtlProvider>` و`<BidiText>` و`v-rtl` عالميًا.
+تُثبَّت إضافة اتجاه التشغيل دائمًا. وتتحكم الخيارات `autoImports` و`components` و`css` فقط في تكاملات Nuxt المقابلة لها أثناء البناء. اضبط `registerGlobals: false` لمنع مخزن التشغيل من تسجيل `<RtlProvider>` و`<BidiText>` و`v-rtl` و`v-digits` عالميًا.

@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Add `compareText` and `sortByLocale` for locale-aware comparison and stable, non-mutating sorting. Numeric collation compares `طلب ٢` and `طلب ۲` equally and puts both before `طلب ١٠` by default. Both helpers are also available on `useFormat()` and follow the current scope locale.
+- Add `v-digits` for normalizing typed or pasted Arabic-Indic and Persian digits in form fields. Use `{ decimal: true }` to convert `١٬٢٣٤٫٥` to `1234.5` before `v-model` reads it.
 
 ## 0.1.1 - 2026-09-15
 
