@@ -228,6 +228,23 @@ sortByLocale(['طلب ٢', '', 'طلب ١٠'], { locale: ['ar-EG', 'ar', 'en'], 
 
 See [Text helpers](/guide/text-helpers#locale-aware-sorting) for examples with object keys and [useFormat](/guide/use-format#locale-aware-sorting) for reactive sorting.
 
+## Truncation {#truncate-text}
+
+Pure, Vue-free truncation that counts and cuts by grapheme clusters with `Intl.Segmenter`, so a cut never separates a base letter from its tashkeel or niqqud, an emoji ZWJ sequence, or a flag. The ellipsis counts inside `maxLength`; trailing whitespace and tatweel (`U+0640`) are trimmed before it. See [Truncating text](/guide/truncate-text) for the full guide.
+
+| Export | Signature | Description |
+| --- | --- | --- |
+| `truncateText` | `(text: string, maxLength: number, options?: TruncateOptions) => string` | Shorten `text` to at most `maxLength` grapheme clusters, ellipsis included. Text that fits is returned unchanged. `unit: 'word'` cuts at the last word boundary that fits with a grapheme fallback; `isolate: true` wraps every result — fitting text, truncated text, and the ellipsis-only result — in `FSI ... PDI`. An invalid `locale` tag falls back to the runtime default locale. Without `Intl.Segmenter` it falls back to code points (surrogate pairs stay intact), with word mode cutting at the last whitespace boundary that fits. `maxLength` below 1 or not an integer throws `TypeError` in development and returns the ellipsis in production (isolated when requested). |
+
+```ts
+import { truncateText } from 'vue-rtl-kit'
+
+truncateText('مُحَمَّدٌ عَبْدُ اللَّهِ', 5) // 'مُحَمَّدٌ…'
+truncateText('مرحبا بالعالم يا أصدقاء', 14, { unit: 'word' }) // 'مرحبا بالعالم…'
+truncateText('الإصدار v1.2.3 متاح الآن', 12, { unit: 'word', isolate: true }) // '\u2068الإصدار\u2026\u2069'
+truncateText('👨‍👩‍👧‍👦🇪🇬🎉🎉', 3) // '👨‍👩‍👧‍👦🇪🇬…'
+```
+
 ## Formatting
 
 | Export | Signature | Description |
@@ -527,6 +544,19 @@ interface SearchMatch {
 ```
 
 ## Directive types {#directive-type}
+
+## Truncation types
+
+```ts
+interface TruncateOptions {
+  ellipsis?: string // default '…' (U+2026); counts inside maxLength
+  unit?: 'grapheme' | 'word' // default 'grapheme'
+  locale?: string // BCP 47 locale for Intl.Segmenter; invalid tags fall back to the runtime default
+  isolate?: boolean // default false; wrap the result in FSI ... PDI
+}
+```
+
+## Directive type
 
 ```ts
 type RtlDirectiveValue =

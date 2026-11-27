@@ -116,6 +116,9 @@ export {
 } from './search'
 export type { SearchMatch, SearchOptions } from './search'
 
+export { truncateText } from './truncate'
+export type { TruncateOptions } from './truncate'
+
 export { isClient, isServer } from './env'
 
 export type {

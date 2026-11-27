@@ -216,6 +216,38 @@ Sources:
 - [دوال النص — دوال البحث](https://marwanmaher0.github.io/vue-rtl-kit/ar/guide/text-helpers#search-helpers)
 - [Search helpers API](https://marwanmaher0.github.io/vue-rtl-kit/api#search-helpers)
 
+## Grapheme-safe truncation
+
+`name.slice(0, max) + '…'` counts UTF-16 code units, so it separates a base letter from its tashkeel (`مُحَمَّدٌ`), splits emoji ZWJ sequences (`👨‍👩‍👧‍👦`) and regional-indicator flags (`🇪🇬`), and leaves the ellipsis at the visual right end of RTL text cut inside an LTR layout. truncateText(text, maxLength, options?) is a pure Vue-free export that counts and cuts by extended grapheme clusters with Intl.Segmenter:
+
+- Text that fits (at most maxLength clusters) is returned unchanged — wrapped in FSI ... PDI when isolate: true.
+- The ellipsis counts inside maxLength. The default marker is the single character U+2026; a custom ellipsis counts its own clusters. When the ellipsis alone fills the limit it is returned by itself.
+- Trailing whitespace and tatweel (U+0640) are trimmed from the cut before the ellipsis is appended.
+- unit: 'word' cuts at the last word boundary whose cumulative grapheme count fits, and falls back to a grapheme cut when even the first word is longer than the limit. Word boundaries are locale-sensitive; pass locale (BCP 47) for languages such as Thai that do not use spaces.
+- isolate: true wraps the result in FSI ... PDI (U+2068 / U+2069), the same isolate isolate() emits, on every return path for valid input — fitting text, truncated text, and the ellipsis-only result — and the ellipsis returned for an invalid maxLength in production. The ellipsis renders at the logical end of RTL text inside an LTR paragraph (the visual left end) and the reverse. The two isolate controls are formatting characters and do not count towards maxLength.
+- An invalid locale tag (for example '!!') falls back to the runtime default locale for both grapheme and word segmenters instead of throwing RangeError.
+- Without Intl.Segmenter (older browsers, minimal SSR runtimes) the helper falls back to Unicode code points via Array.from: surrogate pairs are never split, but combining marks and ZWJ sequences may separate. Word mode still cuts at the last whitespace boundary that fits (the longest whole-word prefix, ellipsis counted) and falls back to the code-point cut when one word is longer than the limit. This fallback is documented.
+- maxLength below 1 or not an integer throws TypeError in development and returns the ellipsis string in production (NODE_ENV === 'production', or a browser build with no process global).
+- The helper never touches the DOM and is safe in any SSR render.
+
+TruncateOptions: ellipsis (string, default '…'), unit ('grapheme' | 'word', default 'grapheme'), locale (string; invalid tags fall back to the runtime default locale), isolate (boolean, default false).
+
+```ts
+import { truncateText } from 'vue-rtl-kit'
+
+truncateText('مُحَمَّدٌ عَبْدُ اللَّهِ', 5) // 'مُحَمَّدٌ…'
+truncateText('שָׁלוֹם עֲלֵיכֶם', 5) // 'שָׁלוֹם…'
+truncateText('١٢٣٤٥٦', 4) // '١٢٣…'
+truncateText('👨‍👩‍👧‍👦🇪🇬🎉🎉', 3) // '👨‍👩‍👧‍👦🇪🇬…'
+truncateText('مرحبا بالعالم يا أصدقاء', 14, { unit: 'word' }) // 'مرحبا بالعالم…'
+truncateText('الإصدار v1.2.3 متاح الآن', 12, { unit: 'word', isolate: true }) // '\u2068الإصدار\u2026\u2069'
+```
+
+Sources:
+- [Truncating text](https://marwanmaher0.github.io/vue-rtl-kit/guide/truncate-text)
+- [اختصار النص](https://marwanmaher0.github.io/vue-rtl-kit/ar/guide/truncate-text)
+- [Truncation API](https://marwanmaher0.github.io/vue-rtl-kit/api#truncate-text)
+
 ## v-rtl: element-level direction
 
 v-rtl sets an element's direction; it does not pin the root store. It supports reactive updates, SSR attributes, optional Unicode isolation, and restoration of previous DOM values on unmount.
@@ -513,6 +545,7 @@ Core types:
 - ScrollInlineOptions contains optional behavior; ScrollInlineEdges contains atStart and atEnd; UseInlineScrollOptions contains optional tolerance; UseInlineScrollReturn exposes readonly offset, max, atStart, atEnd plus scrollTo, scrollBy, scrollToStart, and scrollToEnd.
 - SearchOptions contains optional taMarbuta, alefMaqsura, and digits booleans (all defaulting to true); SearchMatch contains start and end UTF-16 offsets in the original string.
 - DigitsDirectiveValue is { to?: 'latn' | 'arab' | 'arabext'; decimal?: boolean } | undefined; import this type for a reactive directive binding.
+- TruncateOptions contains optional ellipsis (string, default U+2026), unit ('grapheme' | 'word', default 'grapheme'), locale (BCP 47 string for Intl.Segmenter; invalid tags fall back to the runtime default locale), and isolate (boolean, default false) for truncateText.
 - RtlDirectiveValue accepts DirectionOrAuto, boolean, undefined, null, or { dir?, isolate? }.
 
 The reference includes signatures for every export and complete type shapes:
@@ -525,7 +558,7 @@ vue-rtl-kit تدير اتجاه الواجهة وتنسيق القيم، ولا 
 
 يتبع اتجاه الجذر اللغة حتى يُثبّت عبر dir الأولي أو setDirection() أو toggleDirection(). بعد التثبيت، تغيّر setLocale() اللغة فقط. تقرأ useDirection() أقرب نطاق، أما useRtl() فتصل إلى الجذر المثبّت وترمي خطأ إن لم تكن الإضافة مثبتة. ينشئ RtlProvider نطاقًا محليًا؛ وعند غياب العنصر الحاوي يجب وضع سمات الاتجاه على الأبناء.
 
-BidiText أداة مبسطة لعزل مقاطع النص العادي، وليس محرّكًا للنص الغني ولا تنفيذًا كاملًا لخوارزمية Unicode ثنائية الاتجاه. لا يعالج الوسوم الغنية داخل الخانة؛ استخدم text لعزل النص العادي. يظل المتصفح مسؤولًا عن التخطيط النهائي. تتكيف أدوات CSS المنطقية مع أقرب dir، وتوحّد useInlineScroll ودوال التمرير السطري إحداثيات scrollLeft الأفقي في LTR وRTL لأوضاع الكتابة الأفقية فقط، وتوحّد دوال البحث foldSearchText وmatchesSearch وfindSearchMatches الحركات والهمزات والتطويل ونقاط التشكيل العبرية والأرقام المحلية مع إرجاع نطاقات UTF-16 الأصلية للتظليل دون اشتقاق صرفي أو مطابقة ضبابية، وتنسّق useFormat الأرقام والعملات والتواريخ والقوائم والأزمنة النسبية عبر Intl، وتختار formatPlural صيغة الجمع بفئات CLDR الست للعربية (صفر، مفرد، مثنى، قليل، كثير، غير ذلك) بدل شرط `n === 1` الخاطئ، وتسمّي formatDisplayName رموز اللغات والمناطق والعملات بكلمات اللغة نفسها عبر Intl.DisplayNames فتعرض قوائم اختيار اللغات «العربية» بدل Arabic، وتقرأ parseNumber الأعداد المكتوبة بأرقام اللغة وفواصلها وتعيد NaN للنص غير الصالح.
+BidiText أداة مبسطة لعزل مقاطع النص العادي، وليس محرّكًا للنص الغني ولا تنفيذًا كاملًا لخوارزمية Unicode ثنائية الاتجاه. لا يعالج الوسوم الغنية داخل الخانة؛ استخدم text لعزل النص العادي. يظل المتصفح مسؤولًا عن التخطيط النهائي. تتكيف أدوات CSS المنطقية مع أقرب dir، وتوحّد useInlineScroll ودوال التمرير السطري إحداثيات scrollLeft الأفقي في LTR وRTL لأوضاع الكتابة الأفقية فقط، وتوحّد دوال البحث foldSearchText وmatchesSearch وfindSearchMatches الحركات والهمزات والتطويل ونقاط التشكيل العبرية والأرقام المحلية مع إرجاع نطاقات UTF-16 الأصلية للتظليل دون اشتقاق صرفي أو مطابقة ضبابية، وتختصر truncateText النصوص بعناقيد المحارف أو الكلمات دون فصل التشكيل أو متتاليات ZWJ أو الأعلام، وتحسب علامة الحذف ضمن الحد الأقصى وتبقيها في النهاية المنطقية عبر العزل الاختياري، وتنسّق useFormat الأرقام والعملات والتواريخ والقوائم والأزمنة النسبية عبر Intl، وتختار formatPlural صيغة الجمع بفئات CLDR الست للعربية (صفر، مفرد، مثنى، قليل، كثير، غير ذلك) بدل شرط `n === 1` الخاطئ، وتسمّي formatDisplayName رموز اللغات والمناطق والعملات بكلمات اللغة نفسها عبر Intl.DisplayNames فتعرض قوائم اختيار اللغات «العربية» بدل Arabic، وتقرأ parseNumber الأعداد المكتوبة بأرقام اللغة وفواصلها وتعيد NaN للنص غير الصالح.
 
 للمقارنة والفرز بحسب اللغة، استخدم `compareText` و`sortByLocale`؛ فمثلًا يتساوى `طلب ٢` و`طلب ۲` ويسبقان `طلب ١٠` افتراضيًا. تحافظ الدالتان على ترتيب الحروف بحسب اللغة دون طيّها كما في البحث، ويتبع تابعاهما في `useFormat()` لغة النطاق الحالي.
 يوحّد التوجيه v-digits شكل الأرقام عند الكتابة أو اللصق في حقول الإدخال. مثلًا، تصبح قيمة رقم الطلب ٠۰٤۲ هي النص '0042'، وتبقى الأصفار في بدايته. لا يغيّر التوجيه القيمة الأولية أو النص الذي لا يزال المستخدم يركّبه بمحرّر أساليب الإدخال.

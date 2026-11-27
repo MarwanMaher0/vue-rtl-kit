@@ -27,6 +27,7 @@ import {
   scrollToInline,
 } from '../src/scroll'
 import { findSearchMatches, foldSearchText, matchesSearch } from '../src/search'
+import { truncateText } from '../src/truncate'
 import { formatPlural } from '../src/format'
 
 describe('SSR environment', () => {
@@ -388,5 +389,29 @@ describe('SSR environment', () => {
     rtl.setLocale('en')
     expect(await renderPicker()).toBe('<p dir="ltr">Arabic / Egypt / English</p>')
     rtl.dispose()
+  })
+})
+
+describe('truncateText on the server', () => {
+  it('truncates by grapheme clusters with no window or document', () => {
+    expect(typeof window).toBe('undefined')
+    expect(typeof document).toBe('undefined')
+    expect(truncateText('مُحَمَّدٌ عَبْدُ اللَّهِ', 5)).toBe('مُحَمَّدٌ\u2026')
+    expect(truncateText('مرحبا بالعالم يا أصدقاء', 8, { unit: 'word' })).toBe('مرحبا\u2026')
+    expect(truncateText('שָׁלוֹם עֲלֵיכֶם', 5)).toBe('שָׁלוֹם\u2026')
+  })
+
+  it('renders an isolated truncated title inside an LTR shell on the server', async () => {
+    const title = truncateText('الإصدار v1.2.3 متاح الآن للجميع', 12, { unit: 'word', isolate: true })
+    const app = createSSRApp(
+      defineComponent({
+        setup() {
+          return () => h('div', { dir: 'ltr', class: 'card' }, [h('h3', { title }, title)])
+        },
+      }),
+    )
+    const html = await renderToString(app)
+    expect(html).toContain('\u2068الإصدار\u2026\u2069')
+    expect(html).toContain('dir="ltr"')
   })
 })

@@ -64,6 +64,10 @@ const metadata: Record<string, { en: [string, string], ar: [string, string] }> =
     en: ['Plain-text bidi and locale helpers', 'Use standalone string helpers to isolate text, split bidi runs, detect direction, strip controls, and resolve locale direction.'],
     ar: ['دوال النص ثنائي الاتجاه واللغة', 'استخدم دوال نص مستقلة لعزل النص وتقسيم مقاطع الاتجاه وكشف الاتجاه وإزالة محارف التحكم واستنتاج اتجاه اللغة.'],
   },
+  'guide/truncate-text': {
+    en: ['truncateText: grapheme-safe truncation', 'Shorten Arabic, Persian, Hebrew, and emoji text by grapheme clusters or words without splitting tashkeel, ZWJ sequences, or flags, and keep the ellipsis at the logical end.'],
+    ar: ['الاختصار الآمن للنص عبر truncateText', 'اختصر النصوص العربية والفارسية والعبرية والرموز التعبيرية بعناقيد المحارف أو الكلمات دون فصل التشكيل أو متتاليات ZWJ أو الأعلام، وأبقِ علامة الحذف في النهاية المنطقية.'],
+  },
   'guide/rtl-provider': {
     en: ['RtlProvider: nested direction and locale scopes', 'Create independent RTL or LTR subtrees with RtlProvider, local direction controls, locale inheritance, DOM isolation, and renderless scope options.'],
     ar: ['نطاقات اتجاه ولغة متداخلة عبر RtlProvider', 'أنشئ أجزاء RTL أو LTR مستقلة باستخدام RtlProvider مع تحكم محلي بالاتجاه ووراثة اللغة وعزل DOM وخيار العمل دون عنصر حاوٍ.'],

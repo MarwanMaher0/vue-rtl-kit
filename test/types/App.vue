@@ -12,6 +12,7 @@ import {
   scrollToInline,
   sortByLocale,
   toLogicalPlacement,
+  truncateText,
   useFormat,
   useInlineScroll,
   useLogicalPlacement,
@@ -24,6 +25,7 @@ import type {
   PhysicalPlacement,
   ScrollInlineEdges,
   ScrollInlineOptions,
+  TruncateOptions,
   UseInlineScrollOptions,
   UseInlineScrollReturn,
 } from 'vue-rtl-kit'
@@ -41,6 +43,12 @@ const _scrollEdges: ScrollInlineEdges = scrollInlineEdges(scroller.value)
 scrollToInline(scroller.value, 100, _scrollOptions)
 scrollByInline(scroller.value, 50, _scrollOptions)
 const _parseOptions: ParseNumberOptions = { locale: 'ar-EG', numberingSystem: 'arab' }
+const _truncateOptions: TruncateOptions = { ellipsis: '…', unit: 'word', locale: 'ar', isolate: true }
+const _truncated: string = truncateText('مُحَمَّدٌ عَبْدُ اللَّهِ', 5, _truncateOptions)
+// @ts-expect-error truncateText reads text, not a number
+truncateText(123, 5)
+// @ts-expect-error unit is 'grapheme' | 'word'
+truncateText('نص', 5, { unit: 'char' })
 const _parsed: number = parseNumber('١٬٢٣٤٫٥', _parseOptions)
 const _boundParsed: number = useFormat().value.parseNumber('1,234.5')
 const _compareOptions: CompareOptions = { locale: ['ar', 'en'], caseFirst: 'upper', direction: 'desc' }

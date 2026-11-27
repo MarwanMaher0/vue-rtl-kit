@@ -112,6 +112,7 @@ budgets are set to their measured byte counts plus fixed `+256 B` (`0.25 kB`) ra
 bundles each import below on its own against `dist/vue-rtl-kit.js` (Rollup, `vue` external,
 esbuild minify). It treats Vue as side-effect free, like a consumer bundler, then checks the
 result against the size and dependency limits below:
+`sideEffects` lists only `*.css`, so a bundler can drop unused helpers. `npm run check:treeshake` bundles each import on its own against `dist/vue-rtl-kit.js` (Rollup, `vue` external, esbuild minify). Vue stays external, so Rollup would otherwise keep a bare `import 'vue'`; the check declares `vue` side-effect free with `treeshake.moduleSideEffects` (the same assumption a consumer bundler makes for an unused Vue import) and fails if `chunk.imports` still includes `vue`. It also fails if `{ isolateRuns }`, `{ toLogicalStyle }`, `{ logicalArrow }`, `{ resolvePlacement }`, `{ getScrollInline }`, `{ scrollToInline }`, `{ directionOfLocale }`, `{ findSearchMatches }`, `{ truncateText }`, `{ formatPlural }` or `{ formatDisplayName }` exceeds 2 kB gzip, or if `{ formatNumber }` still contains component or directive code:
 
 | Import | Gzip (current / budget) | Must not include |
 | --- | --- | --- |
@@ -123,6 +124,7 @@ result against the size and dependency limits below:
 | `{ scrollToInline }` | 0.41 kB / ≤ 2.00 kB | `vue` |
 | `{ directionOfLocale }` | 0.62 kB / ≤ 2.00 kB | `vue` |
 | `{ findSearchMatches }` | 0.81 kB / ≤ 2.00 kB | `vue` |
+| `{ truncateText }` | 0.77 kB / ≤ 2.00 kB | `vue` |
 | `{ formatPlural }` | 0.91 kB / ≤ 2.00 kB | `vue` |
 | `{ formatDisplayName }` | 0.65 kB / ≤ 2.00 kB | `vue` |
 | `{ vDigits }` | 0.99 kB / ≤ 2.00 kB | `vue` |
@@ -649,6 +651,38 @@ The standalone functions default to `locale: 'en'` and must be imported explicit
 Pass a locale tag or an ordered array such as `['ar-EG', 'ar', 'en']` to override it for one call.
 See [Locale-aware sorting](https://marwanmaher0.github.io/vue-rtl-kit/guide/text-helpers#locale-aware-sorting)
 for more examples.
+
+### Truncation
+
+`name.slice(0, max) + '…'` counts UTF-16 code units: it orphans tashkeel from its base letter, splits
+emoji ZWJ sequences and flags, and strands the ellipsis at the visual right end of RTL text cut
+inside an LTR card. `truncateText` (pure, zero Vue imports) counts and cuts by grapheme clusters
+with `Intl.Segmenter`, counts the ellipsis inside the limit, and trims trailing whitespace and
+tatweel before it:
+
+```ts
+import { truncateText } from 'vue-rtl-kit'
+
+truncateText('مُحَمَّدٌ عَبْدُ اللَّهِ', 5)                    // 'مُحَمَّدٌ…' — marks stay attached
+truncateText('👨‍👩‍👧‍👦🇪🇬🎉🎉', 3)                               // '👨‍👩‍👧‍👦🇪🇬…' — family and flag stay whole
+truncateText('مرحبا بالعالم يا أصدقاء', 14, { unit: 'word' })  // 'مرحبا بالعالم…' — last word boundary that fits
+truncateText('الإصدار v1.2.3 متاح الآن', 12, { unit: 'word', isolate: true })
+// '\u2068الإصدار\u2026\u2069' — FSI ... PDI keeps the ellipsis at the logical (visual left) end in an LTR card
+```
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `ellipsis` | `'…'` (`U+2026`) | Marker appended when the text is cut; its clusters count inside `maxLength`. |
+| `unit` | `'grapheme'` | `'word'` cuts at the last word boundary that fits; falls back to graphemes when one word is longer than the limit. |
+| `locale` | runtime default | BCP 47 locale passed to `Intl.Segmenter` (word boundaries are locale-sensitive); an invalid tag falls back to the runtime default locale instead of throwing. |
+| `isolate` | `false` | Wrap the result in `FSI ... PDI` (`U+2068` / `U+2069`) on every return path — fitting text, truncated text, and the ellipsis-only result; the controls do not count towards `maxLength`. |
+
+Text that fits is returned unchanged (wrapped in `FSI ... PDI` when `isolate: true`). Without
+`Intl.Segmenter` the helper falls back to code points via `Array.from` — surrogate pairs are never
+split, but marks and ZWJ sequences may separate; word mode cuts at the last whitespace boundary
+that fits (the longest whole-word prefix) and falls back to code points for over-long words.
+`maxLength` below 1 or not an integer throws `TypeError` in development and returns the ellipsis
+string in production (isolated when requested).
 
 ---
 
