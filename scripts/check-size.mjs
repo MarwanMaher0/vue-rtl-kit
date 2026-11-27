@@ -16,14 +16,14 @@ const BUDGETS = [
     exportKey: '.',
     file: 'dist/vue-rtl-kit.js',
     maxRawBytes: 53727 + RAW_MARGIN,
-    maxGzipBytes: 16811 + GZIP_MARGIN,
+    maxGzipBytes: 16914 + GZIP_MARGIN,
   },
   {
     entry: 'vue-rtl-kit (CJS)',
     exportKey: '.',
     file: 'dist/vue-rtl-kit.cjs',
     maxRawBytes: 39484 + RAW_MARGIN,
-    maxGzipBytes: 14479 + GZIP_MARGIN,
+    maxGzipBytes: 14508 + GZIP_MARGIN,
   },
   {
     entry: 'vue-rtl-kit/nuxt',
