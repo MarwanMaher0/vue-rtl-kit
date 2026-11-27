@@ -1,6 +1,6 @@
 {
   "name": "vue-rtl-kit",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Vue 3 + Nuxt toolkit for real RTL: direction state, logical-property utilities, and Unicode-isolated bidirectional text that stops Latin runs breaking inside Arabic.",
   "keywords": [
     "vue",
