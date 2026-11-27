@@ -20,7 +20,7 @@ function check(label, api) {
   for (const name of [
     'createRtl', 'splitBidiRuns', 'isolateRuns', 'logicalArrow', 'toLogicalStyle', 'toPhysicalStyle',
     'getScrollInline', 'getScrollInlineMax', 'scrollToInline', 'scrollByInline', 'scrollInlineEdges',
-    'useInlineScroll', 'formatNumber', 'formatPlural', 'formatDisplayName', 'directionOfLocale', 'foldSearchText', 'matchesSearch',
+    'useInlineScroll', 'formatNumber', 'formatPlural', 'formatDisplayName', 'formatDuration', 'directionOfLocale', 'foldSearchText', 'matchesSearch',
     'findSearchMatches', 'BidiText', 'RtlProvider', 'vRtl',
     'resolvePlacement', 'toLogicalPlacement', 'useLogicalPlacement',
   ]) {
@@ -49,6 +49,11 @@ function check(label, api) {
   assert.equal(api.formatDisplayName('EG', { type: 'region', locale: 'en' }), 'Egypt', `${label}: formatDisplayName en region`)
   assert.equal(api.formatDisplayName('zz', { type: 'language', fallback: 'none' }), '', `${label}: formatDisplayName fallback none`)
   assert.equal(api.formatDisplayName('!!', { type: 'region' }), '!!', `${label}: formatDisplayName invalid code`)
+  assert.equal(api.formatDuration({ hours: 2 }, { locale: 'ar' }), 'ساعتان', `${label}: formatDuration ar dual`)
+  assert.equal(api.formatDuration({ hours: 3, minutes: 1 }, { locale: 'en' }), '3 hours, 1 minute', `${label}: formatDuration en`)
+  assert.equal(api.formatDuration(3_723_000, { locale: 'ar-EG', numberingSystem: 'arab', style: 'digital' }), '١:٠٢:٠٣', `${label}: formatDuration digital`)
+  assert.equal(api.formatDuration(0, { locale: 'en' }), '0 seconds', `${label}: formatDuration zero`)
+  assert.throws(() => api.formatDuration(Number.NaN), TypeError, `${label}: formatDuration invalid input`)
 
   const rtl = api.createRtl({ locales: { en: 'ltr', ar: 'rtl' }, defaultLocale: 'ar' })
   assert.deepEqual(rtl.htmlAttrs(), { dir: 'rtl', lang: 'ar' }, `${label}: htmlAttrs`)

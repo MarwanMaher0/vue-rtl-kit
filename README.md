@@ -102,8 +102,8 @@ budgets are set to their measured byte counts plus fixed `+256 B` (`0.25 kB`) ra
 
 | Entry point | Artifact | Raw (current / budget) | Gzip (current / budget) |
 | --- | --- | --- | --- |
-| `vue-rtl-kit` (ESM) | `dist/vue-rtl-kit.js` | 48.60 kB / ≤ 48.85 kB | 15.13 kB / ≤ 15.23 kB |
-| `vue-rtl-kit` (CJS) | `dist/vue-rtl-kit.cjs` | 35.70 kB / ≤ 35.95 kB | 12.96 kB / ≤ 13.05 kB |
+| `vue-rtl-kit` (ESM) | `dist/vue-rtl-kit.js` | 50.92 kB / ≤ 51.17 kB | 16.18 kB / ≤ 16.28 kB |
+| `vue-rtl-kit` (CJS) | `dist/vue-rtl-kit.cjs` | 37.28 kB / ≤ 37.53 kB | 13.82 kB / ≤ 13.92 kB |
 | `vue-rtl-kit/nuxt` | `dist/nuxt/module.js` | 3.08 kB / ≤ 3.25 kB | 1.12 kB / ≤ 1.50 kB |
 | `vue-rtl-kit/nuxt` (runtime plugin) | `dist/nuxt/runtime/plugin.js` | 2.77 kB / ≤ 3.00 kB | 1.02 kB / ≤ 1.20 kB |
 | `vue-rtl-kit/styles.css` | `dist/styles.css` | 7.10 kB / ≤ 8.00 kB | 1.91 kB / ≤ 2.50 kB |
@@ -112,7 +112,7 @@ budgets are set to their measured byte counts plus fixed `+256 B` (`0.25 kB`) ra
 bundles each import below on its own against `dist/vue-rtl-kit.js` (Rollup, `vue` external,
 esbuild minify). It treats Vue as side-effect free, like a consumer bundler, then checks the
 result against the size and dependency limits below:
-`sideEffects` lists only `*.css`, so a bundler can drop unused helpers. `npm run check:treeshake` bundles each import on its own against `dist/vue-rtl-kit.js` (Rollup, `vue` external, esbuild minify). Vue stays external, so Rollup would otherwise keep a bare `import 'vue'`; the check declares `vue` side-effect free with `treeshake.moduleSideEffects` (the same assumption a consumer bundler makes for an unused Vue import) and fails if `chunk.imports` still includes `vue`. It also fails if `{ isolateRuns }`, `{ toLogicalStyle }`, `{ logicalArrow }`, `{ resolvePlacement }`, `{ getScrollInline }`, `{ scrollToInline }`, `{ directionOfLocale }`, `{ findSearchMatches }`, `{ truncateText }`, `{ formatPlural }` or `{ formatDisplayName }` exceeds 2 kB gzip, or if `{ formatNumber }` still contains component or directive code:
+`sideEffects` lists only `*.css`, so a bundler can drop unused helpers. `npm run check:treeshake` bundles each import on its own against `dist/vue-rtl-kit.js` (Rollup, `vue` external, esbuild minify). Vue stays external, so Rollup would otherwise keep a bare `import 'vue'`; the check declares `vue` side-effect free with `treeshake.moduleSideEffects` (the same assumption a consumer bundler makes for an unused Vue import) and fails if `chunk.imports` still includes `vue`. It also fails if `{ isolateRuns }`, `{ toLogicalStyle }`, `{ logicalArrow }`, `{ resolvePlacement }`, `{ getScrollInline }`, `{ scrollToInline }`, `{ directionOfLocale }`, `{ findSearchMatches }`, `{ truncateText }`, `{ formatDuration }`, `{ formatPlural }` or `{ formatDisplayName }` exceeds 2 kB gzip, or if `{ formatNumber }` still contains component or directive code:
 
 | Import | Gzip (current / budget) | Must not include |
 | --- | --- | --- |
@@ -125,11 +125,10 @@ result against the size and dependency limits below:
 | `{ directionOfLocale }` | 0.62 kB / ≤ 2.00 kB | `vue` |
 | `{ findSearchMatches }` | 0.81 kB / ≤ 2.00 kB | `vue` |
 | `{ truncateText }` | 0.77 kB / ≤ 2.00 kB | `vue` |
+| `{ formatDuration }` | 1.71 kB / ≤ 2.00 kB | `vue`, collation |
 | `{ formatPlural }` | 0.91 kB / ≤ 2.00 kB | `vue` |
 | `{ formatDisplayName }` | 0.65 kB / ≤ 2.00 kB | `vue` |
 | `{ vDigits }` | 0.99 kB / ≤ 2.00 kB | `vue` |
-| `{ formatDateRange }` | 0.99 kB / ≤ 2.00 kB | `vue` |
-| `{ formatNumberRange }` | 0.96 kB / ≤ 2.00 kB | `vue` |
 | `{ formatNumber }` | 0.75 kB | components, directives, collation |
 | `{ compareText }` | 0.95 kB / ≤ 2.00 kB | `vue` |
 | `{ sortByLocale }` | 1.00 kB / ≤ 2.00 kB | `vue` |
@@ -259,7 +258,7 @@ excluded from `ModuleOptions`.
 | `useDirection()` | `DirectionContext` | `dir`, `isRtl`, `isLtr`, `locale`, `startSide`, `endSide`, `sign`, `setDirection()`, `toggleDirection()`, `setLocale()`, `htmlAttrs()`. Resolves to the nearest `<RtlProvider>`, then the app store, then a detached fallback — it never throws. |
 | `useRtl()` | `RtlInstance` | The app-level store, skipping any `<RtlProvider>`. Throws if the plugin is missing. |
 | `useLogicalStyles()` | see below | `toLogical()`, `toPhysical()`, `property()`, `mirror()`, `arrow()`, plus `startSide`, `endSide`, `sign`. |
-| `useFormat()` | `ComputedRef<BoundFormatters>` | `formatNumber` / `formatCurrency` / `formatNumberRange` / `formatDate` / `formatDateRange` / `formatList` / `formatRelativeTime` / `formatPlural` / `formatDisplayName` / `parseNumber` bound to the current locale and numbering system, plus `compareText` / `sortByLocale` bound to the current locale; they follow `setLocale()`, and the formatters and parser also use the `numberingSystem` configured in `createRtl()`. |
+| `useFormat()` | `ComputedRef<BoundFormatters>` | `formatNumber` / `formatCurrency` / `formatDate` / `formatList` / `formatRelativeTime` / `formatPlural` / `formatDisplayName` / `parseNumber` bound to the current locale and numbering system, plus `compareText` / `sortByLocale` bound to the current locale; they follow `setLocale()`, and the formatters and parser also use the `numberingSystem` configured in `createRtl()`. |
 | `useInlineScroll(target, options?)` | `UseInlineScrollReturn` | Readonly `offset`, `max`, `atStart`, `atEnd` refs plus `scrollTo()`, `scrollBy()`, `scrollToStart()`, `scrollToEnd()`. Uses a passive `scroll` listener and `ResizeObserver`, re-reads on `target` and `useDirection().dir` changes, cleans up on dispose, and is SSR-safe. Horizontal writing modes only. |
 | `useLogicalPlacement(placement, target?)` | `ComputedRef<PhysicalPlacement>` | Resolve a placement using the target element's computed `direction`, or `useDirection().dir` without a mounted target or during SSR. See [Floating UI example](#floating-ui-example). |
 
@@ -435,11 +434,9 @@ Vue components, use `useInlineScroll(target)`.
 import {
   formatCurrency,
   formatDate,
-  formatDateRange,
   formatDisplayName,
   formatList,
   formatNumber,
-  formatNumberRange,
   formatPlural,
   formatRelativeTime,
   parseNumber,
@@ -449,8 +446,6 @@ formatNumber(1234.5, { locale: 'ar-EG' })                            // '١٬٢�
 formatNumber(1234.5, { locale: 'ar-EG', numberingSystem: 'latn' })   // '1,234.5'
 formatCurrency(2500, 'EGP', { locale: 'ar-EG' })
 formatDate(date, { locale: 'ar-SA', calendar: 'islamic-umalqura', dateStyle: 'long' })
-formatDateRange('2024-03-03', '2024-03-05', { locale: 'ar-EG', dateStyle: 'long', timeZone: 'UTC' }) // '٣–٥ مارس ٢٠٢٤'
-formatNumberRange(100, 250, { locale: 'ar-EG', numberingSystem: 'latn', style: 'currency', currency: 'EGP' }) // one ج.م. for the whole range
 formatList(['Ahmed', 'Sara', 'Omar'], { locale: 'ar' })              // 'Ahmed وSara وOmar'
 formatList(['PDF', 'CSV'], { locale: 'en', type: 'disjunction' })    // 'PDF or CSV'
 formatRelativeTime(-3, 'day', { locale: 'ar-EG' })                   // 'قبل ٣ أيام'
@@ -493,22 +488,6 @@ both take the same `locale`, `numberingSystem` and `isolate` options as the othe
 name cannot swap places with its Arabic neighbours — and then isolates the whole list as requested.
 `formatRelativeTime` returns `''` for a non-finite value, as `formatDate` does for an invalid date.
 Each formatter kind keeps its own LRU cache of `Intl` instances (32 entries).
-
-`formatDateRange(start, end, options)` and `formatNumberRange(start, end, options)` wrap
-`Intl.DateTimeFormat.prototype.formatRange` and `Intl.NumberFormat.prototype.formatRange`, so a
-booking, schedule or pricing range uses the locale's own range separator and collapses shared
-parts instead of joining two formatted values with a hyphen: `٣–٥ مارس ٢٠٢٤` (one month, one
-year), `۱۳ تا ۱۵ اسفند ۱۴۰۲` in Persian, and one `ج.م.` for a whole Arabic price range.
-`formatDateRange` accepts `Date`, timestamp or ISO string ends and the same options as
-`formatDate`; `formatNumberRange` accepts `number` or `bigint` ends and the same options as
-`formatNumber` (currency, unit, compact). Both share the existing `formatDate` / `formatNumber`
-caches and locale/numbering-system fallbacks, and are bound on `useFormat()`. A reversed range
-(`start` greater than `end`) is formatted as given, like `Intl`, and never throws. An invalid
-date or a non-finite number throws a `TypeError` in development and returns `''` in production.
-On runtimes without `formatRange`, both ends are formatted and joined with the locale's range
-separator — a spaced en dash for dates (` تا ` in Persian), an en dash for numbers — with each
-end wrapped in a first-strong isolate (FSI ... PDI) so the endpoints keep their reading order
-in an RTL paragraph.
 
 `formatPlural(count, forms, options)` picks the plural form with `Intl.PluralRules` instead of
 `n === 1 ? a : b`, which is wrong for Arabic's six categories: `0` is `zero`, `1` `one`, `2` `two`,
@@ -706,6 +685,57 @@ that fits (the longest whole-word prefix) and falls back to code points for over
 `maxLength` below 1 or not an integer throws `TypeError` in development and returns the ellipsis
 string in production (isolated when requested).
 
+### Durations
+
+Video lengths, delivery estimates and timers built as `hours + ' ساعة و ' + minutes + ' دقيقة'`
+are wrong in Arabic: two hours is the dual `ساعتان` with no number, 3 to 10 take one plural
+(`3 ساعات`), 11 and up take the singular again (`11 ساعة`), and the digits may be `٠١٢٣`.
+`formatDuration` (pure, zero Vue imports) takes an object of units or a number of milliseconds and
+returns the forms CLDR has for the locale:
+
+```ts
+import { formatDuration } from 'vue-rtl-kit'
+
+formatDuration({ hours: 2, minutes: 3 }, { locale: 'ar', numberingSystem: 'latn' })       // 'ساعتان و3 دقائق'
+formatDuration({ hours: 11, minutes: 2 }, { locale: 'ar-EG', numberingSystem: 'arab' })   // '١١ ساعة ودقيقتان'
+formatDuration({ days: 3, hours: 11 }, { locale: 'ar-SA', numberingSystem: 'latn' })      // '3 أيام و11 ساعة'
+formatDuration(3_723_000, { locale: 'ar-EG', numberingSystem: 'arab', style: 'digital' }) // '١:٠٢:٠٣' — h:mm:ss
+formatDuration(5_531_000, { locale: 'ar', numberingSystem: 'latn', maxUnits: 2 })         // 'ساعة و32 دقيقة'
+formatDuration(5_531_000, { locale: 'ar', numberingSystem: 'latn', maxUnits: 1 })         // 'ساعتان' — rounds to the dual
+formatDuration({ minutes: 90 }, { locale: 'ar', numberingSystem: 'latn', largestUnit: 'hours' }) // 'ساعة و30 دقيقة'
+formatDuration(0, { locale: 'ar-EG', numberingSystem: 'arab' })                           // '٠ ثانية'
+```
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `locale` | `'en'` | BCP 47 locale; a malformed tag falls back to its language subtag, then to `'en'`. |
+| `style` | `'long'` | `'long'`, `'short'` or `'narrow'` unit names, or `'digital'` for `h:mm:ss` in the digits of the locale. |
+| `numberingSystem` | the locale's own | `'latn'` for `0123`, `'arab'` for `٠١٢٣`, or any other CLDR numbering system. |
+| `largestUnit` | `'days'` for a number, the largest non-zero field for an object | Largest unit to show; anything larger is folded into it. |
+| `smallestUnit` | `'milliseconds'` | Smallest unit to show; the rest is rounded into it. Also the unit a zero duration is written in. |
+| `maxUnits` | all units | Show at most this many units, counted from the first non-zero one, and round the last. |
+
+An object of whole numbers is written as given (`{ minutes: 90 }` is `90 دقيقة`). A number of
+milliseconds, an object with fractional or mixed-sign fields, and any call with `largestUnit`,
+`smallestUnit` or `maxUnits` are balanced first; a month counts as 30.4375 days and a year as
+365.25 days. Fractions are carried into the smaller units and the last unit is rounded half away
+from zero, carrying into the unit above (`ساعة`, never `60 دقيقة`). A negative duration gets one
+sign, in front, written as the locale's minus sign. Units that are zero are left out, and a
+duration that is zero or rounds to zero is written as zero of `smallestUnit`, else of the smallest
+field the object has, else zero seconds. `'digital'` always shows hours, folds days into them and
+rounds to the second; it does not use `largestUnit`, `smallestUnit` or `maxUnits`.
+
+`formatDuration` uses `Intl.DurationFormat` when the runtime has it. Without it (Node.js before 23,
+Chrome before 129, Firefox before 136, Safari before 16.4) each unit is formatted with
+`Intl.NumberFormat` unit style and the units are joined with `Intl.ListFormat`, which returns the
+same strings for `'long'`, `'short'` and `'narrow'`; the fallback's `'digital'` always separates
+with `:`, where `Intl.DurationFormat` uses the separator of the locale. Invalid input — a
+non-finite number, an unknown unit such as `hour`, an unknown style or unit option, a `largestUnit`
+smaller than `smallestUnit`, a `maxUnits` below 1 or not an integer — throws `TypeError` in
+development and returns an empty string in production. The function is standalone: pass it the
+locale (it is not part of `useFormat()`), and import it explicitly in Nuxt. See the
+[Formatting durations guide](./site/guide/format-duration.md).
+
 ---
 
 ## CSS utilities
@@ -780,6 +810,7 @@ Everything is native platform behaviour, no polyfills:
 | Independent `scale` property | 104 | 72 | 14.1 |
 | Inline scroll (negative RTL `scrollLeft`, `ResizeObserver`) | 85 | 69 | 15.4 |
 | `Intl` numbering systems (`-u-nu-`) | 24 | 29 | 10 |
+| `Intl.DurationFormat` (`formatDuration`; falls back without it) | 129 | 136 | 16.4 |
 
 Own-direction utilities and transform-preserving mirroring require Chrome 120+, Firefox 72+,
 or Safari 16.4+ (both `:dir()` and `scale`). Browsers without `:dir()` use the previous ancestor

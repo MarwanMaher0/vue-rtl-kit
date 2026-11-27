@@ -5,7 +5,7 @@
  * is the point: an RTL app that only gets its direction after hydration shows a
  * frame of LTR first, and that frame is very visible.
  */
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { createSSRApp, defineComponent, h, ref, withDirectives } from 'vue'
 import { renderToString } from 'vue/server-renderer'
 import { BidiText, RtlProvider } from '../src/components'
@@ -28,6 +28,7 @@ import {
 } from '../src/scroll'
 import { findSearchMatches, foldSearchText, matchesSearch } from '../src/search'
 import { truncateText } from '../src/truncate'
+import { formatDuration } from '../src/duration'
 import { formatDateRange, formatNumberRange, formatPlural } from '../src/format'
 
 describe('SSR environment', () => {
@@ -440,5 +441,49 @@ describe('truncateText on the server', () => {
     const html = await renderToString(app)
     expect(html).toContain('\u2068الإصدار\u2026\u2069')
     expect(html).toContain('dir="ltr"')
+  })
+})
+
+describe('formatDuration on the server', () => {
+  it('formats durations with no window or document', () => {
+    expect(typeof window).toBe('undefined')
+    expect(typeof document).toBe('undefined')
+    expect(formatDuration({ hours: 2, minutes: 3 }, { locale: 'ar', numberingSystem: 'latn' })).toBe('ساعتان و3 دقائق')
+    expect(formatDuration({ hours: 11, minutes: 2 }, { locale: 'ar-EG', numberingSystem: 'arab' })).toBe('١١ ساعة ودقيقتان')
+    expect(formatDuration(3_723_000, { locale: 'ar-SA', numberingSystem: 'arab', style: 'digital' })).toBe('١:٠٢:٠٣')
+    expect(formatDuration(0, { locale: 'fa' })).toBe('۰ ثانیه')
+    expect(formatDuration({ hours: 2 }, { locale: 'he' })).toBe('שעתיים')
+  })
+
+  it('renders the same duration into the server HTML of an RTL card on every request', async () => {
+    const render = () => renderToString(createSSRApp(
+      defineComponent({
+        setup() {
+          const length = formatDuration(5_531_000, { locale: 'ar-EG', numberingSystem: 'arab', maxUnits: 2 })
+          const time = formatDuration(5_531_000, { locale: 'ar-EG', numberingSystem: 'arab', style: 'digital' })
+          return () => h('article', { dir: 'rtl', lang: 'ar', class: 'card' }, [
+            h('p', { class: 'length' }, length),
+            h('time', { class: 'time' }, time),
+          ])
+        },
+      }),
+    ))
+    const html = await render()
+    expect(html).toBe(
+      '<article dir="rtl" lang="ar" class="card"><p class="length">ساعة و٣٢ دقيقة</p><time class="time">١:٣٢:١١</time></article>',
+    )
+    // The formatter cache is shared between requests and must not change the output.
+    expect(await render()).toBe(html)
+  })
+
+  it('returns an empty string for invalid input in a production server render', () => {
+    vi.stubEnv('NODE_ENV', 'production')
+    try {
+      expect(formatDuration(Number.NaN, { locale: 'ar' })).toBe('')
+    }
+    finally {
+      vi.unstubAllEnvs()
+    }
+    expect(() => formatDuration(Number.NaN, { locale: 'ar' })).toThrow(TypeError)
   })
 })

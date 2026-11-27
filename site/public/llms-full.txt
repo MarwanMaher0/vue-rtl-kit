@@ -248,6 +248,46 @@ Sources:
 - [اختصار النص](https://marwanmaher0.github.io/vue-rtl-kit/ar/guide/truncate-text)
 - [Truncation API](https://marwanmaher0.github.io/vue-rtl-kit/api#truncate-text)
 
+## Locale-aware durations
+
+Video lengths, delivery estimates and timers built as `hours + ' ساعة و ' + minutes + ' دقيقة'` are wrong in Arabic: two hours is the dual `ساعتان` with no number, 3 to 10 take one plural (`3 ساعات`), 11 and up take the singular again (`11 ساعة`, `11 يومًا`), the conjunction `و` attaches to the next word, and the digits may be `٠١٢٣`. formatDuration(duration, options?) is a pure Vue-free export that returns those forms from Intl.DurationFormat. duration is an object of units (years, months, weeks, days, hours, minutes, seconds, milliseconds; every field optional) or a number of milliseconds.
+
+- locale defaults to 'en'. `ar_EG` is read as `ar-EG`; a malformed tag falls back to its language subtag, then to 'en'. The function is standalone: it does not read the direction store, is not part of useFormat(), and is not auto-imported in Nuxt.
+- numberingSystem picks the digits ('latn', 'arab', 'arabext', or any CLDR system; an unknown one falls back to 'latn'). Without it the digits are the locale's own: Arabic-Indic for ar-EG and ar-SA, and for plain ar Western digits in current engines but Arabic-Indic in older ones. Pass it explicitly when the page is rendered on a server and hydrated in a browser.
+- style is 'long' (default), 'short', 'narrow', or 'digital'. Digital is h:mm:ss in the digits of the locale: hours are always shown, minutes and seconds are padded to two digits, days and larger units are folded into the hours without grouping separators, milliseconds are rounded to the second, and largestUnit, smallestUnit and maxUnits are not used.
+- Balancing: an object of whole numbers with one sign is written as given ({ minutes: 90 } is "90 minutes"). A number of milliseconds, an object with fractional or mixed-sign fields, and any call with largestUnit, smallestUnit or maxUnits are balanced: the total is split from largestUnit (default 'days' for a number, the largest non-zero field for an object) down to smallestUnit (default 'milliseconds'). Weeks take part only when the object has weeks or an option names them. 1000 ms, 60 s, 60 min, 24 h, 7 days and 12 months are exact; a month counts as 30.4375 days and a year as 365.25 days.
+- Fractional values are carried into the smaller units; what is left below smallestUnit is rounded half away from zero, and a unit that rounds up to a full unit of the one above is carried into it (1 hour, never 60 minutes).
+- Negative values: the sign of the whole duration is written once, in front, as the locale's minus sign with its bidi mark (U+200E before '-' in Arabic with Western digits, U+061C with Arabic-Indic digits). Fields with different signs are added up first.
+- Zero: units that are zero are left out. A duration that is zero, or rounds to zero, is written as zero of smallestUnit; without that option, as zero of the smallest field the object has, or zero seconds for a number and for {}. A zero never carries a sign.
+- maxUnits (an integer of at least 1) keeps that many units, counted from the first non-zero one, and rounds the last; the plural form follows the rounded number. A unit that is zero still counts. An object is not promoted above its largest field unless largestUnit says so.
+- Fallback: without Intl.DurationFormat (Node.js before 23, Chrome before 129, Firefox before 136, Safari before 16.4), or when it rejects a value outside its range, each unit is formatted with Intl.NumberFormat in style: 'unit' and the units are joined with Intl.ListFormat in type: 'unit'. For long, short and narrow both paths return the same string. For digital the fallback always separates with ':', where Intl.DurationFormat uses the separator of the locale ('.' in Finnish and Danish). Formatters are cached in a small LRU.
+- Invalid input — a duration that is not a finite number or a plain object of finite numbers, an unknown unit name such as hour, an unknown style, largestUnit or smallestUnit, a largestUnit smaller than smallestUnit, a maxUnits that is not an integer of at least 1, or a locale that is not a string — throws TypeError in development and returns an empty string in production (NODE_ENV === 'production', or a browser build with no process global).
+- The forms are the nominative ones CLDR ships: use them next to a label (`مدة التوصيل: يومان`), not after a preposition, where Arabic needs the genitive (`خلال يومين`).
+- The helper never touches the DOM and is safe in any SSR render.
+
+FormatDurationOptions: locale (string, default 'en'), style ('long' | 'short' | 'narrow' | 'digital', default 'long'), numberingSystem (string), largestUnit (DurationUnit), smallestUnit (DurationUnit, default 'milliseconds'), maxUnits (number).
+
+```ts
+import { formatDuration } from 'vue-rtl-kit'
+
+formatDuration({ hours: 2, minutes: 3 }, { locale: 'ar', numberingSystem: 'latn' }) // 'ساعتان و3 دقائق'
+formatDuration({ hours: 11, minutes: 2 }, { locale: 'ar-EG', numberingSystem: 'arab' }) // '١١ ساعة ودقيقتان'
+formatDuration({ days: 3, hours: 11 }, { locale: 'ar-SA', numberingSystem: 'latn' }) // '3 أيام و11 ساعة'
+formatDuration({ days: 3, hours: 11 }, { locale: 'fa' }) // '۳ روز و ۱۱ ساعت'
+formatDuration({ days: 2, hours: 2 }, { locale: 'he' }) // 'יומיים, שעתיים'
+formatDuration(3_723_000, { locale: 'ar-EG', numberingSystem: 'arab', style: 'digital' }) // '١:٠٢:٠٣'
+formatDuration(5_531_000, { locale: 'ar', numberingSystem: 'latn', maxUnits: 2 }) // 'ساعة و32 دقيقة'
+formatDuration(5_531_000, { locale: 'ar', numberingSystem: 'latn', maxUnits: 1 }) // 'ساعتان'
+formatDuration({ minutes: 90 }, { locale: 'ar', numberingSystem: 'latn', largestUnit: 'hours' }) // 'ساعة و30 دقيقة'
+formatDuration({ hours: -1, minutes: -30 }, { locale: 'ar', numberingSystem: 'latn' }) // '\u200E-ساعة و30 دقيقة'
+formatDuration(0, { locale: 'ar-EG', numberingSystem: 'arab' }) // '٠ ثانية'
+```
+
+Sources:
+- [Formatting durations](https://marwanmaher0.github.io/vue-rtl-kit/guide/format-duration)
+- [تنسيق المدد الزمنية](https://marwanmaher0.github.io/vue-rtl-kit/ar/guide/format-duration)
+- [Durations API](https://marwanmaher0.github.io/vue-rtl-kit/api#format-duration)
+
 ## v-rtl: element-level direction
 
 v-rtl sets an element's direction; it does not pin the root store. It supports reactive updates, SSR attributes, optional Unicode isolation, and restoration of previous DOM values on unmount.
@@ -550,6 +590,7 @@ Core types:
 - SearchOptions contains optional taMarbuta, alefMaqsura, and digits booleans (all defaulting to true); SearchMatch contains start and end UTF-16 offsets in the original string.
 - DigitsDirectiveValue is { to?: 'latn' | 'arab' | 'arabext'; decimal?: boolean } | undefined; import this type for a reactive directive binding.
 - TruncateOptions contains optional ellipsis (string, default U+2026), unit ('grapheme' | 'word', default 'grapheme'), locale (BCP 47 string for Intl.Segmenter; invalid tags fall back to the runtime default locale), and isolate (boolean, default false) for truncateText.
+- DurationInput is a partial record of DurationUnit ('years' | 'months' | 'weeks' | 'days' | 'hours' | 'minutes' | 'seconds' | 'milliseconds') to number; DurationStyle is 'long' | 'short' | 'narrow' | 'digital'; FormatDurationOptions contains optional locale, style, numberingSystem, largestUnit, smallestUnit, and maxUnits for formatDuration.
 - RtlDirectiveValue accepts DirectionOrAuto, boolean, undefined, null, or { dir?, isolate? }.
 
 The reference includes signatures for every export and complete type shapes:
@@ -565,6 +606,7 @@ vue-rtl-kit تدير اتجاه الواجهة وتنسيق القيم، ولا 
 BidiText أداة مبسطة لعزل مقاطع النص العادي، وليس محرّكًا للنص الغني ولا تنفيذًا كاملًا لخوارزمية Unicode ثنائية الاتجاه. لا يعالج الوسوم الغنية داخل الخانة؛ استخدم text لعزل النص العادي. يظل المتصفح مسؤولًا عن التخطيط النهائي. تتكيف أدوات CSS المنطقية مع أقرب dir، وتوحّد useInlineScroll ودوال التمرير السطري إحداثيات scrollLeft الأفقي في LTR وRTL لأوضاع الكتابة الأفقية فقط، وتوحّد دوال البحث foldSearchText وmatchesSearch وfindSearchMatches الحركات والهمزات والتطويل ونقاط التشكيل العبرية والأرقام المحلية مع إرجاع نطاقات UTF-16 الأصلية للتظليل دون اشتقاق صرفي أو مطابقة ضبابية، وتختصر truncateText النصوص بعناقيد المحارف أو الكلمات دون فصل التشكيل أو متتاليات ZWJ أو الأعلام، وتحسب علامة الحذف ضمن الحد الأقصى وتبقيها في النهاية المنطقية عبر العزل الاختياري، وتنسّق useFormat الأرقام والعملات والتواريخ والقوائم والأزمنة النسبية عبر Intl، وتختار formatPlural صيغة الجمع بفئات CLDR الست للعربية (صفر، مفرد، مثنى، قليل، كثير، غير ذلك) بدل شرط `n === 1` الخاطئ، وتسمّي formatDisplayName رموز اللغات والمناطق والعملات بكلمات اللغة نفسها عبر Intl.DisplayNames فتعرض قوائم اختيار اللغات «العربية» بدل Arabic، وتقرأ parseNumber الأعداد المكتوبة بأرقام اللغة وفواصلها وتعيد NaN للنص غير الصالح.
 
 للمقارنة والفرز بحسب اللغة، استخدم `compareText` و`sortByLocale`؛ فمثلًا يتساوى `طلب ٢` و`طلب ۲` ويسبقان `طلب ١٠` افتراضيًا. تحافظ الدالتان على ترتيب الحروف بحسب اللغة دون طيّها كما في البحث، ويتبع تابعاهما في `useFormat()` لغة النطاق الحالي.
+لتنسيق المدد الزمنية استخدم `formatDuration`؛ فمثلًا تعيد `formatDuration({ hours: 2, minutes: 3 }, { locale: 'ar', numberingSystem: 'latn' })` النص `ساعتان و3 دقائق`، وتعيد `formatDuration(3_723_000, { locale: 'ar-EG', numberingSystem: 'arab', style: 'digital' })` النص `١:٠٢:٠٣`. تأتي صيغ المثنى والجمع وواو العطف والأرقام من بيانات CLDR عبر `Intl.DurationFormat`، وعند غيابه تُنسَّق كل وحدة عبر `Intl.NumberFormat` ثم تُربط عبر `Intl.ListFormat`. المدخلات غير الصالحة ترمي `TypeError` في التطوير وتعيد سلسلة فارغة في الإنتاج.
 يوحّد التوجيه v-digits شكل الأرقام عند الكتابة أو اللصق في حقول الإدخال. مثلًا، تصبح قيمة رقم الطلب ٠۰٤۲ هي النص '0042'، وتبقى الأصفار في بدايته. لا يغيّر التوجيه القيمة الأولية أو النص الذي لا يزال المستخدم يركّبه بمحرّر أساليب الإدخال.
 
 لتحديد موضع نافذة منبثقة عند نهاية السطر، استخدم `useLogicalPlacement('inline-end', trigger)`. تكون النافذة على يسار زرّ الفتح في RTL وعلى يمينه في LTR. تقرأ الدالة اتجاه الزر المحسوب، وتستخدم اتجاه نطاق Vue عند غياب الزر أو أثناء العرض على الخادم. عند استخدام Floating UI، مرّر محاذاة `top` أو `bottom` المنطقية مباشرةً إذا كان اتجاه العنصر العائم هو المطلوب.

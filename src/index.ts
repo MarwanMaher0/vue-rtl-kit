@@ -121,6 +121,14 @@ export type { SearchMatch, SearchOptions } from './search'
 export { truncateText } from './truncate'
 export type { TruncateOptions } from './truncate'
 
+export { formatDuration } from './duration'
+export type {
+  DurationInput,
+  DurationStyle,
+  DurationUnit,
+  FormatDurationOptions,
+} from './duration'
+
 export { isClient, isServer } from './env'
 
 export type {

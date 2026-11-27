@@ -29,6 +29,7 @@ const CASES = [
   { spec: 'directionOfLocale', maxGzip: MAX_GZIP, forbidVue: true },
   { spec: 'findSearchMatches', maxGzip: MAX_GZIP, forbidVue: true },
   { spec: 'truncateText', maxGzip: MAX_GZIP, forbidVue: true },
+  { spec: 'formatDuration', maxGzip: MAX_GZIP, forbidVue: true, forbidCollation: true },
   { spec: 'formatPlural', maxGzip: MAX_GZIP, forbidVue: true },
   { spec: 'formatDisplayName', maxGzip: MAX_GZIP, forbidVue: true },
   { spec: 'vDigits', maxGzip: MAX_GZIP, forbidVue: true },

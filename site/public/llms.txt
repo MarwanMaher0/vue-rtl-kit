@@ -33,6 +33,7 @@ BidiText is not a rich-text engine or a complete Unicode bidi algorithm implemen
 - [CSS utilities](https://marwanmaher0.github.io/vue-rtl-kit/guide/css-utilities): Optional logical spacing, positioning, borders, text isolation, and icon helpers.
 - [Browser support](https://marwanmaher0.github.io/vue-rtl-kit/guide/browser-support): Support floors, :dir() and scale fallbacks, and toPhysicalStyle targets.
 - [useFormat](https://marwanmaher0.github.io/vue-rtl-kit/guide/use-format): Scope-aware Intl numbers, currencies, dates, and numbering systems.
+- [Formatting durations](https://marwanmaher0.github.io/vue-rtl-kit/guide/format-duration): formatDuration for video lengths, delivery estimates, and timers with Arabic plural forms and digit shapes.
 
 ## Arabic documentation
 
@@ -54,6 +55,7 @@ BidiText is not a rich-text engine or a complete Unicode bidi algorithm implemen
 - [أدوات CSS](https://marwanmaher0.github.io/vue-rtl-kit/ar/guide/css-utilities): أدوات تخطيط اختيارية.
 - [دعم المتصفحات](https://marwanmaher0.github.io/vue-rtl-kit/ar/guide/browser-support): حدود الدعم وبدائل :dir() وscale وأهداف toPhysicalStyle.
 - [useFormat](https://marwanmaher0.github.io/vue-rtl-kit/ar/guide/use-format): تنسيق حسب اللغة.
+- [تنسيق المدد الزمنية](https://marwanmaher0.github.io/vue-rtl-kit/ar/guide/format-duration): تنسيق مدة الفيديو وموعد التوصيل والمؤقّت بصيغ الجمع العربية وأشكال الأرقام.
 
 ## Source
 

@@ -245,6 +245,38 @@ truncateText('الإصدار v1.2.3 متاح الآن', 12, { unit: 'word', isol
 truncateText('👨‍👩‍👧‍👦🇪🇬🎉🎉', 3) // '👨‍👩‍👧‍👦🇪🇬…'
 ```
 
+## المدد الزمنية {#format-duration}
+
+تنسيق نقي للمدد الزمنية دون أي استيراد من Vue، مبني على `Intl.DurationFormat`، فتأتي صيغ الجمع وواو العطف والأرقام من CLDR لا من سلسلة مضمومة يدويًا: تكتب العربية المثنى دون رقم (`ساعتان`)، وتستخدم الجمع من 3 إلى 10 (`3 ساعات`) والمفرد من 11 فما فوق (`11 ساعة`). راجع [تنسيق المدد الزمنية](/ar/guide/format-duration) للاطلاع على الدليل الكامل.
+
+| التصدير | التوقيع | الوصف |
+| --- | --- | --- |
+| `formatDuration` | `(duration: DurationInput \| number, options?: FormatDurationOptions) => string` | تنسيق كائن من الوحدات، أو عدد من الميلي ثانية، بكلمات اللغة `locale` وصيغ جمعها وأرقامها (الافتراضي `'en'`). قيمة `style` هي `'long'` (الافتراضي) أو `'short'` أو `'narrow'`، أو `'digital'` لصيغة `h:mm:ss`. يُكتب كائن الأعداد الصحيحة كما هو؛ أما العدد، والكائن ذو الحقول الكسرية أو المختلفة الإشارة، وكل استدعاء فيه `largestUnit` أو `smallestUnit` أو `maxUnits` فيُوازَن أولًا. وعند غياب `Intl.DurationFormat` تُنسَّق كل وحدة بنمط الوحدات في `Intl.NumberFormat` ثم تُربط عبر `Intl.ListFormat`. ترمي المدخلات غير الصالحة `TypeError` في التطوير وتعيد `''` في الإنتاج. |
+
+```ts
+import { formatDuration } from 'vue-rtl-kit'
+
+formatDuration({ hours: 2, minutes: 3 }, { locale: 'ar', numberingSystem: 'latn' }) // 'ساعتان و3 دقائق'
+formatDuration({ hours: 11, minutes: 2 }, { locale: 'ar-EG', numberingSystem: 'arab' }) // '١١ ساعة ودقيقتان'
+formatDuration(3_723_000, { locale: 'ar-EG', numberingSystem: 'arab', style: 'digital' }) // '١:٠٢:٠٣'
+formatDuration(5_531_000, { locale: 'ar', numberingSystem: 'latn', maxUnits: 1 }) // 'ساعتان'
+formatDuration({ minutes: 90 }, { locale: 'ar', numberingSystem: 'latn', largestUnit: 'hours' }) // 'ساعة و30 دقيقة'
+formatDuration(0, { locale: 'ar-EG', numberingSystem: 'arab' }) // '٠ ثانية'
+```
+
+### سلوك المدد الزمنية
+
+| الحالة | النتيجة |
+| --- | --- |
+| الموازنة | يُقسَّم المجموع من `largestUnit` (الافتراضي `'days'` مع العدد، وأكبر حقل غير صفري مع الكائن) نزولًا إلى `smallestUnit` (الافتراضي `'milliseconds'`). ولا تدخل الأسابيع إلا إذا تضمّن الكائن `weeks` أو سمّاها أحد الخيارات. ويُحسب الشهر 30.4375 يومًا والسنة 365.25 يومًا. |
+| القيم الكسرية | تُرحَّل إلى الوحدات الأصغر؛ وما يتبقى دون `smallestUnit` يُقرَّب إلى الأقرب والنصف بعيدًا عن الصفر، والوحدة التي يبلغ تقريبها وحدة كاملة مما فوقها تُرحَّل إليها. |
+| القيم السالبة | إشارة واحدة في بداية المدة كلها، تُكتب بعلامة السالب الخاصة باللغة مع محرف الاتجاه المصاحب لها؛ والحقول المختلفة الإشارة تُجمع أولًا. |
+| الصفر | تُحذف الوحدات الصفرية. والمدة التي تساوي صفرًا أو تُقرَّب إليه تُكتب صفرًا من `smallestUnit`؛ وإلا فمن أصغر حقل في الكائن، أو صفرًا من الثواني مع العدد ومع `{}`. ولا يحمل الصفر إشارة أبدًا. |
+| `maxUnits` | يُبقي هذا العدد من الوحدات، محسوبًا من أول وحدة غير صفرية، ويقرّب الأخيرة؛ وتتبع صيغة الجمع العدد بعد التقريب. |
+| `style: 'digital'` | صيغة `h:mm:ss` بأرقام اللغة: تظهر الساعات دائمًا، وتُضم الوحدات الأكبر إلى الساعات، وتُقرَّب الميلي ثانية إلى الثانية. ولا تُستخدم `largestUnit` و`smallestUnit` و`maxUnits`. |
+| البديل | عند غياب `Intl.DurationFormat` (Node.js قبل 23، وChrome قبل 129، وFirefox قبل 136، وSafari قبل 16.4) تعيد الأنماط `'long'` و`'short'` و`'narrow'` السلاسل نفسها؛ أما `'digital'` فيفصل دائمًا بالنقطتين `:`، في حين يستخدم `Intl.DurationFormat` فاصل اللغة. |
+| المدخلات غير الصالحة | مدة ليست عددًا منتهيًا ولا كائنًا عاديًا من أعداد منتهية، أو قيمة غير معروفة لوحدة أو لـ `style` أو `largestUnit` أو `smallestUnit`، أو `largestUnit` أصغر من `smallestUnit`، أو `maxUnits` ليس عددًا صحيحًا لا يقل عن 1، أو `locale` ليس سلسلة نصية: `TypeError` في التطوير و`''` في الإنتاج. أما وسم اللغة غير السليم فيعود إلى رمز اللغة فيه ثم إلى `'en'`. |
+
 ## التنسيق
 
 | التصدير | التوقيع | الوصف |
@@ -571,6 +603,23 @@ interface TruncateOptions {
   unit?: 'grapheme' | 'word' // الافتراضي 'grapheme'
   locale?: string // لغة BCP 47 تُمرَّر إلى Intl.Segmenter؛ يعود الوسم غير الصالح إلى الافتراضي لبيئة التشغيل
   isolate?: boolean // الافتراضي false؛ تغليف النتيجة بـ FSI ... PDI
+}
+```
+
+## أنواع المدد الزمنية
+
+```ts
+type DurationUnit = 'years' | 'months' | 'weeks' | 'days' | 'hours' | 'minutes' | 'seconds' | 'milliseconds'
+type DurationInput = Partial<Record<DurationUnit, number>>
+type DurationStyle = 'long' | 'short' | 'narrow' | 'digital'
+
+interface FormatDurationOptions {
+  locale?: string // الافتراضي 'en'؛ يعود الوسم غير السليم إلى رمز اللغة فيه ثم إلى 'en'
+  style?: DurationStyle // الافتراضي 'long'
+  numberingSystem?: string // الافتراضي: أرقام اللغة نفسها؛ والنظام غير المعروف يعود إلى 'latn'
+  largestUnit?: DurationUnit // الافتراضي 'days' مع العدد، وأكبر حقل غير صفري مع الكائن
+  smallestUnit?: DurationUnit // الافتراضي 'milliseconds'؛ وهي أيضًا الوحدة التي تُكتب بها المدة الصفرية
+  maxUnits?: number // عدد صحيح لا يقل عن 1
 }
 ```
 

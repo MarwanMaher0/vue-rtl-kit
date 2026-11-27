@@ -68,6 +68,10 @@ const metadata: Record<string, { en: [string, string], ar: [string, string] }> =
     en: ['truncateText: grapheme-safe truncation', 'Shorten Arabic, Persian, Hebrew, and emoji text by grapheme clusters or words without splitting tashkeel, ZWJ sequences, or flags, and keep the ellipsis at the logical end.'],
     ar: ['الاختصار الآمن للنص عبر truncateText', 'اختصر النصوص العربية والفارسية والعبرية والرموز التعبيرية بعناقيد المحارف أو الكلمات دون فصل التشكيل أو متتاليات ZWJ أو الأعلام، وأبقِ علامة الحذف في النهاية المنطقية.'],
   },
+  'guide/format-duration': {
+    en: ['formatDuration: Arabic plural forms and digits', 'Format video lengths, delivery estimates, and timers with the dual, 3-10, and 11+ plural forms and Arabic-Indic or Western digits, with a fallback when Intl.DurationFormat is missing.'],
+    ar: ['تنسيق المدد الزمنية عبر formatDuration', 'نسّق مدة الفيديو وموعد التوصيل والمؤقّت بصيغ المثنى والجمع الصحيحة وبالأرقام العربية الهندية أو الغربية، مع بديل يعمل عند غياب Intl.DurationFormat.'],
+  },
   'guide/rtl-provider': {
     en: ['RtlProvider: nested direction and locale scopes', 'Create independent RTL or LTR subtrees with RtlProvider, local direction controls, locale inheritance, DOM isolation, and renderless scope options.'],
     ar: ['نطاقات اتجاه ولغة متداخلة عبر RtlProvider', 'أنشئ أجزاء RTL أو LTR مستقلة باستخدام RtlProvider مع تحكم محلي بالاتجاه ووراثة اللغة وعزل DOM وخيار العمل دون عنصر حاوٍ.'],

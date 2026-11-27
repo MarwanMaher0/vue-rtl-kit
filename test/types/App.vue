@@ -3,6 +3,7 @@ import { ref } from 'vue'
 import {
   compareText,
   formatDateRange,
+  formatDuration,
   formatNumberRange,
   getScrollInline,
   getScrollInlineMax,
@@ -22,6 +23,10 @@ import {
 } from 'vue-rtl-kit'
 import type {
   CompareOptions,
+  DurationInput,
+  DurationStyle,
+  DurationUnit,
+  FormatDurationOptions,
   LogicalPlacement,
   ParseNumberOptions,
   PhysicalPlacement,
@@ -51,6 +56,30 @@ const _truncated: string = truncateText('مُحَمَّدٌ عَبْدُ الل�
 truncateText(123, 5)
 // @ts-expect-error unit is 'grapheme' | 'word'
 truncateText('نص', 5, { unit: 'char' })
+const _durationUnit: DurationUnit = 'hours'
+const _durationStyle: DurationStyle = 'digital'
+const _durationInput: DurationInput = { years: 1, months: 2, weeks: 3, days: 4, hours: 5, minutes: 6, seconds: 7, milliseconds: 8 }
+const _durationOptions: FormatDurationOptions = {
+  locale: 'ar-EG',
+  style: 'short',
+  numberingSystem: 'arab',
+  largestUnit: _durationUnit,
+  smallestUnit: 'seconds',
+  maxUnits: 2,
+}
+const _duration: string = formatDuration(_durationInput, _durationOptions)
+const _videoLength: string = formatDuration(3_723_000, { locale: 'ar', style: _durationStyle })
+const _emptyDuration: string = formatDuration({})
+// @ts-expect-error a duration is a number of milliseconds or an object of units, not a string
+formatDuration('90')
+// @ts-expect-error units are plural: hours, not hour
+formatDuration({ hour: 1 })
+// @ts-expect-error style is 'long' | 'short' | 'narrow' | 'digital'
+formatDuration(1000, { style: 'medium' })
+// @ts-expect-error largestUnit is a DurationUnit
+formatDuration(1000, { largestUnit: 'hour' })
+// @ts-expect-error maxUnits is a number
+formatDuration(1000, { maxUnits: '2' })
 const _parsed: number = parseNumber('١٬٢٣٤٫٥', _parseOptions)
 const _boundParsed: number = useFormat().value.parseNumber('1,234.5')
 const _dateRange: string = formatDateRange('2024-03-03', new Date('2024-03-05'), { locale: 'ar-EG', dateStyle: 'long' })

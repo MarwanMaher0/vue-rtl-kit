@@ -245,6 +245,38 @@ truncateText('الإصدار v1.2.3 متاح الآن', 12, { unit: 'word', isol
 truncateText('👨‍👩‍👧‍👦🇪🇬🎉🎉', 3) // '👨‍👩‍👧‍👦🇪🇬…'
 ```
 
+## Durations {#format-duration}
+
+Pure, Vue-free duration formatting over `Intl.DurationFormat`, so plural forms, the conjunction and the digits come from CLDR instead of a hand-joined string: Arabic writes the dual without a number (`ساعتان`), uses one plural for 3 to 10 (`3 ساعات`) and the singular from 11 up (`11 ساعة`). See [Formatting durations](/guide/format-duration) for the full guide.
+
+| Export | Signature | Description |
+| --- | --- | --- |
+| `formatDuration` | `(duration: DurationInput \| number, options?: FormatDurationOptions) => string` | Format an object of units, or a number of milliseconds, in the words, plural forms and digits of `locale` (default `'en'`). `style` is `'long'` (default), `'short'`, `'narrow'`, or `'digital'` for `h:mm:ss`. An object of whole numbers is written as given; a number, an object with fractional or mixed-sign fields, or any call with `largestUnit`, `smallestUnit` or `maxUnits` is balanced first. Without `Intl.DurationFormat` each unit is formatted with `Intl.NumberFormat` unit style and joined with `Intl.ListFormat`. Invalid input throws `TypeError` in development and returns `''` in production. |
+
+```ts
+import { formatDuration } from 'vue-rtl-kit'
+
+formatDuration({ hours: 2, minutes: 3 }, { locale: 'ar', numberingSystem: 'latn' }) // 'ساعتان و3 دقائق'
+formatDuration({ hours: 11, minutes: 2 }, { locale: 'ar-EG', numberingSystem: 'arab' }) // '١١ ساعة ودقيقتان'
+formatDuration(3_723_000, { locale: 'ar-EG', numberingSystem: 'arab', style: 'digital' }) // '١:٠٢:٠٣'
+formatDuration(5_531_000, { locale: 'ar', numberingSystem: 'latn', maxUnits: 1 }) // 'ساعتان'
+formatDuration({ minutes: 90 }, { locale: 'ar', numberingSystem: 'latn', largestUnit: 'hours' }) // 'ساعة و30 دقيقة'
+formatDuration(0, { locale: 'ar-EG', numberingSystem: 'arab' }) // '٠ ثانية'
+```
+
+### Duration behavior
+
+| Case | Result |
+| --- | --- |
+| Balancing | Splits the total from `largestUnit` (default `'days'` for a number, the largest non-zero field for an object) down to `smallestUnit` (default `'milliseconds'`). Weeks take part only when the object has `weeks` or an option names them. A month counts as 30.4375 days and a year as 365.25 days. |
+| Fractional values | Carried into the smaller units; what is left below `smallestUnit` is rounded half away from zero, and a unit that rounds up to a full unit of the one above is carried into it. |
+| Negative values | One sign in front of the whole duration, written as the locale's minus sign with its bidi mark; fields with different signs are added up first. |
+| Zero | Units that are zero are left out. A duration that is zero, or rounds to zero, is written as zero of `smallestUnit`; otherwise of the smallest field the object has, or zero seconds for a number and for `{}`. A zero never carries a sign. |
+| `maxUnits` | Keeps that many units, counted from the first non-zero one, and rounds the last; the plural form follows the rounded number. |
+| `style: 'digital'` | `h:mm:ss` in the digits of the locale: hours always shown, larger units folded into the hours, milliseconds rounded to the second. `largestUnit`, `smallestUnit` and `maxUnits` are not used. |
+| Fallback | Without `Intl.DurationFormat` (Node.js before 23, Chrome before 129, Firefox before 136, Safari before 16.4), `'long'`, `'short'` and `'narrow'` return the same strings; `'digital'` always separates with `:`, where `Intl.DurationFormat` uses the separator of the locale. |
+| Invalid input | A duration that is not a finite number or a plain object of finite numbers, an unknown unit, style, `largestUnit` or `smallestUnit`, a `largestUnit` smaller than `smallestUnit`, a `maxUnits` that is not an integer of at least 1, or a `locale` that is not a string: `TypeError` in development, `''` in production. A malformed locale tag falls back to its language subtag, then to `'en'`. |
+
 ## Formatting
 
 | Export | Signature | Description |
@@ -571,6 +603,23 @@ interface TruncateOptions {
   unit?: 'grapheme' | 'word' // default 'grapheme'
   locale?: string // BCP 47 locale for Intl.Segmenter; invalid tags fall back to the runtime default
   isolate?: boolean // default false; wrap the result in FSI ... PDI
+}
+```
+
+## Duration types
+
+```ts
+type DurationUnit = 'years' | 'months' | 'weeks' | 'days' | 'hours' | 'minutes' | 'seconds' | 'milliseconds'
+type DurationInput = Partial<Record<DurationUnit, number>>
+type DurationStyle = 'long' | 'short' | 'narrow' | 'digital'
+
+interface FormatDurationOptions {
+  locale?: string // default 'en'; a malformed tag falls back to its language, then to 'en'
+  style?: DurationStyle // default 'long'
+  numberingSystem?: string // default: the digits of the locale; an unknown one falls back to 'latn'
+  largestUnit?: DurationUnit // default 'days' for a number, the largest non-zero field for an object
+  smallestUnit?: DurationUnit // default 'milliseconds'; also the unit a zero duration is written in
+  maxUnits?: number // an integer of at least 1
 }
 ```
 
