@@ -102,8 +102,8 @@ budgets are set to their measured byte counts plus fixed `+256 B` (`0.25 kB`) ra
 
 | Entry point | Artifact | Raw (current / budget) | Gzip (current / budget) |
 | --- | --- | --- | --- |
-| `vue-rtl-kit` (ESM) | `dist/vue-rtl-kit.js` | 43.29 kB / ≤ 43.54 kB | 13.68 kB / ≤ 13.78 kB |
-| `vue-rtl-kit` (CJS) | `dist/vue-rtl-kit.cjs` | 31.63 kB / ≤ 31.88 kB | 11.63 kB / ≤ 11.73 kB |
+| `vue-rtl-kit` (ESM) | `dist/vue-rtl-kit.js` | 45.37 kB / ≤ 45.62 kB | 14.30 kB / ≤ 14.40 kB |
+| `vue-rtl-kit` (CJS) | `dist/vue-rtl-kit.cjs` | 33.14 kB / ≤ 33.39 kB | 12.16 kB / ≤ 12.26 kB |
 | `vue-rtl-kit/nuxt` | `dist/nuxt/module.js` | 3.08 kB / ≤ 3.25 kB | 1.12 kB / ≤ 1.50 kB |
 | `vue-rtl-kit/nuxt` (runtime plugin) | `dist/nuxt/runtime/plugin.js` | 2.77 kB / ≤ 3.00 kB | 1.02 kB / ≤ 1.20 kB |
 | `vue-rtl-kit/styles.css` | `dist/styles.css` | 7.10 kB / ≤ 8.00 kB | 1.91 kB / ≤ 2.50 kB |
