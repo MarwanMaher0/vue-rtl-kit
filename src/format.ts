@@ -8,7 +8,7 @@
  * financial figures, IDs, version numbers - and `numberingSystem: 'latn'` is
  * the supported way to ask for that, rather than transliterating by hand.
  */
-import { isolate } from './bidi'
+import { FSI, isolate, PDI } from './bidi'
 import type { compareText, sortByLocale } from './collate'
 import type { Direction, DirectionOrAuto, NumberingSystem } from './types'
 
@@ -284,6 +284,78 @@ export function formatCurrency(
 }
 
 /**
+ * Reject an invalid range endpoint: a `TypeError` in development, an empty
+ * string in production - the same split as the collation-key check.
+ */
+function invalidRange(message: string): string {
+  try {
+    // Keep NODE_ENV available to Node and to the consuming bundler.
+    if (process.env.NODE_ENV === 'production') return ''
+  }
+  catch {
+    // A standalone browser build has no process global.
+    return ''
+  }
+  throw new TypeError(`[vue-rtl-kit] ${message}`)
+}
+
+/**
+ * The documented fallback for runtimes without `Intl` `formatRange`: format
+ * both ends and join them with the locale's range separator, each end wrapped
+ * in a first-strong isolate (FSI ... PDI) so the endpoints keep their order in
+ * an RTL paragraph. CLDR separates ranges with an en dash - spaced between two
+ * full dates, unspaced between numbers - and Persian dates read '۱ تا ۵'.
+ */
+function joinRangeFallback(startText: string, endText: string, locale: string, kind: 'date' | 'number'): string {
+  const language = locale.split(/[-_]/)[0]!.toLowerCase()
+  const separator = kind === 'date' ? (language === 'fa' ? ' تا ' : ' \u2013 ') : '\u2013'
+  return `${FSI}${startText}${PDI}${separator}${FSI}${endText}${PDI}`
+}
+
+/**
+ * Format a range between two numbers with `Intl.NumberFormat.prototype.formatRange`,
+ * so the locale's range separator is used and shared parts are collapsed the
+ * way the locale's range pattern says - Arabic writes one currency symbol for
+ * the whole range instead of repeating it per endpoint.
+ *
+ * Takes the same options as {@link formatNumber} (currency, unit, compact, …)
+ * and shares its formatter cache. Both ends accept `number` or `bigint`.
+ * A reversed range (`start` greater than `end`) is formatted as given, like
+ * `Intl`. A non-finite end throws a `TypeError` in development and returns an
+ * empty string in production.
+ *
+ * On runtimes without `formatRange`, both ends are formatted and joined with
+ * the locale's range separator (an en dash), each end wrapped in a
+ * first-strong isolate (FSI ... PDI) so the endpoints cannot swap places in
+ * an RTL paragraph.
+ *
+ * @example
+ * formatNumberRange(100, 250, { locale: 'en' }) // '100–250'
+ * formatNumberRange(5, 12, { locale: 'en', style: 'unit', unit: 'kilometer' }) // '5–12 km'
+ * formatNumberRange(10n, 25n, { locale: 'en' }) // '10–25'
+ */
+export function formatNumberRange(
+  start: number | bigint,
+  end: number | bigint,
+  options: NumberFormatOptions = {},
+): string {
+  if (!(typeof start === 'bigint' || Number.isFinite(start)) || !(typeof end === 'bigint' || Number.isFinite(end)))
+    return invalidRange('formatNumberRange() needs two finite numbers')
+  const { locale = 'en', numberingSystem, wrap, intl } = split(options)
+  const tag = withNumberingSystem(locale, numberingSystem)
+  const key = cacheKey(tag, intl)
+  let formatter = numberFormatters.get(key)
+  if (!formatter) {
+    formatter = makeFormatter(locale, numberingSystem, intl, Intl.NumberFormat)
+    numberFormatters.set(key, formatter)
+  }
+  const range = typeof formatter.formatRange === 'function'
+    ? formatter.formatRange(start, end)
+    : joinRangeFallback(formatter.format(start), formatter.format(end), formatter.resolvedOptions().locale, 'number')
+  return maybeIsolate(range, wrap)
+}
+
+/**
  * Format a date.
  *
  * Note the `calendar` option: `'islamic-umalqura'` and `'persian'` are the
@@ -309,6 +381,51 @@ export function formatDate(
     dateFormatters.set(key, formatter)
   }
   return maybeIsolate(formatter.format(date), wrap)
+}
+
+/**
+ * Format a range between two dates with `Intl.DateTimeFormat.prototype.formatRange`,
+ * so shared parts are not repeated and the separator is the locale's own:
+ * "3–5 March 2024" in one month, not "3 March 2024 - 5 March 2024".
+ *
+ * Both ends accept a `Date`, a timestamp or an ISO string, and the options are
+ * the same as {@link formatDate} - including `calendar` and `timeZone`. The
+ * formatter cache is shared with `formatDate`. A reversed range (`start` after
+ * `end`) is formatted as given, like `Intl`. An invalid date throws a
+ * `TypeError` in development and returns an empty string in production.
+ *
+ * On runtimes without `formatRange`, both ends are formatted and joined with
+ * the locale's range separator (a spaced en dash; Persian uses ' تا '), each
+ * end wrapped in a first-strong isolate (FSI ... PDI) so the endpoints cannot
+ * swap places in an RTL paragraph.
+ *
+ * @example
+ * formatDateRange('2024-03-03', '2024-03-05', { locale: 'en', dateStyle: 'long', timeZone: 'UTC' })
+ * // 'March 3 – 5, 2024'
+ * formatDateRange('2024-03-03', '2024-03-05', { locale: 'ar-EG', dateStyle: 'long', timeZone: 'UTC' })
+ * // '٣–٥ مارس ٢٠٢٤'
+ */
+export function formatDateRange(
+  start: Date | number | string,
+  end: Date | number | string,
+  options: DateFormatOptions = {},
+): string {
+  const startDate = new Date(start as string | number)
+  const endDate = new Date(end as string | number)
+  if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime()))
+    return invalidRange('formatDateRange() needs two valid dates')
+  const { locale = 'en', numberingSystem, wrap, intl } = split(options)
+  const tag = withNumberingSystem(locale, numberingSystem)
+  const key = cacheKey(tag, intl)
+  let formatter = dateFormatters.get(key)
+  if (!formatter) {
+    formatter = makeFormatter(locale, numberingSystem, intl, Intl.DateTimeFormat)
+    dateFormatters.set(key, formatter)
+  }
+  const range = typeof formatter.formatRange === 'function'
+    ? formatter.formatRange(startDate, endDate)
+    : joinRangeFallback(formatter.format(startDate), formatter.format(endDate), formatter.resolvedOptions().locale, 'date')
+  return maybeIsolate(range, wrap)
 }
 
 /**
@@ -622,7 +739,11 @@ export interface BoundFormatters {
   dir: Direction
   formatNumber: (value: number, options?: NumberFormatOptions) => string
   formatCurrency: (value: number, currency: string, options?: NumberFormatOptions) => string
+  /** `formatNumberRange()` for this locale and numbering system: joins two numbers with the locale's range separator without repeating shared parts. */
+  formatNumberRange: (start: number | bigint, end: number | bigint, options?: NumberFormatOptions) => string
   formatDate: (value: Date | number | string, options?: DateFormatOptions) => string
+  /** `formatDateRange()` for this locale and numbering system: collapses shared date parts through `Intl` `formatRange`. */
+  formatDateRange: (start: Date | number | string, end: Date | number | string, options?: DateFormatOptions) => string
   formatList: (items: Iterable<string>, options?: ListFormatOptions) => string
   formatRelativeTime: (
     value: number,

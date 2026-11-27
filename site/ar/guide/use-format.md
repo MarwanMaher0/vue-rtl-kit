@@ -1,6 +1,6 @@
 # useFormat
 
-تربط `useFormat()` منسّقات الأرقام والعملات والتواريخ والقوائم والأزمنة النسبية وصيغ الجمع، ومساعد أسماء العرض `formatDisplayName()`، ومحلّل الأرقام `parseNumber()`، بلغة النطاق الحالي واتجاهه. كما تطبّق إعداد `numberingSystem` المضبوط على نسخة `createRtl()` الجذرية. ويتبع التابعان `compareText()` و`sortByLocale()` لغة النطاق عند المقارنة والفرز.
+تربط `useFormat()` منسّقات الأرقام والعملات والتواريخ والقوائم والأزمنة النسبية وصيغ الجمع، ومنسّقي النطاقات `formatDateRange()` و`formatNumberRange()`، ومساعد أسماء العرض `formatDisplayName()`، ومحلّل الأرقام `parseNumber()`، بلغة النطاق الحالي واتجاهه. كما تطبّق إعداد `numberingSystem` المضبوط على نسخة `createRtl()` الجذرية. ويتبع التابعان `compareText()` و`sortByLocale()` لغة النطاق عند المقارنة والفرز.
 
 ```ts
 function useFormat(): ComputedRef<BoundFormatters>
@@ -40,7 +40,9 @@ console.log(format.value.formatNumber(1234.5))
 | `dir` | `Direction` |
 | `formatNumber` | `(value: number, options?: NumberFormatOptions) => string` |
 | `formatCurrency` | `(value: number, currency: string, options?: NumberFormatOptions) => string` |
+| `formatNumberRange` | `(start: number \| bigint, end: number \| bigint, options?: NumberFormatOptions) => string` |
 | `formatDate` | `(value: Date \| number \| string, options?: DateFormatOptions) => string` |
+| `formatDateRange` | `(start: Date \| number \| string, end: Date \| number \| string, options?: DateFormatOptions) => string` |
 | `formatList` | `(items: Iterable<string>, options?: ListFormatOptions) => string` |
 | `formatRelativeTime` | `(value: number, unit: Intl.RelativeTimeFormatUnit, options?: RelativeTimeFormatOptions) => string` |
 | `formatPlural` | `(count: number, forms: PluralForms, options?: FormatPluralOptions) => string` |
@@ -82,6 +84,48 @@ formatRelativeTime(1, 'day', { locale: 'en', numeric: 'auto' }) // 'tomorrow'
 // Each item gets its own first-strong isolate, then the whole list is isolated.
 format.value.formatList(['Ahmed Ali', 'سارة'], { isolate: 'rtl' })
 ```
+
+## نطاقات التواريخ والأرقام {#ranges}
+
+تغلّف `formatDateRange()` و`formatNumberRange()` الدالتين `Intl.DateTimeFormat.prototype.formatRange` و`Intl.NumberFormat.prototype.formatRange`. فضمّ قيمتين منسّقتين بشرطة — وهي الطريقة المختصرة الشائعة في واجهات الحجز والجداول الزمنية والأسعار — يكرّر الشهر أو العملة المشتركة، ويستخدم فاصل نطاقات خاطئًا بالنسبة للغة، ويكسر الترتيب البصري في RTL: فالشرطة العادية بين الأرقام الغربية تُبقي النطاق كله مقطعًا لاتينيًا واحدًا، فيظهر طرف البداية على اليسار داخل بطاقة RTL. أما `formatRange` فتطبّق نمط النطاقات الخاص باللغة نفسه: تُدمج الأجزاء المشتركة، ويُحسم الفاصل (شرطة en، أو `تا` في الفارسية) حسمًا صحيحًا داخل فقرة RTL، فيُقرأ طرف البداية أولًا من اليمين.
+
+```ts
+function formatDateRange(
+  start: Date | number | string,
+  end: Date | number | string,
+  options?: DateFormatOptions,
+): string
+
+function formatNumberRange(
+  start: number | bigint,
+  end: number | bigint,
+  options?: NumberFormatOptions,
+): string
+```
+
+تقبل `formatDateRange()` كائن `Date` أو طابعًا زمنيًا أو سلسلة ISO لكل طرف، وتقبل الخيارات نفسها الخاصة بـ`formatDate()` — بما فيها `calendar` و`timeZone`. وتقبل `formatNumberRange()` أطرافًا من النوع `number` أو `bigint`، وتقبل الخيارات نفسها الخاصة بـ`formatNumber()` (العملات والوحدات والصيغة المضغوطة). وتتشارك الدالتان ذاكرتي منسّقات `formatDate` / `formatNumber` الموجودتين، فاستدعاء النطاق يعيد استخدام نسخة `Intl` نفسها ولا يضيف مفتاحًا جديدًا إلى `formatterCacheStats()`.
+
+```ts
+formatDateRange('2024-03-03', '2024-03-05', { locale: 'ar-EG', dateStyle: 'long', timeZone: 'UTC' }) // '٣–٥ مارس ٢٠٢٤' — one month, one year
+formatDateRange('2024-03-03', '2024-03-05', { locale: 'en', dateStyle: 'long', timeZone: 'UTC' }) // 'March 3 – 5, 2024'
+formatDateRange('2024-03-03', '2024-03-05', { locale: 'fa', dateStyle: 'long', timeZone: 'UTC' }) // '۱۳ تا ۱۵ اسفند ۱۴۰۲'
+formatDateRange('2023-12-30', '2024-01-02', { locale: 'ar-EG', dateStyle: 'long', timeZone: 'UTC' }) // '٣٠ ديسمبر ٢٠٢٣ – ٢ يناير ٢٠٢٤'
+
+formatNumberRange(100, 250, { locale: 'ar-EG', numberingSystem: 'latn' }) // '100–250'
+formatNumberRange(100, 250, { locale: 'ar-EG', numberingSystem: 'latn', style: 'currency', currency: 'EGP' }) // one ج.م. symbol for the whole range
+formatNumberRange(5, 12, { locale: 'en', style: 'unit', unit: 'kilometer' }) // '5–12 km'
+formatNumberRange(1200, 3500, { locale: 'en', notation: 'compact' }) // '1.2K – 3.5K'
+formatNumberRange(10n, 25n, { locale: 'en' }) // '10–25'
+
+// Bound to the scope locale and the configured numbering system.
+format.value.formatDateRange(checkIn, checkOut, { dateStyle: 'long' })
+format.value.formatNumberRange(minPrice, maxPrice, { style: 'currency', currency: 'EGP' })
+```
+
+- **النطاقات المعكوسة**: حين تكون `start` أكبر من `end` يُنسَّق النطاق كما هو، تمامًا مثل `Intl` — دون رمي استثناء ودون تبديل صامت.
+- **الطرفان المتساويان**: تدمجهما `Intl` — فنطاق اليوم الواحد يطبع تاريخًا واحدًا، والعددان المتساويان يستخدمان نمط التقريب الخاص باللغة (مثل `~100` في الإنجليزية).
+- **المدخلات غير الصالحة**: التاريخ غير الصالح أو العدد غير المنتهي (`NaN` أو `Infinity`) يرمي `TypeError` في التطوير ويعيد سلسلة فارغة في الإنتاج.
+- **البديل**: في بيئات التشغيل بلا `formatRange`، يُنسَّق الطرفان ويُضمّان بفاصل النطاقات الخاص باللغة — شرطة en محاطة بمسافتين للتواريخ (` تا ` في الفارسية)، وشرطة en بلا مسافات للأرقام — ويُلفّ كل طرف في معزل يعتمد أول حرف قوي (FSI ... PDI) كي يحافظ الطرفان على ترتيب القراءة داخل فقرة RTL.
 
 ## صيغ الجمع {#plural-forms}
 
@@ -278,7 +322,7 @@ format.value.compareText('طلب ٢', 'طلب ١٠', { locale: ['ar-EG', 'ar', '
 
 ## معالجة المدخلات غير الصالحة
 
-تُحوَّل الشرطات السفلية في وسوم اللغة إلى شرطات، لذا تُنسَّق `ar_EG` كما لو كانت `ar-EG`. إذا كان الوسم غير صالح، يحاول المنسّق استخدام وسم اللغة الفرعي ثم يعود إلى `en`. يُدرج نظام الأرقام قبل قسم الاستخدام الخاص `-x-`، لذا ينتج `en-x-foo` مع `numberingSystem: 'arab'` أرقامًا عربية، بينما تعود قيم `numberingSystem` غير المعروفة أو الفارغة بأمان إلى `'latn'`. وتعيد `formatDate()` سلسلة فارغة للتواريخ غير الصالحة بدلًا من رمي استثناء، وكذلك تفعل `formatRelativeTime()` مع القيم غير المنتهية مثل `NaN` و`Infinity`. وتستخدم `formatPlural()` بدائل اللغة نفسها، وتعيد سلسلة فارغة حين تكون `forms.other` فارغة أو حين لا تتوفر `Intl.PluralRules`. وتستخدم `formatDisplayName()` بدائل اللغة نفسها، وتعيد الرمز نفسه (أو `''` مع `fallback: 'none'`) للرموز غير المعروفة أو غير الصالحة وفي بيئات التشغيل بلا `Intl.DisplayNames`. تستخدم `parseNumber()` البدائل نفسها للغة ونظام الأرقام، وتعيد `NaN` للنص الذي لا تستطيع قراءته.
+تُحوَّل الشرطات السفلية في وسوم اللغة إلى شرطات، لذا تُنسَّق `ar_EG` كما لو كانت `ar-EG`. إذا كان الوسم غير صالح، يحاول المنسّق استخدام وسم اللغة الفرعي ثم يعود إلى `en`. يُدرج نظام الأرقام قبل قسم الاستخدام الخاص `-x-`، لذا ينتج `en-x-foo` مع `numberingSystem: 'arab'` أرقامًا عربية، بينما تعود قيم `numberingSystem` غير المعروفة أو الفارغة بأمان إلى `'latn'`. وتعيد `formatDate()` سلسلة فارغة للتواريخ غير الصالحة بدلًا من رمي استثناء، وكذلك تفعل `formatRelativeTime()` مع القيم غير المنتهية مثل `NaN` و`Infinity`. وتستخدم `formatDateRange()` و`formatNumberRange()` بدائل اللغة نفسها، لكنهما ترفضان التاريخ غير الصالح أو العدد غير المنتهي برمي `TypeError` في التطوير وسلسلة فارغة في الإنتاج. وتستخدم `formatPlural()` بدائل اللغة نفسها، وتعيد سلسلة فارغة حين تكون `forms.other` فارغة أو حين لا تتوفر `Intl.PluralRules`. وتستخدم `formatDisplayName()` بدائل اللغة نفسها، وتعيد الرمز نفسه (أو `''` مع `fallback: 'none'`) للرموز غير المعروفة أو غير الصالحة وفي بيئات التشغيل بلا `Intl.DisplayNames`. تستخدم `parseNumber()` البدائل نفسها للغة ونظام الأرقام، وتعيد `NaN` للنص الذي لا تستطيع قراءته.
 
 ```ts
 formatNumber(12, { locale: 'ar_EG' }) // '١٢'
@@ -301,9 +345,11 @@ parseNumber('not a number') // NaN
 import {
   formatCurrency,
   formatDate,
+  formatDateRange,
   formatDisplayName,
   formatList,
   formatNumber,
+  formatNumberRange,
   formatPlural,
   formatRelativeTime,
   parseNumber,
@@ -314,6 +360,8 @@ import {
 formatNumber(1234.5, { locale: 'ar-EG', numberingSystem: 'latn' })
 formatCurrency(2500, 'EGP', { locale: 'ar-EG' })
 formatDate('2024-05-12', { locale: 'ar-SA', calendar: 'islamic-umalqura' })
+formatDateRange('2024-03-03', '2024-03-05', { locale: 'ar-EG', dateStyle: 'long', timeZone: 'UTC' })
+formatNumberRange(100, 250, { locale: 'ar-EG', style: 'currency', currency: 'EGP' })
 formatList(['PDF', 'CSV'], { locale: 'en', type: 'disjunction' })
 formatRelativeTime(2, 'hour', { locale: 'ar-EG' })
 formatPlural(2, { one: '{count} يوم', other: '{count} أيام' }, { locale: 'ar' })

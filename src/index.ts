@@ -84,9 +84,11 @@ export {
 export {
   formatCurrency,
   formatDate,
+  formatDateRange,
   formatDisplayName,
   formatList,
   formatNumber,
+  formatNumberRange,
   formatPlural,
   formatRelativeTime,
   parseNumber,

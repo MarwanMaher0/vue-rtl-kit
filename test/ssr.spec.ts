@@ -28,7 +28,7 @@ import {
 } from '../src/scroll'
 import { findSearchMatches, foldSearchText, matchesSearch } from '../src/search'
 import { truncateText } from '../src/truncate'
-import { formatPlural } from '../src/format'
+import { formatDateRange, formatNumberRange, formatPlural } from '../src/format'
 
 describe('SSR environment', () => {
   it('reports a server environment', () => {
@@ -359,6 +359,33 @@ describe('SSR environment', () => {
     )
     app.use(rtl)
     expect(await renderToString(app)).toBe('<p dir="rtl">11 ملفًا</p>')
+    rtl.dispose()
+  })
+
+  it('renders Arabic date and price ranges on the server with no window or document', async () => {
+    expect(typeof window).toBe('undefined')
+    expect(typeof document).toBe('undefined')
+
+    const dateOptions = { timeZone: 'UTC', year: 'numeric', month: 'long', day: 'numeric' } as const
+    expect(formatDateRange('2024-03-03', '2024-03-05', { ...dateOptions, locale: 'ar' })).toBe('3–5 مارس 2024')
+    expect(formatNumberRange(100, 250, { locale: 'ar', numberingSystem: 'latn' })).toBe('100–250')
+
+    const rtl = createRtl({ locales: { en: 'ltr', ar: 'rtl' }, defaultLocale: 'ar', numberingSystem: 'latn' })
+    const app = createSSRApp(
+      defineComponent({
+        setup() {
+          const { dir } = useDirection()
+          const fmt = useFormat()
+          return () => h('p', { dir: dir.value }, [
+            fmt.value.formatDateRange('2024-03-03', '2024-03-05', dateOptions),
+            ' | ',
+            fmt.value.formatNumberRange(100, 250, { style: 'currency', currency: 'EGP' }),
+          ].join(''))
+        },
+      }),
+    )
+    app.use(rtl)
+    expect(await renderToString(app)).toBe('<p dir="rtl">3–5 مارس 2024 | \u200F100.00–250.00\u00A0ج.م.\u200F</p>')
     rtl.dispose()
   })
 

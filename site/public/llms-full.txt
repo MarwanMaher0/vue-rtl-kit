@@ -393,7 +393,7 @@ Sources:
 
 ## Locale-aware formatting
 
-useFormat(): ComputedRef<BoundFormatters> binds number, currency, date, list, relative-time, and plural formatters, the formatDisplayName display-name helper, and the parseNumber number parser, to the current scope's locale and direction, applying the root instance's configured numberingSystem. The bound formatters follow setLocale(). In templates, use format.formatNumber(...); in script, use format.value.formatNumber(...).
+useFormat(): ComputedRef<BoundFormatters> binds number, currency, date, list, relative-time, and plural formatters, the formatDateRange and formatNumberRange range formatters, the formatDisplayName display-name helper, and the parseNumber number parser, to the current scope's locale and direction, applying the root instance's configured numberingSystem. The bound formatters follow setLocale(). In templates, use format.formatNumber(...); in script, use format.value.formatNumber(...).
 
 ```ts
 import { useFormat } from 'vue-rtl-kit'
@@ -408,6 +408,8 @@ const date = format.value.formatDate('2024-05-12', {
 })
 const reviewers = format.value.formatList(['Ahmed', 'Sara', 'Omar'], { isolate: true })
 const edited = format.value.formatRelativeTime(-3, 'day')
+const stay = format.value.formatDateRange('2024-03-03', '2024-03-05', { dateStyle: 'long' }) // '٣–٥ مارس ٢٠٢٤' when the scope locale is ar
+const priceRange = format.value.formatNumberRange(100, 250, { style: 'currency', currency: 'EGP' }) // one ج.م. symbol for the whole range
 const filesLabel = format.value.formatPlural(11, { many: '{count} ملفًا', other: '{count} ملف' }) // '11 ملفًا' when the scope locale is ar
 const languageName = format.value.formatDisplayName('ar', { type: 'language' }) // 'العربية' when the scope locale is ar
 const typed = format.value.parseNumber('١٬٢٣٤٫٥') // 1234.5 when the scope locale is ar-EG
@@ -419,6 +421,8 @@ Standalone functions:
 - formatNumber(value, options?): Intl.NumberFormat.
 - formatCurrency(value, currency, options?): ISO 4217 currency formatting.
 - formatDate(value, options?): Intl.DateTimeFormat; accepts Date, number, or string; returns an empty string for an invalid date.
+- formatDateRange(start, end, options?): Intl.DateTimeFormat.prototype.formatRange. Both ends accept Date, number, or ISO string; options are the same as formatDate (including calendar and timeZone). Shared parts collapse ('٣–٥ مارس ٢٠٢٤' in ar-EG, 'March 3 – 5, 2024' in en, '۱۳ تا ۱۵ اسفند ۱۴۰۲' in fa), so a booking or schedule range does not repeat the month or year. A reversed range (start after end) formats as given, like Intl, without throwing. An invalid date throws TypeError in development and returns an empty string in production. Shares the formatDate formatter cache. Without formatRange in the runtime, both ends are formatted and joined with the locale's range separator (a spaced en dash; ' تا ' in Persian), each end wrapped in a first-strong isolate (FSI ... PDI).
+- formatNumberRange(start, end, options?): Intl.NumberFormat.prototype.formatRange. Both ends accept number or bigint; options are the same as formatNumber (currency, unit, compact). Uses the locale's range separator and collapses shared parts, so an Arabic price range carries one currency symbol instead of one per endpoint. A reversed range (start greater than end) formats as given, like Intl, without throwing. A non-finite number throws TypeError in development and returns an empty string in production. Shares the formatNumber formatter cache. Without formatRange in the runtime, both ends are formatted and joined with an en dash, each end wrapped in a first-strong isolate (FSI ... PDI) so the endpoints keep their reading order in an RTL paragraph.
 - formatList(items, options?): Intl.ListFormat with type ('conjunction', 'disjunction', 'unit') and style. formatList(['Ahmed', 'Sara', 'Omar'], { locale: 'ar' }) gives 'Ahmed وSara وOmar'. With isolate set, every item is wrapped in a first-strong isolate and then the whole result is isolated.
 - formatRelativeTime(value, unit, options?): Intl.RelativeTimeFormat with numeric and style; negative values are in the past. formatRelativeTime(-3, 'day', { locale: 'ar-EG' }) gives 'قبل ٣ أيام', and numberingSystem: 'latn' gives 'قبل 3 أيام'. A non-finite value returns an empty string.
 - formatPlural(count, forms, options?): picks the CLDR plural form with Intl.PluralRules and replaces every {count} with formatNumber(count, options). forms is Partial<Record<'zero' | 'one' | 'two' | 'few' | 'many' | 'other', string>> with other required; a missing category falls back to other. Arabic uses all six categories (0 zero, 1 one, 2 two, 3-10 few, 11-99 many, 100 other), so n === 1 ? a : b is wrong for Arabic; Hebrew has two, Persian counts 0 as one. options adds type: 'cardinal' | 'ordinal' (English 1st/2nd/3rd) to locale, numberingSystem, and isolate. NaN, Infinity, negative, and fractional counts select the category the rules report without throwing; an empty forms.other or a runtime without Intl.PluralRules returns an empty string; text without {count} is returned as is.
@@ -427,7 +431,7 @@ Standalone functions:
 - transliterateDigits(text, 'latn' | 'arab' | 'arabext'): converts only digits in an existing string.
 - withNumberingSystem(locale, numberingSystem?): adds a Unicode -u-nu- locale extension.
 
-NumberingSystem accepts latn, arab, arabext, hanidec, deva, beng, or another runtime-supported string; unrecognized or empty values safely fall back to latn. Actual Intl behavior depends on the runtime's locale support. Each formatter kind (number, date, list, relative time, plural rules, display names) keeps its own bounded LRU cache of 32 Intl instances.
+NumberingSystem accepts latn, arab, arabext, hanidec, deva, beng, or another runtime-supported string; unrecognized or empty values safely fall back to latn. Actual Intl behavior depends on the runtime's locale support. Each formatter kind (number, date, list, relative time, plural rules, display names) keeps its own bounded LRU cache of 32 Intl instances; formatDateRange and formatNumberRange reuse the date and number caches rather than adding new ones.
 
 parseNumber rules:
 - Separators: the group separator, decimal separator, and minus sign are read from Intl.NumberFormat formatToParts() for the locale and numbering system and cached per locale tag (32 entries). There is no hardcoded separator table. Parse with the same locale and numberingSystem used for formatting; the bound format.value.parseNumber already uses the scope locale and the configured numberingSystem.
@@ -535,7 +539,7 @@ Core types:
 - RtlOptions configures createRtl; ResolvedRtlOptions represents resolved root options.
 - DirectionContext describes reactive state and actions; RtlInstance adds root/plugin behavior.
 - DirectionState omits isRoot; DirectionStateOptions requires dir and locale and optionally locales and pinned.
-- BoundFormatters exposes locale, dir, formatNumber, formatCurrency, formatDate, formatList, formatRelativeTime, formatPlural, formatDisplayName, parseNumber, compareText, and sortByLocale.
+- BoundFormatters exposes locale, dir, formatNumber, formatCurrency, formatNumberRange, formatDate, formatDateRange, formatList, formatRelativeTime, formatPlural, formatDisplayName, parseNumber, compareText, and sortByLocale.
 - CompareOptions includes optional locale (string or string[]), numeric, ignoreDiacritics, caseFirst, and direction. sortByLocale also accepts a key callback.
 - PluralForms maps the CLDR plural categories zero, one, two, few, many, and other to message text, with other required; FormatPluralOptions extends FormatOptionsBase with type ('cardinal' | 'ordinal').
 - FormatDisplayNameOptions requires type ('language' | 'region' | 'currency' | 'script' | 'calendar' | 'dateTimeField') and accepts optional locale, style ('long' | 'short' | 'narrow'), languageDisplay ('dialect' | 'standard'), and fallback ('code' | 'none'). On older runtimes whose Intl.DisplayNames ignores fallback 'none', a name equal to its code (for example 'second' in English, or 'US' with style 'narrow') also returns ''.

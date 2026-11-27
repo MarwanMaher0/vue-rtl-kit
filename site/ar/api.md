@@ -16,7 +16,7 @@ import type { Direction } from 'vue-rtl-kit'
 | `useDirection` | `() => DirectionContext` | الحصول على أقرب نطاق، أو المخزن الجذري، أو القيمة الاحتياطية المنفصلة. |
 | `useRtl` | `() => RtlInstance` | الحصول على المخزن الجذري؛ ويُطلق خطأً عند عدم وجود الإضافة. |
 | `useLogicalStyles` | `() => UseLogicalStylesReturn` | أدوات مساعدة للأنماط المنطقية المرتبطة بالاتجاه. |
-| `useFormat` | `() => ComputedRef<BoundFormatters>` | أدوات تنسيق الأرقام والعملات والتواريخ والقوائم والأزمنة النسبية وصيغ الجمع المرتبطة باللغة، ومعها `formatDisplayName` و`parseNumber` و`compareText` و`sortByLocale`. |
+| `useFormat` | `() => ComputedRef<BoundFormatters>` | أدوات تنسيق الأرقام والعملات والتواريخ والقوائم والأزمنة النسبية وصيغ الجمع المرتبطة باللغة، ومنسّقا النطاقات `formatDateRange` و`formatNumberRange`، ومعها `formatDisplayName` و`parseNumber` و`compareText` و`sortByLocale`. |
 | `useInlineScroll` | `(target: MaybeRefOrGetter<Element \| null \| undefined>, options?: UseInlineScrollOptions) => UseInlineScrollReturn` | حالة التمرير السطري المنطقي وأوامر التحكم فيه في LTR وRTL، وآمنة مع SSR. |
 | `useLogicalPlacement` | `(placement: MaybeRefOrGetter<LogicalPlacement>, target?: Ref<HTMLElement \| null>) => ComputedRef<PhysicalPlacement>` | تحويل [موضع منطقي](#logical-placement) تفاعلي بحسب اتجاه العنصر المحسوب، أو بحسب نطاق الاتجاه الحالي عند غياب العنصر أو أثناء العرض على الخادم. |
 
@@ -251,7 +251,9 @@ truncateText('👨‍👩‍👧‍👦🇪🇬🎉🎉', 3) // '👨‍👩‍�
 | --- | --- | --- |
 | `formatNumber` | `(value: number, options?: NumberFormatOptions) => string` | التنسيق باستخدام `Intl.NumberFormat`. |
 | `formatCurrency` | `(value: number, currency: string, options?: NumberFormatOptions) => string` | تنسيق مبلغ بعملة وفق ISO 4217. |
+| `formatNumberRange` | `(start: number \| bigint, end: number \| bigint, options?: NumberFormatOptions) => string` | تنسيق نطاق عددي عبر `formatRange` في `Intl.NumberFormat`؛ يدمج الأجزاء المشتركة مثل رمز العملة. وعند غياب `formatRange` يضم الطرفين معزولين. |
 | `formatDate` | `(value: Date \| number \| string, options?: DateFormatOptions) => string` | التنسيق باستخدام `Intl.DateTimeFormat`. |
+| `formatDateRange` | `(start: Date \| number \| string, end: Date \| number \| string, options?: DateFormatOptions) => string` | تنسيق نطاق زمني عبر `formatRange` في `Intl.DateTimeFormat`؛ لا تتكرر أجزاء الشهر والسنة المشتركة. وعند غياب `formatRange` يضم الطرفين معزولين. |
 | `formatDisplayName` | `(code: string, options: FormatDisplayNameOptions) => string` | تسمية رمز لغة أو منطقة أو عملة أو خط كتابة أو تقويم أو حقل تاريخ ووقت عبر `Intl.DisplayNames`. يعيد الرمز نفسه للرموز غير المعروفة أو غير الصالحة، أو `''` مع `fallback: 'none'`؛ ولا يرمي استثناء أبدًا. |
 | `formatList` | `(items: Iterable<string>, options?: ListFormatOptions) => string` | ضم العناصر باستخدام `Intl.ListFormat`؛ ويعزل `isolate` كل عنصر ثم النتيجة كاملة. |
 | `formatRelativeTime` | `(value: number, unit: Intl.RelativeTimeFormatUnit, options?: RelativeTimeFormatOptions) => string` | التنسيق باستخدام `Intl.RelativeTimeFormat`؛ ويعيد `''` للقيم غير المنتهية. |
@@ -263,9 +265,11 @@ truncateText('👨‍👩‍👧‍👦🇪🇬🎉🎉', 3) // '👨‍👩‍�
 ```ts
 import {
   formatCurrency,
+  formatDateRange,
   formatDisplayName,
   formatList,
   formatNumber,
+  formatNumberRange,
   formatPlural,
   formatRelativeTime,
   parseNumber,
@@ -274,6 +278,8 @@ import {
 
 formatNumber(1234.5, { locale: 'ar-EG', numberingSystem: 'latn' })
 formatCurrency(2500, 'EGP', { locale: 'ar-EG', isolate: true })
+formatDateRange('2024-03-03', '2024-03-05', { locale: 'ar-EG', dateStyle: 'long', timeZone: 'UTC' }) // '٣–٥ مارس ٢٠٢٤'
+formatNumberRange(100, 250, { locale: 'ar-EG', numberingSystem: 'latn', style: 'currency', currency: 'EGP' })
 formatList(['Ahmed', 'Sara', 'Omar'], { locale: 'ar', isolate: true })
 formatRelativeTime(-3, 'day', { locale: 'ar-EG', numberingSystem: 'latn' })
 formatPlural(11, { many: '{count} ملفًا', other: '{count} ملف' }, { locale: 'ar' }) // '11 ملفًا'
@@ -286,6 +292,8 @@ transliterateDigits('طلب رقم 4821', 'arab')
 ```
 
 تختار `formatPlural` الفئة عبر `Intl.PluralRules` بحسب اللغة — وتستخدم العربية الفئات الست جميعها (`zero` و`one` و`two` و`few` و`many` و`other`)، فالعدد `11` فئته `many` لا `few` — ويحوّل `type: 'ordinal'` إلى قواعد الترتيب (الإنجليزية `1st` و`2nd` و`3rd`). وتختار القيم `NaN` و`Infinity` والسالبة والكسرية الفئة التي تعلنها القواعد دون رمي استثناء. راجع [صيغ الجمع](/ar/guide/use-format#plural-forms).
+
+تستدعي `formatDateRange` و`formatNumberRange` الدالتين `Intl.DateTimeFormat.prototype.formatRange` و`Intl.NumberFormat.prototype.formatRange`، فتستخدم النطاقات فاصل النطاقات الخاص باللغة وتدمج الأجزاء المشتركة (`٣–٥ مارس ٢٠٢٤`، ورمز `ج.م.` واحد لنطاق أسعار عربي كامل) بدل ضم قيمتين منسّقتين بشرطة. وتقبلان الخيارات نفسها الخاصة بـ`formatDate` / `formatNumber`، وتتشاركان ذاكرتي المنسّقات نفسهما، وهما مرتبطتان على `useFormat()`. ويُنسَّق النطاق المعكوس (حين تكون `start` أكبر من `end`) كما هو، مثل `Intl`. أما التاريخ غير الصالح أو العدد غير المنتهي فيرمي `TypeError` في التطوير ويعيد `''` في الإنتاج. وعند غياب `formatRange` في بيئة التشغيل، يُنسَّق الطرفان ويضمان بفاصل النطاقات الخاص باللغة، مع لف كل طرف في معزل يعتمد أول حرف قوي (FSI ... PDI). راجع [نطاقات التواريخ والأرقام](/ar/guide/use-format#ranges).
 
 تسمّي `formatDisplayName` الرموز بكلمات اللغة نفسها — `العربية` بدل `Arabic` و`مصر` بدل `Egypt` — فتبقى قوائم اختيار اللغات والبلدان مترجمة. الخيار `type` مطلوب؛ ويمرَّر `style` (`'long' | 'short' | 'narrow'`) و`languageDisplay` (`'dialect' | 'standard'`) إلى `Intl.DisplayNames`. تعيد الرموز غير المعروفة الرمز نفسه (`fallback: 'code'`، وهو الافتراضي) أو `''` (`fallback: 'none'`)؛ والرموز غير الصالحة وبيئات التشغيل بلا `Intl.DisplayNames` تعيد البديل نفسه بدل رمي استثناء. وفي بيئات التشغيل الأقدم التي يتجاهل فيها `Intl.DisplayNames` الخيار `fallback: 'none'`، لا يمكن تمييز اسم يساوي رمزه (مثل `second` بالإنجليزية أو `US` مع `style: 'narrow'`) عن رمز غير معروف، فيعيد هو أيضًا `''`. راجع [أسماء العرض](/ar/guide/use-format#display-names).
 
@@ -439,8 +447,18 @@ interface BoundFormatters {
     currency: string,
     options?: NumberFormatOptions,
   ) => string
+  formatNumberRange: (
+    start: number | bigint,
+    end: number | bigint,
+    options?: NumberFormatOptions,
+  ) => string
   formatDate: (
     value: Date | number | string,
+    options?: DateFormatOptions,
+  ) => string
+  formatDateRange: (
+    start: Date | number | string,
+    end: Date | number | string,
     options?: DateFormatOptions,
   ) => string
   formatList: (items: Iterable<string>, options?: ListFormatOptions) => string

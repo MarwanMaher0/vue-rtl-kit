@@ -16,7 +16,7 @@ import type { Direction } from 'vue-rtl-kit'
 | `useDirection` | `() => DirectionContext` | Resolve the nearest scope, root store, or detached fallback. |
 | `useRtl` | `() => RtlInstance` | Resolve the root store; throws when the plugin is absent. |
 | `useLogicalStyles` | `() => UseLogicalStylesReturn` | Direction-bound logical style helpers. |
-| `useFormat` | `() => ComputedRef<BoundFormatters>` | Locale-bound number, currency, date, list, relative-time, and plural formatters, plus `formatDisplayName`, `parseNumber`, `compareText`, and `sortByLocale`. |
+| `useFormat` | `() => ComputedRef<BoundFormatters>` | Locale-bound number, currency, date, list, relative-time, and plural formatters, the `formatDateRange` and `formatNumberRange` range formatters, plus `formatDisplayName`, `parseNumber`, `compareText`, and `sortByLocale`. |
 | `useInlineScroll` | `(target: MaybeRefOrGetter<Element \| null \| undefined>, options?: UseInlineScrollOptions) => UseInlineScrollReturn` | Logical inline scroll state and controls for horizontal scrollers in LTR and RTL; SSR-safe. |
 | `useLogicalPlacement` | `(placement: MaybeRefOrGetter<LogicalPlacement>, target?: Ref<HTMLElement \| null>) => ComputedRef<PhysicalPlacement>` | Resolve a reactive [logical placement](#logical-placement) against the target's computed direction, or the current direction scope when no target is mounted or during SSR. |
 
@@ -251,7 +251,9 @@ truncateText('👨‍👩‍👧‍👦🇪🇬🎉🎉', 3) // '👨‍👩‍�
 | --- | --- | --- |
 | `formatNumber` | `(value: number, options?: NumberFormatOptions) => string` | Format with `Intl.NumberFormat`. |
 | `formatCurrency` | `(value: number, currency: string, options?: NumberFormatOptions) => string` | Format an ISO 4217 currency amount. |
+| `formatNumberRange` | `(start: number \| bigint, end: number \| bigint, options?: NumberFormatOptions) => string` | Format a range with `Intl.NumberFormat` `formatRange`; collapses shared parts such as the currency symbol. Falls back to an isolated join without `formatRange`. |
 | `formatDate` | `(value: Date \| number \| string, options?: DateFormatOptions) => string` | Format with `Intl.DateTimeFormat`. |
+| `formatDateRange` | `(start: Date \| number \| string, end: Date \| number \| string, options?: DateFormatOptions) => string` | Format a range with `Intl.DateTimeFormat` `formatRange`; shared month/year parts are not repeated. Falls back to an isolated join without `formatRange`. |
 | `formatDisplayName` | `(code: string, options: FormatDisplayNameOptions) => string` | Name a language, region, currency, script, calendar, or date-time field code with `Intl.DisplayNames`. Unknown or invalid codes return the code itself, or `''` with `fallback: 'none'`; never throws. |
 | `formatList` | `(items: Iterable<string>, options?: ListFormatOptions) => string` | Join items with `Intl.ListFormat`; `isolate` wraps each item and the result. |
 | `formatRelativeTime` | `(value: number, unit: Intl.RelativeTimeFormatUnit, options?: RelativeTimeFormatOptions) => string` | Format with `Intl.RelativeTimeFormat`; returns `''` for a non-finite value. |
@@ -263,9 +265,11 @@ truncateText('👨‍👩‍👧‍👦🇪🇬🎉🎉', 3) // '👨‍👩‍�
 ```ts
 import {
   formatCurrency,
+  formatDateRange,
   formatDisplayName,
   formatList,
   formatNumber,
+  formatNumberRange,
   formatPlural,
   formatRelativeTime,
   parseNumber,
@@ -274,6 +278,8 @@ import {
 
 formatNumber(1234.5, { locale: 'ar-EG', numberingSystem: 'latn' })
 formatCurrency(2500, 'EGP', { locale: 'ar-EG', isolate: true })
+formatDateRange('2024-03-03', '2024-03-05', { locale: 'ar-EG', dateStyle: 'long', timeZone: 'UTC' }) // '٣–٥ مارس ٢٠٢٤'
+formatNumberRange(100, 250, { locale: 'ar-EG', numberingSystem: 'latn', style: 'currency', currency: 'EGP' })
 formatList(['Ahmed', 'Sara', 'Omar'], { locale: 'ar', isolate: true })
 formatRelativeTime(-3, 'day', { locale: 'ar-EG', numberingSystem: 'latn' })
 formatPlural(11, { many: '{count} ملفًا', other: '{count} ملف' }, { locale: 'ar' }) // '11 ملفًا'
@@ -286,6 +292,8 @@ transliterateDigits('طلب رقم 4821', 'arab')
 ```
 
 `formatPlural` selects the category with `Intl.PluralRules` for the locale — Arabic uses all six (`zero`, `one`, `two`, `few`, `many`, `other`), so `11` is `many`, not `few` — and `type: 'ordinal'` switches to ordinal rules (English `1st`, `2nd`, `3rd`). `NaN`, `Infinity`, negative, and fractional counts select the category the rules report without throwing. See [Plural forms](/guide/use-format#plural-forms).
+
+`formatDateRange` and `formatNumberRange` call `Intl.DateTimeFormat.prototype.formatRange` and `Intl.NumberFormat.prototype.formatRange`, so ranges use the locale's range separator and collapse shared parts (`٣–٥ مارس ٢٠٢٤`, one `ج.م.` for an Arabic price range) instead of joining two formatted values with a hyphen. They take the same options as `formatDate` / `formatNumber`, share their formatter caches, and are bound on `useFormat()`. A reversed range (`start` greater than `end`) formats as given, like `Intl`. An invalid date or non-finite number throws a `TypeError` in development and returns `''` in production. Without `formatRange` in the runtime, both ends are formatted and joined with the locale's range separator, each end wrapped in a first-strong isolate (FSI ... PDI). See [Date and number ranges](/guide/use-format#ranges).
 
 `formatDisplayName` names codes in the locale's own words — `العربية` instead of `Arabic`, `مصر` instead of `Egypt` — so language and country pickers stay localized. `type` is required; `style` (`'long' | 'short' | 'narrow'`) and `languageDisplay` (`'dialect' | 'standard'`) are forwarded to `Intl.DisplayNames`. Unknown codes return the code itself (`fallback: 'code'`, the default) or `''` (`fallback: 'none'`); invalid codes and runtimes without `Intl.DisplayNames` return the same fallback instead of throwing. On older runtimes whose `Intl.DisplayNames` ignores `fallback: 'none'`, a name that equals its code (for example `second` in English or `US` with `style: 'narrow'`) cannot be told apart from an unknown code, so it also returns `''`. See [Display names](/guide/use-format#display-names).
 
@@ -439,8 +447,18 @@ interface BoundFormatters {
     currency: string,
     options?: NumberFormatOptions,
   ) => string
+  formatNumberRange: (
+    start: number | bigint,
+    end: number | bigint,
+    options?: NumberFormatOptions,
+  ) => string
   formatDate: (
     value: Date | number | string,
+    options?: DateFormatOptions,
+  ) => string
+  formatDateRange: (
+    start: Date | number | string,
+    end: Date | number | string,
     options?: DateFormatOptions,
   ) => string
   formatList: (items: Iterable<string>, options?: ListFormatOptions) => string

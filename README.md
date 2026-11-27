@@ -128,6 +128,8 @@ result against the size and dependency limits below:
 | `{ formatPlural }` | 0.91 kB / ≤ 2.00 kB | `vue` |
 | `{ formatDisplayName }` | 0.65 kB / ≤ 2.00 kB | `vue` |
 | `{ vDigits }` | 0.99 kB / ≤ 2.00 kB | `vue` |
+| `{ formatDateRange }` | 0.99 kB / ≤ 2.00 kB | `vue` |
+| `{ formatNumberRange }` | 0.96 kB / ≤ 2.00 kB | `vue` |
 | `{ formatNumber }` | 0.75 kB | components, directives, collation |
 | `{ compareText }` | 0.95 kB / ≤ 2.00 kB | `vue` |
 | `{ sortByLocale }` | 1.00 kB / ≤ 2.00 kB | `vue` |
@@ -257,7 +259,7 @@ excluded from `ModuleOptions`.
 | `useDirection()` | `DirectionContext` | `dir`, `isRtl`, `isLtr`, `locale`, `startSide`, `endSide`, `sign`, `setDirection()`, `toggleDirection()`, `setLocale()`, `htmlAttrs()`. Resolves to the nearest `<RtlProvider>`, then the app store, then a detached fallback — it never throws. |
 | `useRtl()` | `RtlInstance` | The app-level store, skipping any `<RtlProvider>`. Throws if the plugin is missing. |
 | `useLogicalStyles()` | see below | `toLogical()`, `toPhysical()`, `property()`, `mirror()`, `arrow()`, plus `startSide`, `endSide`, `sign`. |
-| `useFormat()` | `ComputedRef<BoundFormatters>` | `formatNumber` / `formatCurrency` / `formatDate` / `formatList` / `formatRelativeTime` / `formatPlural` / `formatDisplayName` / `parseNumber` bound to the current locale and numbering system, plus `compareText` / `sortByLocale` bound to the current locale; they follow `setLocale()`, and the formatters and parser also use the `numberingSystem` configured in `createRtl()`. |
+| `useFormat()` | `ComputedRef<BoundFormatters>` | `formatNumber` / `formatCurrency` / `formatNumberRange` / `formatDate` / `formatDateRange` / `formatList` / `formatRelativeTime` / `formatPlural` / `formatDisplayName` / `parseNumber` bound to the current locale and numbering system, plus `compareText` / `sortByLocale` bound to the current locale; they follow `setLocale()`, and the formatters and parser also use the `numberingSystem` configured in `createRtl()`. |
 | `useInlineScroll(target, options?)` | `UseInlineScrollReturn` | Readonly `offset`, `max`, `atStart`, `atEnd` refs plus `scrollTo()`, `scrollBy()`, `scrollToStart()`, `scrollToEnd()`. Uses a passive `scroll` listener and `ResizeObserver`, re-reads on `target` and `useDirection().dir` changes, cleans up on dispose, and is SSR-safe. Horizontal writing modes only. |
 | `useLogicalPlacement(placement, target?)` | `ComputedRef<PhysicalPlacement>` | Resolve a placement using the target element's computed `direction`, or `useDirection().dir` without a mounted target or during SSR. See [Floating UI example](#floating-ui-example). |
 
@@ -433,9 +435,11 @@ Vue components, use `useInlineScroll(target)`.
 import {
   formatCurrency,
   formatDate,
+  formatDateRange,
   formatDisplayName,
   formatList,
   formatNumber,
+  formatNumberRange,
   formatPlural,
   formatRelativeTime,
   parseNumber,
@@ -445,6 +449,8 @@ formatNumber(1234.5, { locale: 'ar-EG' })                            // '١٬٢�
 formatNumber(1234.5, { locale: 'ar-EG', numberingSystem: 'latn' })   // '1,234.5'
 formatCurrency(2500, 'EGP', { locale: 'ar-EG' })
 formatDate(date, { locale: 'ar-SA', calendar: 'islamic-umalqura', dateStyle: 'long' })
+formatDateRange('2024-03-03', '2024-03-05', { locale: 'ar-EG', dateStyle: 'long', timeZone: 'UTC' }) // '٣–٥ مارس ٢٠٢٤'
+formatNumberRange(100, 250, { locale: 'ar-EG', numberingSystem: 'latn', style: 'currency', currency: 'EGP' }) // one ج.م. for the whole range
 formatList(['Ahmed', 'Sara', 'Omar'], { locale: 'ar' })              // 'Ahmed وSara وOmar'
 formatList(['PDF', 'CSV'], { locale: 'en', type: 'disjunction' })    // 'PDF or CSV'
 formatRelativeTime(-3, 'day', { locale: 'ar-EG' })                   // 'قبل ٣ أيام'
@@ -487,6 +493,22 @@ both take the same `locale`, `numberingSystem` and `isolate` options as the othe
 name cannot swap places with its Arabic neighbours — and then isolates the whole list as requested.
 `formatRelativeTime` returns `''` for a non-finite value, as `formatDate` does for an invalid date.
 Each formatter kind keeps its own LRU cache of `Intl` instances (32 entries).
+
+`formatDateRange(start, end, options)` and `formatNumberRange(start, end, options)` wrap
+`Intl.DateTimeFormat.prototype.formatRange` and `Intl.NumberFormat.prototype.formatRange`, so a
+booking, schedule or pricing range uses the locale's own range separator and collapses shared
+parts instead of joining two formatted values with a hyphen: `٣–٥ مارس ٢٠٢٤` (one month, one
+year), `۱۳ تا ۱۵ اسفند ۱۴۰۲` in Persian, and one `ج.م.` for a whole Arabic price range.
+`formatDateRange` accepts `Date`, timestamp or ISO string ends and the same options as
+`formatDate`; `formatNumberRange` accepts `number` or `bigint` ends and the same options as
+`formatNumber` (currency, unit, compact). Both share the existing `formatDate` / `formatNumber`
+caches and locale/numbering-system fallbacks, and are bound on `useFormat()`. A reversed range
+(`start` greater than `end`) is formatted as given, like `Intl`, and never throws. An invalid
+date or a non-finite number throws a `TypeError` in development and returns `''` in production.
+On runtimes without `formatRange`, both ends are formatted and joined with the locale's range
+separator — a spaced en dash for dates (` تا ` in Persian), an en dash for numbers — with each
+end wrapped in a first-strong isolate (FSI ... PDI) so the endpoints keep their reading order
+in an RTL paragraph.
 
 `formatPlural(count, forms, options)` picks the plural form with `Intl.PluralRules` instead of
 `n === 1 ? a : b`, which is wrong for Arabic's six categories: `0` is `zero`, `1` `one`, `2` `two`,

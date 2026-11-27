@@ -1,6 +1,6 @@
 # useFormat
 
-`useFormat()` binds number, currency, date, list, relative-time, and plural formatters, the `formatDisplayName()` display-name helper, and the `parseNumber()` number parser, to the current scope's locale and direction. It also applies the `numberingSystem` configured on the root `createRtl()` instance. The `compareText()` and `sortByLocale()` methods follow the scope locale for comparison and sorting.
+`useFormat()` binds number, currency, date, list, relative-time, and plural formatters, the `formatDateRange()` and `formatNumberRange()` range formatters, the `formatDisplayName()` display-name helper, and the `parseNumber()` number parser, to the current scope's locale and direction. It also applies the `numberingSystem` configured on the root `createRtl()` instance. The `compareText()` and `sortByLocale()` methods follow the scope locale for comparison and sorting.
 
 ```ts
 function useFormat(): ComputedRef<BoundFormatters>
@@ -40,7 +40,9 @@ The computed ref is unwrapped in templates. In script, call methods through `for
 | `dir` | `Direction` |
 | `formatNumber` | `(value: number, options?: NumberFormatOptions) => string` |
 | `formatCurrency` | `(value: number, currency: string, options?: NumberFormatOptions) => string` |
+| `formatNumberRange` | `(start: number \| bigint, end: number \| bigint, options?: NumberFormatOptions) => string` |
 | `formatDate` | `(value: Date \| number \| string, options?: DateFormatOptions) => string` |
+| `formatDateRange` | `(start: Date \| number \| string, end: Date \| number \| string, options?: DateFormatOptions) => string` |
 | `formatList` | `(items: Iterable<string>, options?: ListFormatOptions) => string` |
 | `formatRelativeTime` | `(value: number, unit: Intl.RelativeTimeFormatUnit, options?: RelativeTimeFormatOptions) => string` |
 | `formatPlural` | `(count: number, forms: PluralForms, options?: FormatPluralOptions) => string` |
@@ -82,6 +84,48 @@ formatRelativeTime(1, 'day', { locale: 'en', numeric: 'auto' }) // 'tomorrow'
 // Each item gets its own first-strong isolate, then the whole list is isolated.
 format.value.formatList(['Ahmed Ali', 'سارة'], { isolate: 'rtl' })
 ```
+
+## Date and number ranges {#ranges}
+
+`formatDateRange()` and `formatNumberRange()` wrap `Intl.DateTimeFormat.prototype.formatRange` and `Intl.NumberFormat.prototype.formatRange`. Joining two formatted values with a hyphen — the usual booking, schedule, and pricing shortcut — repeats the shared month or currency, uses the wrong range separator for the locale, and breaks the visual order in RTL: a hyphen-minus between Western digits keeps the whole range one LTR run, so the start endpoint renders on the left inside an RTL card. `formatRange` applies the locale's own range pattern instead: shared parts collapse, and the separator (an en dash, or `تا` in Persian) resolves correctly in an RTL paragraph, with the start endpoint read first on the right.
+
+```ts
+function formatDateRange(
+  start: Date | number | string,
+  end: Date | number | string,
+  options?: DateFormatOptions,
+): string
+
+function formatNumberRange(
+  start: number | bigint,
+  end: number | bigint,
+  options?: NumberFormatOptions,
+): string
+```
+
+`formatDateRange()` accepts a `Date`, a timestamp, or an ISO string for each end and the same options as `formatDate()` — including `calendar` and `timeZone`. `formatNumberRange()` accepts `number` or `bigint` ends and the same options as `formatNumber()` (currency, unit, compact). Both share the existing `formatDate` / `formatNumber` formatter caches, so a range call reuses the same `Intl` instance and `formatterCacheStats()` gains no new key.
+
+```ts
+formatDateRange('2024-03-03', '2024-03-05', { locale: 'ar-EG', dateStyle: 'long', timeZone: 'UTC' }) // '٣–٥ مارس ٢٠٢٤' — one month, one year
+formatDateRange('2024-03-03', '2024-03-05', { locale: 'en', dateStyle: 'long', timeZone: 'UTC' }) // 'March 3 – 5, 2024'
+formatDateRange('2024-03-03', '2024-03-05', { locale: 'fa', dateStyle: 'long', timeZone: 'UTC' }) // '۱۳ تا ۱۵ اسفند ۱۴۰۲'
+formatDateRange('2023-12-30', '2024-01-02', { locale: 'ar-EG', dateStyle: 'long', timeZone: 'UTC' }) // '٣٠ ديسمبر ٢٠٢٣ – ٢ يناير ٢٠٢٤'
+
+formatNumberRange(100, 250, { locale: 'ar-EG', numberingSystem: 'latn' }) // '100–250'
+formatNumberRange(100, 250, { locale: 'ar-EG', numberingSystem: 'latn', style: 'currency', currency: 'EGP' }) // one ج.م. symbol for the whole range
+formatNumberRange(5, 12, { locale: 'en', style: 'unit', unit: 'kilometer' }) // '5–12 km'
+formatNumberRange(1200, 3500, { locale: 'en', notation: 'compact' }) // '1.2K – 3.5K'
+formatNumberRange(10n, 25n, { locale: 'en' }) // '10–25'
+
+// Bound to the scope locale and the configured numbering system.
+format.value.formatDateRange(checkIn, checkOut, { dateStyle: 'long' })
+format.value.formatNumberRange(minPrice, maxPrice, { style: 'currency', currency: 'EGP' })
+```
+
+- **Reversed ranges**: a `start` greater than `end` is formatted as given, exactly like `Intl` — no throw and no silent swap.
+- **Equal ends**: `Intl` collapses them — a same-day date range prints one date, and equal numbers use the locale's approximate pattern (such as `~100` in English).
+- **Invalid input**: an invalid date or a non-finite number (`NaN`, `Infinity`) throws a `TypeError` in development and returns an empty string in production.
+- **Fallback**: on runtimes without `formatRange`, both ends are formatted and joined with the locale's range separator — a spaced en dash for dates (` تا ` in Persian), an unspaced en dash for numbers — and each end is wrapped in a first-strong isolate (FSI ... PDI) so the endpoints keep their reading order in an RTL paragraph.
 
 ## Plural forms {#plural-forms}
 
@@ -278,7 +322,7 @@ These methods use the locale, not the layout direction or configured `numberingS
 
 ## Input fallbacks
 
-Underscores in locale tags are normalized to hyphens, so `ar_EG` formats as `ar-EG`. If a tag is invalid, the formatter tries its language subtag and then falls back to `en`. Numbering systems are inserted before a private-use `-x-` section, so `en-x-foo` with `numberingSystem: 'arab'` produces Arabic-Indic digits; unrecognized or empty `numberingSystem` values safely fall back to `'latn'`. `formatDate()` returns an empty string for invalid dates instead of throwing, and `formatRelativeTime()` does the same for a non-finite value such as `NaN` or `Infinity`. `formatPlural()` uses the same locale fallbacks and returns an empty string when `forms.other` is empty or `Intl.PluralRules` is unavailable. `formatDisplayName()` uses the same locale fallbacks and returns the code itself (or `''` with `fallback: 'none'`) for unknown or invalid codes and on runtimes without `Intl.DisplayNames`. `parseNumber()` uses the same locale and numbering-system fallbacks and returns `NaN` for text it cannot read.
+Underscores in locale tags are normalized to hyphens, so `ar_EG` formats as `ar-EG`. If a tag is invalid, the formatter tries its language subtag and then falls back to `en`. Numbering systems are inserted before a private-use `-x-` section, so `en-x-foo` with `numberingSystem: 'arab'` produces Arabic-Indic digits; unrecognized or empty `numberingSystem` values safely fall back to `'latn'`. `formatDate()` returns an empty string for invalid dates instead of throwing, and `formatRelativeTime()` does the same for a non-finite value such as `NaN` or `Infinity`. `formatDateRange()` and `formatNumberRange()` use the same locale fallbacks, but reject an invalid date or non-finite number with a `TypeError` in development and an empty string in production. `formatPlural()` uses the same locale fallbacks and returns an empty string when `forms.other` is empty or `Intl.PluralRules` is unavailable. `formatDisplayName()` uses the same locale fallbacks and returns the code itself (or `''` with `fallback: 'none'`) for unknown or invalid codes and on runtimes without `Intl.DisplayNames`. `parseNumber()` uses the same locale and numbering-system fallbacks and returns `NaN` for text it cannot read.
 
 ```ts
 formatNumber(12, { locale: 'ar_EG' }) // '١٢'
@@ -301,9 +345,11 @@ The same formatting primitives can be used without a component context:
 import {
   formatCurrency,
   formatDate,
+  formatDateRange,
   formatDisplayName,
   formatList,
   formatNumber,
+  formatNumberRange,
   formatPlural,
   formatRelativeTime,
   parseNumber,
@@ -314,6 +360,8 @@ import {
 formatNumber(1234.5, { locale: 'ar-EG', numberingSystem: 'latn' })
 formatCurrency(2500, 'EGP', { locale: 'ar-EG' })
 formatDate('2024-05-12', { locale: 'ar-SA', calendar: 'islamic-umalqura' })
+formatDateRange('2024-03-03', '2024-03-05', { locale: 'ar-EG', dateStyle: 'long', timeZone: 'UTC' })
+formatNumberRange(100, 250, { locale: 'ar-EG', style: 'currency', currency: 'EGP' })
 formatList(['PDF', 'CSV'], { locale: 'en', type: 'disjunction' })
 formatRelativeTime(2, 'hour', { locale: 'ar-EG' })
 formatPlural(2, { one: '{count} يوم', other: '{count} أيام' }, { locale: 'ar' })

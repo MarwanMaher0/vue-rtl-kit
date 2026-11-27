@@ -2,6 +2,8 @@
 import { ref } from 'vue'
 import {
   compareText,
+  formatDateRange,
+  formatNumberRange,
   getScrollInline,
   getScrollInlineMax,
   logicalArrow,
@@ -51,6 +53,16 @@ truncateText(123, 5)
 truncateText('نص', 5, { unit: 'char' })
 const _parsed: number = parseNumber('١٬٢٣٤٫٥', _parseOptions)
 const _boundParsed: number = useFormat().value.parseNumber('1,234.5')
+const _dateRange: string = formatDateRange('2024-03-03', new Date('2024-03-05'), { locale: 'ar-EG', dateStyle: 'long' })
+const _numberRange: string = formatNumberRange(100, 250n, { locale: 'ar-EG', style: 'currency', currency: 'EGP' })
+const _boundDateRange: string = useFormat().value.formatDateRange('2024-03-03', '2024-03-05', { dateStyle: 'long' })
+const _boundNumberRange: string = useFormat().value.formatNumberRange(100, 250)
+// @ts-expect-error formatDateRange needs two endpoints
+formatDateRange('2024-03-03')
+// @ts-expect-error formatNumberRange reads numbers or bigints, not strings
+formatNumberRange('100', 250)
+// @ts-expect-error bound formatDateRange also needs two endpoints
+useFormat().value.formatDateRange('2024-03-03')
 const _compareOptions: CompareOptions = { locale: ['ar', 'en'], caseFirst: 'upper', direction: 'desc' }
 const _comparison: number = compareText('بَيْت ۲', 'بيت ١0', _compareOptions)
 const _boundComparison: number = useFormat().value.compareText('بَيْت ۲', 'بيت ١0')

@@ -15,9 +15,11 @@ import type {
 import {
   formatCurrency,
   formatDate,
+  formatDateRange,
   formatDisplayName,
   formatList,
   formatNumber,
+  formatNumberRange,
   formatPlural,
   formatRelativeTime,
   parseNumber,
@@ -27,8 +29,9 @@ import type { NumberingSystem } from '../types'
 import { useDirection } from './useDirection'
 
 /**
- * `formatNumber` / `formatDate` / `formatCurrency` / `formatList` /
- * `formatRelativeTime` / `formatPlural` / `formatDisplayName` / `parseNumber`,
+ * `formatNumber` / `formatCurrency` / `formatNumberRange` / `formatDate` /
+ * `formatDateRange` / `formatList` / `formatRelativeTime` / `formatPlural` /
+ * `formatDisplayName` / `parseNumber`,
  * pre-bound to the current locale and to the numbering system configured in
  * `createRtl()`, plus `compareText` / `sortByLocale`, which share the locale
  * but not the display numbering system.
@@ -62,8 +65,12 @@ export function useFormat(): ComputedRef<BoundFormatters> {
         formatNumber(value, { ...defaults, ...options }),
       formatCurrency: (value: number, currency: string, options: NumberFormatOptions = {}) =>
         formatCurrency(value, currency, { ...defaults, ...options }),
+      formatNumberRange: (start: number | bigint, end: number | bigint, options: NumberFormatOptions = {}) =>
+        formatNumberRange(start, end, { ...defaults, ...options }),
       formatDate: (value: Date | number | string, options: DateFormatOptions = {}) =>
         formatDate(value, { ...defaults, ...options }),
+      formatDateRange: (start: Date | number | string, end: Date | number | string, options: DateFormatOptions = {}) =>
+        formatDateRange(start, end, { ...defaults, ...options }),
       formatList: (items: Iterable<string>, options: ListFormatOptions = {}) =>
         formatList(items, { ...defaults, ...options }),
       formatRelativeTime: (
