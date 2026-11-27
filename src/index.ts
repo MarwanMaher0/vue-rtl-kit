@@ -129,6 +129,17 @@ export type {
   FormatDurationOptions,
 } from './duration'
 
+export { formatPhone, normalizePhone, validatePhone } from './phone'
+export type {
+  FormatPhoneOptions,
+  NormalizePhoneOptions,
+  PhoneInvalidReason,
+  PhoneRegion,
+  PhoneType,
+  PhoneValidationResult,
+  ValidatePhoneOptions,
+} from './phone'
+
 export { isClient, isServer } from './env'
 
 export type {

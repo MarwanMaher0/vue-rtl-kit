@@ -288,6 +288,29 @@ Sources:
 - [تنسيق المدد الزمنية](https://marwanmaher0.github.io/vue-rtl-kit/ar/guide/format-duration)
 - [Durations API](https://marwanmaher0.github.io/vue-rtl-kit/api#format-duration)
 
+## Phone numbers
+
+Arabic checkout forms receive phone numbers typed with Arabic-Indic (`٠-٩`) or Persian (`۰-۹`) digits, spaces, dashes, dots, parentheses, stray Unicode bidi controls, `00` or `+` international prefixes, and local leading trunk zeros — and rendering `+966 50 123 4567` inside Arabic text without a left-to-right isolate moves the `+` to the visual right. normalizePhone, validatePhone, and formatPhone are pure Vue-free, zero-dependency exports covering eight Arab-region numbering plans: SA (+966, CST), AE (+971, TDRA), KW (+965, CITRA), QA (+974, CRA), BH (+973, TRA Bahrain), OM (+968, TRA Oman), EG (+20, NTRA), and JO (+962, TRC).
+
+- normalizePhone(value: string, options?: { defaultRegion?: PhoneRegion }): string. Maps Arabic-Indic and Persian digits via transliterateDigits, strips bidi controls, whitespace, dashes, dots, and parentheses, accepts +, 00, bare country codes with valid national length, and a single regional trunk 0 (for SA, AE, EG, JO; KW, QA, BH, OM have closed 8-digit plans with no trunk 0), rejects letters and disallowed symbols, and returns canonical E.164 (e.g. '+966501234567') or ''.
+- validatePhone(value: string, options?: { regions?: readonly PhoneRegion[]; mobileOnly?: boolean; defaultRegion?: PhoneRegion }): PhoneValidationResult. Returns { valid, e164, region?, type?, reason? } where type is 'mobile' | 'fixed' and reason is 'empty' | 'letters' | 'length' | 'prefix' | 'region'. When regions has a single entry and defaultRegion is omitted, that entry acts as defaultRegion for local numbers. mobileOnly: true rejects fixed-line numbers with reason: 'prefix'.
+- formatPhone(e164: string, options?: { locale?: string; numberingSystem?: string; isolate?: boolean }): string. Groups digits by each region's documented convention (e.g. SA +966 50 123 4567, AE fixed +971 4 123 4567, KW/QA/BH/OM 4-4, EG mobile +20 10 1234 5678, JO mobile +962 79 123 4567), applies locale/numberingSystem digits (default locale 'en'), and wraps the result in U+2066 LRI ... U+2069 PDI by default (isolate: true) so the leading + stays on the visual left inside Arabic text. Returns '' for invalid input without adding isolates.
+- All three helpers are pure and SSR-safe, and pair naturally with v-digits in RTL forms.
+
+```ts
+import { formatPhone, normalizePhone, validatePhone } from 'vue-rtl-kit'
+
+normalizePhone('٠٥٠ ١٢٣ ٤٥٦٧', { defaultRegion: 'SA' }) // '+966501234567'
+validatePhone('0020 (0)10-1234-5678', { mobileOnly: true }) // { valid: true, e164: '+201012345678', region: 'EG', type: 'mobile' }
+formatPhone('+966501234567', { locale: 'ar-EG', numberingSystem: 'arab' }) // '\u2066+٩٦٦ ٥٠ ١٢٣ ٤٥٦٧\u2069'
+formatPhone('+201012345678', { locale: 'ar', numberingSystem: 'latn', isolate: false }) // '+20 10 1234 5678'
+```
+
+Sources:
+- [Phone numbers](https://marwanmaher0.github.io/vue-rtl-kit/guide/phone-numbers)
+- [أرقام الهاتف](https://marwanmaher0.github.io/vue-rtl-kit/ar/guide/phone-numbers)
+- [Phone numbers API](https://marwanmaher0.github.io/vue-rtl-kit/api#phone)
+
 ## v-rtl: element-level direction
 
 v-rtl sets an element's direction; it does not pin the root store. It supports reactive updates, SSR attributes, optional Unicode isolation, and restoration of previous DOM values on unmount.
@@ -591,6 +614,7 @@ Core types:
 - DigitsDirectiveValue is { to?: 'latn' | 'arab' | 'arabext'; decimal?: boolean } | undefined; import this type for a reactive directive binding.
 - TruncateOptions contains optional ellipsis (string, default U+2026), unit ('grapheme' | 'word', default 'grapheme'), locale (BCP 47 string for Intl.Segmenter; invalid tags fall back to the runtime default locale), and isolate (boolean, default false) for truncateText.
 - DurationInput is a partial record of DurationUnit ('years' | 'months' | 'weeks' | 'days' | 'hours' | 'minutes' | 'seconds' | 'milliseconds') to number; DurationStyle is 'long' | 'short' | 'narrow' | 'digital'; FormatDurationOptions contains optional locale, style, numberingSystem, largestUnit, smallestUnit, and maxUnits for formatDuration.
+- PhoneRegion = 'SA' | 'AE' | 'KW' | 'QA' | 'BH' | 'OM' | 'EG' | 'JO'; PhoneType = 'mobile' | 'fixed'; PhoneInvalidReason = 'empty' | 'letters' | 'length' | 'prefix' | 'region'; NormalizePhoneOptions contains optional defaultRegion; ValidatePhoneOptions contains optional regions, mobileOnly, and defaultRegion; PhoneValidationResult contains valid, e164, and optional region, type, and reason; FormatPhoneOptions contains optional locale, numberingSystem, and isolate (default true).
 - RtlDirectiveValue accepts DirectionOrAuto, boolean, undefined, null, or { dir?, isolate? }.
 
 The reference includes signatures for every export and complete type shapes:
@@ -607,6 +631,7 @@ BidiText أداة مبسطة لعزل مقاطع النص العادي، ولي�
 
 للمقارنة والفرز بحسب اللغة، استخدم `compareText` و`sortByLocale`؛ فمثلًا يتساوى `طلب ٢` و`طلب ۲` ويسبقان `طلب ١٠` افتراضيًا. تحافظ الدالتان على ترتيب الحروف بحسب اللغة دون طيّها كما في البحث، ويتبع تابعاهما في `useFormat()` لغة النطاق الحالي.
 لتنسيق المدد الزمنية استخدم `formatDuration`؛ فمثلًا تعيد `formatDuration({ hours: 2, minutes: 3 }, { locale: 'ar', numberingSystem: 'latn' })` النص `ساعتان و3 دقائق`، وتعيد `formatDuration(3_723_000, { locale: 'ar-EG', numberingSystem: 'arab', style: 'digital' })` النص `١:٠٢:٠٣`. تأتي صيغ المثنى والجمع وواو العطف والأرقام من بيانات CLDR عبر `Intl.DurationFormat`، وعند غيابه تُنسَّق كل وحدة عبر `Intl.NumberFormat` ثم تُربط عبر `Intl.ListFormat`. المدخلات غير الصالحة ترمي `TypeError` في التطوير وتعيد سلسلة فارغة في الإنتاج.
+لتطبيع أرقام الهاتف العربية والتحقق منها وتنسيقها، استخدم الدوال النقية `normalizePhone` و`validatePhone` و`formatPhone` للمناطق الثماني (`SA` و`AE` و`KW` و`QA` و`BH` و`OM` و`EG` و`JO`). تحوّل `normalizePhone` الأرقام العربية الهندية والفارسية وتزيل محارف الاتجاه والمسافات والشرطات والنقاط والأقواس وتقبل `+` و`00` وصفر الاتصال المحلي وترفض الحروف لتعيد صيغة E.164 أو `''`، وتتحقق `validatePhone` من الأطوال والبادئات وفق خطط الهيئات التنظيمية مع خيارات `regions` و`mobileOnly`، وتجمّع `formatPhone` الأرقام وتغلفها بـ `LRI ... PDI` افتراضيًا فتبقى علامة `+` على اليسار داخل النص العربي.
 يوحّد التوجيه v-digits شكل الأرقام عند الكتابة أو اللصق في حقول الإدخال. مثلًا، تصبح قيمة رقم الطلب ٠۰٤۲ هي النص '0042'، وتبقى الأصفار في بدايته. لا يغيّر التوجيه القيمة الأولية أو النص الذي لا يزال المستخدم يركّبه بمحرّر أساليب الإدخال.
 
 لتحديد موضع نافذة منبثقة عند نهاية السطر، استخدم `useLogicalPlacement('inline-end', trigger)`. تكون النافذة على يسار زرّ الفتح في RTL وعلى يمينه في LTR. تقرأ الدالة اتجاه الزر المحسوب، وتستخدم اتجاه نطاق Vue عند غياب الزر أو أثناء العرض على الخادم. عند استخدام Floating UI، مرّر محاذاة `top` أو `bottom` المنطقية مباشرةً إذا كان اتجاه العنصر العائم هو المطلوب.

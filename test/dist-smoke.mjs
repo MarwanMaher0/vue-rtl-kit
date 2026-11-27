@@ -20,7 +20,7 @@ function check(label, api) {
   for (const name of [
     'createRtl', 'splitBidiRuns', 'isolateRuns', 'logicalArrow', 'toLogicalStyle', 'toPhysicalStyle',
     'getScrollInline', 'getScrollInlineMax', 'scrollToInline', 'scrollByInline', 'scrollInlineEdges',
-    'useInlineScroll', 'formatNumber', 'formatPlural', 'formatDisplayName', 'formatDuration', 'directionOfLocale', 'foldSearchText', 'matchesSearch',
+    'useInlineScroll', 'formatNumber', 'formatPlural', 'formatDisplayName', 'formatDuration', 'normalizePhone', 'validatePhone', 'formatPhone', 'directionOfLocale', 'foldSearchText', 'matchesSearch',
     'findSearchMatches', 'BidiText', 'RtlProvider', 'vRtl',
     'resolvePlacement', 'toLogicalPlacement', 'useLogicalPlacement',
   ]) {
@@ -54,6 +54,9 @@ function check(label, api) {
   assert.equal(api.formatDuration(3_723_000, { locale: 'ar-EG', numberingSystem: 'arab', style: 'digital' }), '١:٠٢:٠٣', `${label}: formatDuration digital`)
   assert.equal(api.formatDuration(0, { locale: 'en' }), '0 seconds', `${label}: formatDuration zero`)
   assert.throws(() => api.formatDuration(Number.NaN), TypeError, `${label}: formatDuration invalid input`)
+  assert.equal(api.normalizePhone('٠٥٠ ١٢٣ ٤٥٦٧', { defaultRegion: 'SA' }), '+966501234567', `${label}: normalizePhone SA`)
+  assert.deepEqual(api.validatePhone('+20 10 1234 5678', { mobileOnly: true }), { valid: true, e164: '+201012345678', region: 'EG', type: 'mobile' }, `${label}: validatePhone EG`)
+  assert.equal(api.formatPhone('+966501234567', { locale: 'ar-EG', numberingSystem: 'arab' }), '\u2066+٩٦٦ ٥٠ ١٢٣ ٤٥٦٧\u2069', `${label}: formatPhone ar-EG`)
 
   const rtl = api.createRtl({ locales: { en: 'ltr', ar: 'rtl' }, defaultLocale: 'ar' })
   assert.deepEqual(rtl.htmlAttrs(), { dir: 'rtl', lang: 'ar' }, `${label}: htmlAttrs`)

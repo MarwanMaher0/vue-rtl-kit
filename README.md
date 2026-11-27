@@ -102,8 +102,8 @@ budgets are set to their measured byte counts plus fixed `+256 B` (`0.25 kB`) ra
 
 | Entry point | Artifact | Raw (current / budget) | Gzip (current / budget) |
 | --- | --- | --- | --- |
-| `vue-rtl-kit` (ESM) | `dist/vue-rtl-kit.js` | 52.47 kB / ≤ 52.72 kB | 16.52 kB / ≤ 16.62 kB |
-| `vue-rtl-kit` (CJS) | `dist/vue-rtl-kit.cjs` | 38.56 kB / ≤ 38.81 kB | 14.17 kB / ≤ 14.27 kB |
+| `vue-rtl-kit` (ESM) | `dist/vue-rtl-kit.js` | 59.55 kB / ≤ 59.80 kB | 18.42 kB / ≤ 18.52 kB |
+| `vue-rtl-kit` (CJS) | `dist/vue-rtl-kit.cjs` | 43.08 kB / ≤ 43.33 kB | 15.49 kB / ≤ 15.59 kB |
 | `vue-rtl-kit/nuxt` | `dist/nuxt/module.js` | 3.08 kB / ≤ 3.25 kB | 1.12 kB / ≤ 1.50 kB |
 | `vue-rtl-kit/nuxt` (runtime plugin) | `dist/nuxt/runtime/plugin.js` | 2.77 kB / ≤ 3.00 kB | 1.02 kB / ≤ 1.20 kB |
 | `vue-rtl-kit/styles.css` | `dist/styles.css` | 7.10 kB / ≤ 8.00 kB | 1.91 kB / ≤ 2.50 kB |
@@ -132,6 +132,7 @@ result against the size and dependency limits below:
 | `{ formatNumber }` | 0.75 kB | components, directives, collation |
 | `{ compareText }` | 0.95 kB / ≤ 2.00 kB | `vue` |
 | `{ sortByLocale }` | 1.00 kB / ≤ 2.00 kB | `vue` |
+| `{ normalizePhone, validatePhone, formatPhone }` | 1.94 kB / ≤ 2.50 kB | `vue`, collation |
 
 ## Quickstart — Vue
 
@@ -735,6 +736,45 @@ smaller than `smallestUnit`, a `maxUnits` below 1 or not an integer — throws `
 development and returns an empty string in production. The function is standalone: pass it the
 locale (it is not part of `useFormat()`), and import it explicitly in Nuxt. See the
 [Formatting durations guide](./site/guide/format-duration.md).
+
+### Phone numbers
+
+Arabic checkout forms receive phone numbers typed with Arabic-Indic (`٠–٩`) or Persian (`۰–۹`)
+digits, spaces, dashes, dots, parentheses, stray bidi controls, `00` or `+` international prefixes,
+and local leading trunk zeros — and rendering `+966 50 123 4567` inside Arabic text without a
+left-to-right isolate flips the `+` to the visual right. `normalizePhone`, `validatePhone`, and
+`formatPhone` (pure, zero Vue imports, zero dependencies) handle eight Arab-region numbering plans:
+`SA` (+966, CST), `AE` (+971, TDRA), `KW` (+965, CITRA), `QA` (+974, CRA), `BH` (+973, TRA Bahrain),
+`OM` (+968, TRA Oman), `EG` (+20, NTRA), and `JO` (+962, TRC).
+
+```ts
+import { formatPhone, normalizePhone, validatePhone } from 'vue-rtl-kit'
+
+normalizePhone('٠٥٠ ١٢٣ ٤٥٦٧', { defaultRegion: 'SA' })       // '+966501234567'
+normalizePhone('0020 (0)10-1234-5678')                        // '+201012345678'
+normalizePhone('+966 50 abc 4567')                            // ''
+
+validatePhone('079 123 4567', { regions: ['JO'], mobileOnly: true })
+// { valid: true, e164: '+962791234567', region: 'JO', type: 'mobile' }
+
+validatePhone('+966 11 234 5678', { mobileOnly: true })
+// { valid: false, e164: '', region: 'SA', type: 'fixed', reason: 'prefix' }
+
+formatPhone('+966501234567', { locale: 'ar-EG', numberingSystem: 'arab' })
+// '\u2066+٩٦٦ ٥٠ ١٢٣ ٤٥٦٧\u2069'
+
+formatPhone('+201012345678', { locale: 'ar', numberingSystem: 'latn', isolate: false })
+// '+20 10 1234 5678'
+```
+
+| Function | Description |
+| --- | --- |
+| `normalizePhone(value, options?)` | Map Arabic-Indic and Persian digits via `transliterateDigits`, strip bidi controls, spaces, dashes, dots, and parentheses, accept `+`, `00`, and regional trunk `0`, reject letters, and return canonical E.164 or `''`. |
+| `validatePhone(value, options?)` | Validate against the eight regulator numbering plans (`regions`, `mobileOnly`, `defaultRegion`) and return `{ valid, e164, region?, type?, reason? }` with `reason` in `'empty' \| 'letters' \| 'length' \| 'prefix' \| 'region'`. |
+| `formatPhone(e164, options?)` | Group digits by each region's documented convention, apply `locale` / `numberingSystem` digits, and wrap in `U+2066 LRI` ... `U+2069 PDI` when `isolate` is `true` (default) so `+` stays on the visual left inside Arabic text. |
+
+Pair with `v-digits` on `<input>` elements in RTL forms. All three helpers are SSR-safe; see the
+[Phone numbers guide](./site/guide/phone-numbers.md) for the complete regulator table and examples.
 
 ---
 

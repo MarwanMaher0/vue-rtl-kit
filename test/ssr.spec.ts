@@ -30,6 +30,7 @@ import { findSearchMatches, foldSearchText, matchesSearch } from '../src/search'
 import { truncateText } from '../src/truncate'
 import { formatDuration } from '../src/duration'
 import { formatDateRange, formatNumberRange, formatPlural } from '../src/format'
+import { formatPhone, normalizePhone, validatePhone } from '../src/phone'
 
 describe('SSR environment', () => {
   it('reports a server environment', () => {
@@ -485,5 +486,38 @@ describe('formatDuration on the server', () => {
       vi.unstubAllEnvs()
     }
     expect(() => formatDuration(Number.NaN, { locale: 'ar' })).toThrow(TypeError)
+  })
+})
+
+describe('phone helpers on the server', () => {
+  it('normalizes, validates, and formats phone numbers with no window or document', () => {
+    expect(typeof window).toBe('undefined')
+    expect(typeof document).toBe('undefined')
+
+    expect(normalizePhone('٠٥٠ ١٢٣ ٤٥٦٧', { defaultRegion: 'SA' })).toBe('+966501234567')
+    expect(normalizePhone('0020 (0)10-1234-5678')).toBe('+201012345678')
+    expect(validatePhone('۰۷۹ ۱۲۳ ۴۵۶۷', { regions: ['JO'], mobileOnly: true })).toEqual({
+      valid: true,
+      e164: '+962791234567',
+      region: 'JO',
+      type: 'mobile',
+    })
+    expect(formatPhone('+966501234567', { locale: 'ar-EG' })).toBe(`${LRI}+٩٦٦ ٥٠ ١٢٣ ٤٥٦٧${PDI}`)
+    expect(formatPhone('+201012345678', { locale: 'ar', numberingSystem: 'latn', isolate: false })).toBe('+20 10 1234 5678')
+  })
+
+  it('renders an isolated formatted phone number into server HTML on every request', async () => {
+    const render = () => renderToString(createSSRApp(
+      defineComponent({
+        setup() {
+          const e164 = normalizePhone('٠٠٩٦٦ ٥٠ ١٢٣ ٤٥٦٧')
+          const display = formatPhone(e164, { locale: 'ar-EG', numberingSystem: 'arab' })
+          return () => h('p', { dir: 'rtl', lang: 'ar' }, `للتواصل: ${display}`)
+        },
+      }),
+    ))
+    const html = await render()
+    expect(html).toBe(`<p dir="rtl" lang="ar">للتواصل: ${LRI}+٩٦٦ ٥٠ ١٢٣ ٤٥٦٧${PDI}</p>`)
+    expect(await render()).toBe(html)
   })
 })

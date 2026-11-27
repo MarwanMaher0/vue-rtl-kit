@@ -16,6 +16,9 @@ import {
   sortByLocale,
   toLogicalPlacement,
   truncateText,
+  formatPhone,
+  normalizePhone,
+  validatePhone,
   useFormat,
   useInlineScroll,
   useLogicalPlacement,
@@ -27,14 +30,21 @@ import type {
   DurationStyle,
   DurationUnit,
   FormatDurationOptions,
+  FormatPhoneOptions,
   LogicalPlacement,
+  NormalizePhoneOptions,
   ParseNumberOptions,
+  PhoneInvalidReason,
+  PhoneRegion,
+  PhoneType,
+  PhoneValidationResult,
   PhysicalPlacement,
   ScrollInlineEdges,
   ScrollInlineOptions,
   TruncateOptions,
   UseInlineScrollOptions,
   UseInlineScrollReturn,
+  ValidatePhoneOptions,
 } from 'vue-rtl-kit'
 
 const preferred = ref<'rtl' | 'ltr' | 'auto'>('auto')
@@ -80,6 +90,23 @@ formatDuration(1000, { style: 'medium' })
 formatDuration(1000, { largestUnit: 'hour' })
 // @ts-expect-error maxUnits is a number
 formatDuration(1000, { maxUnits: '2' })
+const _phoneRegion: PhoneRegion = 'SA'
+const _phoneType: PhoneType = 'mobile'
+const _phoneReason: PhoneInvalidReason = 'prefix'
+const _normOpts: NormalizePhoneOptions = { defaultRegion: _phoneRegion }
+const _valOpts: ValidatePhoneOptions = { regions: ['SA', 'EG'], mobileOnly: true }
+const _fmtOpts: FormatPhoneOptions = { locale: 'ar-EG', numberingSystem: 'arab', isolate: true }
+const _e164: string = normalizePhone('٠٥٠ ١٢٣ ٤٥٦٧', _normOpts)
+const _phoneRes: PhoneValidationResult = validatePhone(_e164, _valOpts)
+const _phoneDisplay: string = formatPhone(_phoneRes.e164, _fmtOpts)
+const _checkedType: PhoneType | undefined = _phoneRes.type ?? _phoneType
+const _checkedReason: PhoneInvalidReason | undefined = _phoneRes.reason ?? _phoneReason
+// @ts-expect-error defaultRegion must be one of the 8 supported regions
+normalizePhone('0501234567', { defaultRegion: 'US' })
+// @ts-expect-error regions must be an array of supported regions
+validatePhone('+966501234567', { regions: ['US'] })
+// @ts-expect-error isolate is boolean
+formatPhone('+966501234567', { isolate: 'ltr' })
 const _parsed: number = parseNumber('١٬٢٣٤٫٥', _parseOptions)
 const _boundParsed: number = useFormat().value.parseNumber('1,234.5')
 const _dateRange: string = formatDateRange('2024-03-03', new Date('2024-03-05'), { locale: 'ar-EG', dateStyle: 'long' })

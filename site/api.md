@@ -277,6 +277,26 @@ formatDuration(0, { locale: 'ar-EG', numberingSystem: 'arab' }) // '٠ ثاني�
 | Fallback | Without `Intl.DurationFormat` (Node.js before 23, Chrome before 129, Firefox before 136, Safari before 16.4), `'long'`, `'short'` and `'narrow'` return the same strings; `'digital'` always separates with `:`, where `Intl.DurationFormat` uses the separator of the locale. |
 | Invalid input | A duration that is not a finite number or a plain object of finite numbers, an unknown unit, style, `largestUnit` or `smallestUnit`, a `largestUnit` smaller than `smallestUnit`, a `maxUnits` that is not an integer of at least 1, or a `locale` that is not a string: `TypeError` in development, `''` in production. A malformed locale tag falls back to its language subtag, then to `'en'`. |
 
+## Phone numbers {#phone}
+
+Pure, Vue-free, zero-dependency phone-number normalization, validation, and bidi-safe formatting for eight Arab-region numbering plans (`SA`, `AE`, `KW`, `QA`, `BH`, `OM`, `EG`, `JO`). See [Phone numbers](/guide/phone-numbers) for the full guide and regulator numbering-plan references.
+
+| Export | Signature | Description |
+| --- | --- | --- |
+| `normalizePhone` | `(value: string, options?: NormalizePhoneOptions) => string` | Normalize Arabic-Indic/Persian digits, strip bidi controls, spaces, dashes, dots, and parentheses, accept `+`, `00`, and regional trunk `0`, reject letters, and return canonical E.164 (e.g. `'+966501234567'`) or `''`. |
+| `validatePhone` | `(value: string, options?: ValidatePhoneOptions) => PhoneValidationResult` | Validate against each region's regulator plan (CST, TDRA, CITRA, CRA, TRA Bahrain, TRA Oman, NTRA, TRC). Reports `{ valid, e164, region?, type?, reason? }`. Supports `regions`, `mobileOnly`, and `defaultRegion`. |
+| `formatPhone` | `(e164: string, options?: FormatPhoneOptions) => string` | Group digits by each region's documented convention, apply `locale` / `numberingSystem` digits, and wrap in `U+2066 LRI` ... `U+2069 PDI` when `isolate` is `true` (default) so `+` stays on the left inside Arabic text. Returns `''` for invalid input. |
+
+```ts
+import { formatPhone, normalizePhone, validatePhone } from 'vue-rtl-kit'
+
+normalizePhone('٠٥٠ ١٢٣ ٤٥٦٧', { defaultRegion: 'SA' }) // '+966501234567'
+validatePhone('0020 (0)10-1234-5678', { mobileOnly: true })
+// { valid: true, e164: '+201012345678', region: 'EG', type: 'mobile' }
+formatPhone('+966501234567', { locale: 'ar-EG', numberingSystem: 'arab' })
+// '\u2066+٩٦٦ ٥٠ ١٢٣ ٤٥٦٧\u2069'
+```
+
 ## Formatting
 
 | Export | Signature | Description |
@@ -620,6 +640,38 @@ interface FormatDurationOptions {
   largestUnit?: DurationUnit // default 'days' for a number, the largest non-zero field for an object
   smallestUnit?: DurationUnit // default 'milliseconds'; also the unit a zero duration is written in
   maxUnits?: number // an integer of at least 1
+}
+```
+
+## Phone types
+
+```ts
+type PhoneRegion = 'SA' | 'AE' | 'KW' | 'QA' | 'BH' | 'OM' | 'EG' | 'JO'
+type PhoneType = 'mobile' | 'fixed'
+type PhoneInvalidReason = 'empty' | 'letters' | 'length' | 'prefix' | 'region'
+
+interface NormalizePhoneOptions {
+  defaultRegion?: PhoneRegion // region assumed when input has no + or 00 prefix
+}
+
+interface ValidatePhoneOptions {
+  regions?: readonly PhoneRegion[] // restrict accepted regions; a 1-item list also acts as defaultRegion
+  mobileOnly?: boolean // default false; reject fixed-line numbers when true
+  defaultRegion?: PhoneRegion
+}
+
+interface PhoneValidationResult {
+  valid: boolean
+  e164: string // canonical E.164 when valid (e.g. '+966501234567'), or ''
+  region?: PhoneRegion
+  type?: PhoneType
+  reason?: PhoneInvalidReason
+}
+
+interface FormatPhoneOptions {
+  locale?: string // default 'en'
+  numberingSystem?: string // 'latn', 'arab', 'arabext', or any CLDR numbering system
+  isolate?: boolean // default true; wrap in U+2066 LRI ... U+2069 PDI
 }
 ```
 

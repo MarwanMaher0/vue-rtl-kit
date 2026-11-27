@@ -277,6 +277,26 @@ formatDuration(0, { locale: 'ar-EG', numberingSystem: 'arab' }) // '٠ ثاني�
 | البديل | عند غياب `Intl.DurationFormat` (Node.js قبل 23، وChrome قبل 129، وFirefox قبل 136، وSafari قبل 16.4) تعيد الأنماط `'long'` و`'short'` و`'narrow'` السلاسل نفسها؛ أما `'digital'` فيفصل دائمًا بالنقطتين `:`، في حين يستخدم `Intl.DurationFormat` فاصل اللغة. |
 | المدخلات غير الصالحة | مدة ليست عددًا منتهيًا ولا كائنًا عاديًا من أعداد منتهية، أو قيمة غير معروفة لوحدة أو لـ `style` أو `largestUnit` أو `smallestUnit`، أو `largestUnit` أصغر من `smallestUnit`، أو `maxUnits` ليس عددًا صحيحًا لا يقل عن 1، أو `locale` ليس سلسلة نصية: `TypeError` في التطوير و`''` في الإنتاج. أما وسم اللغة غير السليم فيعود إلى رمز اللغة فيه ثم إلى `'en'`. |
 
+## أرقام الهاتف {#phone}
+
+دوال نقية بلا أي استيراد من Vue وبلا اعتماديات خارجية لتطبيع أرقام الهاتف والتحقق منها وتنسيقها بعزل ثنائي الاتجاه لثماني مناطق عربية (`SA` و`AE` و`KW` و`QA` و`BH` و`OM` و`EG` و`JO`). راجع [أرقام الهاتف](/ar/guide/phone-numbers) للاطلاع على الدليل الكامل ومراجع خطط الترقيم الوطنية.
+
+| التصدير | التوقيع | الوصف |
+| --- | --- | --- |
+| `normalizePhone` | `(value: string, options?: NormalizePhoneOptions) => string` | تحويل الأرقام العربية الهندية والفارسية، وإزالة محارف الاتجاه والمسافات والشرطات والنقاط والأقواس، وقبول `+` و`00` وصفر الاتصال المحلي، ورفض الحروف، وإرجاع صيغة E.164 القياسية (مثل `'+966501234567'`) أو `''`. |
+| `validatePhone` | `(value: string, options?: ValidatePhoneOptions) => PhoneValidationResult` | التحقق من الرقم وفق خطة الترقيم لكل هيئة تنظيمية (CST وTDRA وCITRA وCRA وTRA البحرين وTRA عُمان وNTRA وTRC). تعيد `{ valid, e164, region?, type?, reason? }` وتدعم `regions` و`mobileOnly` و`defaultRegion`. |
+| `formatPhone` | `(e164: string, options?: FormatPhoneOptions) => string` | تجميع الأرقام وفق اصطلاح كل منطقة، وتطبيق أرقام `locale` أو `numberingSystem`، وتغليف الناتج بـ `U+2066 LRI` ... `U+2069 PDI` عندما يكون `isolate` بقيمة `true` (الافتراضي) فتبقى علامة `+` على اليسار داخل النص العربي. تعيد `''` للمدخلات غير الصالحة. |
+
+```ts
+import { formatPhone, normalizePhone, validatePhone } from 'vue-rtl-kit'
+
+normalizePhone('٠٥٠ ١٢٣ ٤٥٦٧', { defaultRegion: 'SA' }) // '+966501234567'
+validatePhone('0020 (0)10-1234-5678', { mobileOnly: true })
+// { valid: true, e164: '+201012345678', region: 'EG', type: 'mobile' }
+formatPhone('+966501234567', { locale: 'ar-EG', numberingSystem: 'arab' })
+// '\u2066+٩٦٦ ٥٠ ١٢٣ ٤٥٦٧\u2069'
+```
+
 ## التنسيق
 
 | التصدير | التوقيع | الوصف |
@@ -620,6 +640,38 @@ interface FormatDurationOptions {
   largestUnit?: DurationUnit // الافتراضي 'days' مع العدد، وأكبر حقل غير صفري مع الكائن
   smallestUnit?: DurationUnit // الافتراضي 'milliseconds'؛ وهي أيضًا الوحدة التي تُكتب بها المدة الصفرية
   maxUnits?: number // عدد صحيح لا يقل عن 1
+}
+```
+
+## أنواع أرقام الهاتف
+
+```ts
+type PhoneRegion = 'SA' | 'AE' | 'KW' | 'QA' | 'BH' | 'OM' | 'EG' | 'JO'
+type PhoneType = 'mobile' | 'fixed'
+type PhoneInvalidReason = 'empty' | 'letters' | 'length' | 'prefix' | 'region'
+
+interface NormalizePhoneOptions {
+  defaultRegion?: PhoneRegion // المنطقة المفترضة عند غياب + أو 00
+}
+
+interface ValidatePhoneOptions {
+  regions?: readonly PhoneRegion[] // تقييد المناطق المقبولة؛ وتعمل القائمة ذات العنصر الواحد كـ defaultRegion أيضًا
+  mobileOnly?: boolean // الافتراضي false؛ رفض أرقام الهاتف الثابت عند true
+  defaultRegion?: PhoneRegion
+}
+
+interface PhoneValidationResult {
+  valid: boolean
+  e164: string // صيغة E.164 القياسية عند الصلاحية (مثل '+966501234567') أو ''
+  region?: PhoneRegion
+  type?: PhoneType
+  reason?: PhoneInvalidReason
+}
+
+interface FormatPhoneOptions {
+  locale?: string // الافتراضي 'en'
+  numberingSystem?: string // 'latn' أو 'arab' أو 'arabext' أو أي نظام أرقام في CLDR
+  isolate?: boolean // الافتراضي true؛ تغليف الناتج بـ U+2066 LRI ... U+2069 PDI
 }
 ```
 

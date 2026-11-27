@@ -38,6 +38,7 @@ const CASES = [
   { spec: 'formatNumber', forbidComponents: true, forbidCollation: true },
   { spec: 'compareText', maxGzip: MAX_GZIP, forbidVue: true },
   { spec: 'sortByLocale', maxGzip: MAX_GZIP, forbidVue: true },
+  { spec: 'normalizePhone, validatePhone, formatPhone', maxGzip: Math.round(2.5 * 1024), forbidVue: true, forbidCollation: true },
 ]
 
 function formatKb(bytes) {
